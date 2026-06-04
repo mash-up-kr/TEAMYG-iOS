@@ -6,7 +6,7 @@
 ._*
 
 # Custom folder icons
-Icon
+Icon
 
 # Volume root files
 .DocumentRevisions-V100
@@ -67,4 +67,10 @@ playground.xcworkspace
 
 ### Worktrees ###
 .worktrees/
+
+### Claude Code ###
+# 개인 레이어 (커밋 금지) — 각자 로컬 설정/메모
+CLAUDE.local.md
+.claude/settings.local.json
+.mcp.local.json
 

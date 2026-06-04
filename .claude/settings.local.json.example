@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "개인 오버라이드 견본. settings.local.json 으로 복사해 사용하세요 (gitignore 됨). 여기 값이 팀 공용 settings.json 보다 우선합니다.",
+  "permissions": {
+    "allow": [
+      "Bash(xcbeautify:*)"
+    ]
+  }
+}
