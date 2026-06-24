@@ -6,42 +6,39 @@
 
 ## 개요
 
-iOS 앱 (SwiftUI + Swift Concurrency).
+iOS 앱 (SwiftUI + Swift Concurrency). **최소 타깃 iOS 26**, 뷰 아키텍처는 **MVI**.
 
-> ⚠️ 아직 Xcode 프로젝트가 스캐폴딩되기 전입니다. 프로젝트 생성 후 아래 `<Scheme>` 등을 실제 값으로 채우세요.
+> ⚠️ 아직 Xcode 프로젝트가 스캐폴딩되기 전입니다. 프로젝트 생성 후 아래 `Parfait` 등을 실제 값으로 채우세요.
 
 ## 명령어
 
 AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을 적습니다.
-(프로젝트 생성 후 `<Scheme>`, 시뮬레이터 기종을 확정해 채우세요.)
+(프로젝트 생성 후 `Parfait`, 시뮬레이터 기종을 확정해 채우세요.)
 
 | 작업 | 명령 |
 |------|------|
-| 빌드 | `xcodebuild build -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 16'` |
-| 전체 테스트 | `xcodebuild test -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 16'` |
-| 단일 테스트 | `xcodebuild test -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:<Target>/<TestCase>/<method>` |
 | 린트 | `swiftlint` |
-| 포맷 | `swiftformat .` |
 
-> 의존성 관리: <SPM / CocoaPods 중 확정해 기재>. SPM이면 `Package.resolved` 는 커밋합니다.
+> 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
 > 빌드 로그가 길면 `xcbeautify` 파이프 권장: `xcodebuild ... | xcbeautify`.
 
 ## 아키텍처
 
-<프로젝트 생성 후 채우기 — 한두 문단 또는 디렉터리 맵>
+클린 아키텍처 + **레이어별 SPM 로컬 패키지**(`Packages/`). 의존성은 **항상 안쪽(Domain)으로**. 레이어: App / Feature / Domain / Data / Core / UIComponent / Common.
 
-- `Sources/<App>/` — <앱 진입/공통>
-- `Sources/<Feature>/` — <기능 모듈; 상세 규칙은 폴더별 CLAUDE.md 로>
+> **모듈·의존 그래프·표·DI·라우팅 상세 규칙 → 모듈/의존성 작업 전 [`docs/architecture.md`](docs/architecture.md) 필독.**
 
 ## 컨벤션
 
 > **SwiftLint·SwiftFormat 이 자동으로 잡는 규칙은 여기 쓰지 마세요.** 도구에 위임합니다.
 > 도구가 못 잡는 "의도와 맥락"만 적습니다. (아래는 팀 합의로 확정/수정하세요.)
 
-- UI는 SwiftUI 우선. UIKit 혼용이 필요하면 PR 설명에 사유 명시.
+- UI는 SwiftUI 우선. 최소 타깃 **iOS 26** → 최신 SwiftUI/Swift 문법을 먼저 검토해 채택. UIKit 혼용은 PR 설명에 사유 명시.
+- 뷰 레이어는 **MVI + `@Observable` 매크로**(단방향). Store 형태·렌더링·바인딩·부수효과 상세 → **Store/View 작업 전 [`docs/mvi.md`](docs/mvi.md) 필독.**
 - 비동기는 async/await 사용. 신규 코드에 completion handler 콜백 추가 금지.
-- UI 상태를 만지는 타입/메서드는 `@MainActor` 로 격리. 모델 레이어는 actor/struct로 동시성 안전하게.
+- 모델/IO 레이어는 actor/struct 로 동시성 안전하게.
 - 의존성은 주입(이니셜라이저 주입)으로. 전역 싱글톤 신규 도입 금지.
+- 커밋 메시지는 `type: 설명 (#이슈번호)` 형식 (Conventional Commits). 상세·예시 → [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## 용어
 
@@ -56,5 +53,4 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 
 ## 추가 컨텍스트 (선택)
 
-<!-- @경로 구문으로 다른 문서를 불러올 수 있습니다. 필요할 때만. -->
-<!-- @docs/architecture.md -->
+<!-- @경로 구문은 해당 문서를 매 세션 강제 로드합니다(컨텍스트 절감 목적과 반대). 상세 규칙은 본문 "필독" 포인터로 온디맨드 참조하세요. -->
