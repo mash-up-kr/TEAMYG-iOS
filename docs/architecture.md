@@ -8,7 +8,7 @@
 ```
 App ─▶ Feature ─▶ Domain ◀─ Data ─▶ Core
           └─▶ Core, UIComponent
-Common ◀── 전 계층이 의존 (Common 은 아무것도 import 안 함)
+Common ◀── 전 계층이 의존 (Common 은 시스템 프레임워크만 — 외부 패키지 import 안 함)
 ```
 
 | 패키지 | 책임 | import 가능 |
@@ -20,12 +20,12 @@ Common ◀── 전 계층이 의존 (Common 은 아무것도 import 안 함)
 | **UIComponent** | 공용 UI / 디자인 시스템 + MVI 베이스(`MVIStore`) | Common (Domain 금지) |
 | **Routing** | 네비게이션 계약 — `AppRoute`(목적지 enum)·`Router` 프로토콜 | 없음 (페이로드에 Domain 필요 시 deps 추가) |
 | **Core** | 외부 의존성을 가진 공유 구현체 — 네트워크 추상화, 이미지 캐싱 등 | Common + 외부 SDK (Domain 금지) |
-| **Common** | 순수 코드 — 로거, 베이스 익스텐션. **의존성 0** | 없음 |
+| **Common** | 순수 코드 — 로거, 베이스 익스텐션. **외부 의존성 0** | 시스템 프레임워크만 (외부 패키지 금지) |
 
 ## 규칙
 
 - Domain 은 Core·외부 SDK 를 모른다. 외부 의존이 필요하면 Data 가 Domain 프로토콜을 구현하며 Core 를 사용.
-- Common 은 의존성 제로 유지 — 외부 패키지 추가 금지(`Package.swift` 손대지 말 것).
+- Common 은 시스템 프레임워크(Foundation 등)만 import — 외부 프레임워크·패키지 추가 금지(`Package.swift` 손대지 말 것).
 - 새 화면은 Feature 하위 모듈로, 새 외부 연동은 Core 에 추가.
 - MainActor Store 로 넘어가는 타입은 `Sendable` — Entity·DTO 는 값 타입 + Sendable, Data/Core 의 IO 는 actor/async.
 
