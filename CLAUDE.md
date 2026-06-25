@@ -39,6 +39,7 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 - 비동기는 async/await 사용. 신규 코드에 completion handler 콜백 추가 금지.
 - 모델/IO 레이어는 actor/struct 로 동시성 안전하게.
 - 의존성은 주입(이니셜라이저 주입)으로. 전역 싱글톤 신규 도입 금지.
+- 이름은 **풀어서** 쓴다. 짧게 줄인 약어·의미 없는 한 글자 식별자 금지: `m`→`module`, `deps`→`dependencies`, `tmp`→`temporary`, `e`→`error`. (`id`·`url`·`max` 등 널리 통용되는 약어, 짧은 스코프의 클로저 인자 `$0`는 예외)
 - 커밋 메시지는 `type: 설명 (#이슈번호)` 형식 (Conventional Commits). 상세·예시 → [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## 용어

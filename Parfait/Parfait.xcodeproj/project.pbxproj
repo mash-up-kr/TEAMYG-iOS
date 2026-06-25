@@ -7,8 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AB4D0E632FECC28D00703DBC /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E622FECC28D00703DBC /* Data */; };
-		AB4D0E652FECC28D00703DBC /* Feature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E642FECC28D00703DBC /* Feature */; };
+		AB4D0E6F2FECFD6700703DBC /* AuthData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E6E2FECFD6700703DBC /* AuthData */; };
+		AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E702FECFD6700703DBC /* CanvasData */; };
+		AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E722FECFD6700703DBC /* CanvasFeature */; };
+		AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E742FECFD6700703DBC /* GroupData */; };
+		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
+		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,18 +32,30 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AB4D0E632FECC28D00703DBC /* Data in Frameworks */,
-				AB4D0E652FECC28D00703DBC /* Feature in Frameworks */,
+				AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */,
+				AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */,
+				AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */,
+				AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */,
+				AB4D0E6F2FECFD6700703DBC /* AuthData in Frameworks */,
+				AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		AB4D0E6D2FECFD6700703DBC /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		ABB461F22FD7FD12000B89AC = {
 			isa = PBXGroup;
 			children = (
 				ABB461FD2FD7FD12000B89AC /* Parfait */,
+				AB4D0E6D2FECFD6700703DBC /* Frameworks */,
 				ABB461FC2FD7FD12000B89AC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -72,8 +88,12 @@
 			);
 			name = Parfait;
 			packageProductDependencies = (
-				AB4D0E622FECC28D00703DBC /* Data */,
-				AB4D0E642FECC28D00703DBC /* Feature */,
+				AB4D0E6E2FECFD6700703DBC /* AuthData */,
+				AB4D0E702FECFD6700703DBC /* CanvasData */,
+				AB4D0E722FECFD6700703DBC /* CanvasFeature */,
+				AB4D0E742FECFD6700703DBC /* GroupData */,
+				AB4D0E762FECFD6700703DBC /* GroupFeature */,
+				AB4D0E782FECFD6700703DBC /* LoginFeature */,
 			);
 			productName = Parfait;
 			productReference = ABB461FB2FD7FD12000B89AC /* Parfait.app */;
@@ -361,13 +381,29 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AB4D0E622FECC28D00703DBC /* Data */ = {
+		AB4D0E6E2FECFD6700703DBC /* AuthData */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Data;
+			productName = AuthData;
 		};
-		AB4D0E642FECC28D00703DBC /* Feature */ = {
+		AB4D0E702FECFD6700703DBC /* CanvasData */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = Feature;
+			productName = CanvasData;
+		};
+		AB4D0E722FECFD6700703DBC /* CanvasFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CanvasFeature;
+		};
+		AB4D0E742FECFD6700703DBC /* GroupData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GroupData;
+		};
+		AB4D0E762FECFD6700703DBC /* GroupFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GroupFeature;
+		};
+		AB4D0E782FECFD6700703DBC /* LoginFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LoginFeature;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
