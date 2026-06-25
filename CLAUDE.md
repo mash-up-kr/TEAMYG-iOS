@@ -18,6 +18,7 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 | 작업 | 명령 |
 |------|------|
 | 린트 | `swiftlint` |
+| 자산(색·이미지) 추가 후 | `cd Parfait/Parfait/ParfaitModules && make assets` → 생성된 `UIComponent/Resources/*+.swift` 커밋 |
 
 > 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
 > 빌드 로그가 길면 `xcbeautify` 파이프 권장: `xcodebuild ... | xcbeautify`.

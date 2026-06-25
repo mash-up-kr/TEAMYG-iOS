@@ -28,7 +28,16 @@ let package = Package(
         .target(name: "Data", dependencies: ["Domain", "Core", "Common"]),
 
         // UIComponent — 공용 UI / 디자인 시스템. Domain 금지.
-        .target(name: "UIComponent", dependencies: ["Common"], resources: [.process("Resources")]),
+        //  카탈로그만 콕 집어 .process → 같은 폴더의 생성 .swift(Colors+/Assets+)는 소스로 컴파일됨.
+        //  (폴더 통째 .process 하면 .swift 까지 리소스로 복사돼 컴파일 안 됨 — 주의)
+        .target(
+            name: "UIComponent",
+            dependencies: ["Common"],
+            resources: [
+                .process("Resources/Colors.xcassets"),
+                .process("Resources/Assets.xcassets"),
+            ]
+        ),
 
         // Feature — 화면 단위(MVI). 로그인/그룹/캔버스/설정.
         .target(name: "Feature", dependencies: ["Domain", "Core", "UIComponent", "Common"]),
