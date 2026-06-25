@@ -3,7 +3,7 @@
 > TEAMYG-iOS 모듈 구조·의존 규칙. **Feature/모듈/의존성 추가 작업 전 읽을 것.**
 > 한 줄 요약은 루트 `CLAUDE.md`. 뷰 레이어(MVI)는 [`mvi.md`](mvi.md).
 
-클린 아키텍처 + **레이어별 SPM 로컬 패키지**(`Packages/`). 의존성은 **항상 안쪽(Domain)으로** 향하고, import 경계는 각 패키지의 `Package.swift` 가 강제한다.
+클린 아키텍처. 모듈은 **단일 SPM 패키지 `Parfait/Parfait/ParfaitModules`** 안의 레이어별 타깃(`Sources/<Module>/`)이다. 의존성은 **항상 안쪽(Domain)으로** 향하고, import 경계는 `Package.swift` 의 타깃 의존성이 강제한다. 새 모듈은 `Package.swift` 의 `modules` 테이블에 한 줄 추가하면 product·target 이 자동 생성된다.
 
 ```
 App ─▶ Feature ─▶ Domain ◀─ Data ─▶ Core
@@ -17,7 +17,8 @@ Common ◀── 전 계층이 의존 (Common 은 아무것도 import 안 함)
 | **Feature** | 화면 단위(MVI). 로그인 / 그룹(리스트) / 캔버스(S101·S001) / 설정 | Domain, Core, UIComponent, Common |
 | **Domain** | 비즈니스 규칙 — UseCase·엔티티·Repository **프로토콜**. auth / 그룹 / 캔버스 | **Common 만.** 외부 의존 0 |
 | **Data** | Domain Repository 프로토콜 **구현** — DTO·매핑·원격/로컬 소스 | Domain, Core, Common |
-| **UIComponent** | 공용 UI / 디자인 시스템 | Common (Domain 금지) |
+| **UIComponent** | 공용 UI / 디자인 시스템 + MVI 베이스(`MVIStore`) | Common (Domain 금지) |
+| **Routing** | 네비게이션 계약 — `AppRoute`(목적지 enum)·`Router` 프로토콜 | 없음 (페이로드에 Domain 필요 시 deps 추가) |
 | **Core** | 외부 의존성을 가진 공유 구현체 — 네트워크 추상화, 이미지 캐싱 등 | Common + 외부 SDK (Domain 금지) |
 | **Common** | 순수 코드 — 로거, 베이스 익스텐션. **의존성 0** | 없음 |
 
@@ -44,4 +45,4 @@ struct AppDependencies {
 
 ## 라우팅 — App 소유
 
-Feature 끼리 import 금지이므로 화면 전환은 App(또는 별도 Routing 모듈)이 담당. 값 기반 `NavigationStack` + `enum Route`. Feature 는 완료/요청 이벤트만 올리고 목적지는 모른다. 딥링크도 같은 `Route` 로 매핑.
+Feature 끼리 import 금지이므로 화면 전환은 **Routing 모듈의 계약**(`AppRoute`·`Router`)으로 분리하고 App 이 구현(`App/AppRouter.swift`)·소유한다. 값 기반 `NavigationStack` + `enum AppRoute`. Feature 는 완료/요청 이벤트만 올리고 목적지는 모른다. 딥링크도 같은 `AppRoute` 로 매핑.

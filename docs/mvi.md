@@ -1,6 +1,6 @@
 # MVI (뷰 레이어)
 
-> Feature 의 Store/View 작업 전 읽을 것. 헬퍼: `Parfait/Parfait/MVIStore.swift`.
+> Feature 의 Store/View 작업 전 읽을 것. 베이스 프로토콜 `MVIStore`: UIComponent 모듈 (`Parfait/Parfait/ParfaitModules/Sources/UIComponent/MVIStore.swift`).
 > 한 줄 요약은 루트 `CLAUDE.md`. 모듈 구조는 [`architecture.md`](architecture.md).
 
 ## Store 형태

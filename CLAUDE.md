@@ -8,25 +8,25 @@
 
 iOS 앱 (SwiftUI + Swift Concurrency). **최소 타깃 iOS 26**, 뷰 아키텍처는 **MVI**.
 
-> ⚠️ 아직 Xcode 프로젝트가 스캐폴딩되기 전입니다. 프로젝트 생성 후 아래 `Parfait` 등을 실제 값으로 채우세요.
+- Xcode 프로젝트: `Parfait/Parfait.xcodeproj` (앱 타깃·스킴 `Parfait`, 진입점 `Parfait/Parfait/App/`).
+- 모듈: 단일 SPM 패키지 `Parfait/Parfait/ParfaitModules` 안의 레이어별 타깃 (`Sources/<Module>/`).
 
 ## 명령어
 
 AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을 적습니다.
-(프로젝트 생성 후 `Parfait`, 시뮬레이터 기종을 확정해 채우세요.)
 
 | 작업 | 명령 |
 |------|------|
-| 린트 | `swiftlint` |
-| 자산(색·이미지) 추가 후 | `cd Parfait/Parfait/ParfaitModules && make assets` → 생성된 `UIComponent/Resources/*+.swift` 커밋 |
+| 린트 | `swiftlint` (레포 루트에서) |
+| 자산(색·이미지) 추가 후 | `cd Parfait/Parfait/ParfaitModules && make assets` → 생성된 `Sources/UIComponent/Resources/{Colors,Assets}+.swift` 커밋 (손편집 금지) |
 
 > 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
-> 빌드 로그가 길면 `xcbeautify` 파이프 권장: `xcodebuild ... | xcbeautify`.
 
 ## 아키텍처
 
-클린 아키텍처 + **레이어별 SPM 로컬 패키지**(`Packages/`). 의존성은 **항상 안쪽(Domain)으로**. 레이어: App / Feature / Domain / Data / Core / UIComponent / Common.
+클린 아키텍처. 모듈은 **단일 SPM 패키지 `ParfaitModules`** 안의 레이어별 타깃이며, import 경계는 `Package.swift` 의 타깃 의존성이 강제한다. 의존성은 **항상 안쪽(Domain)으로**. 레이어: App / Feature / Domain / Data / Core / UIComponent / Routing / Common.
 
+> 새 모듈은 `Package.swift` 의 `modules` 테이블에 한 줄 추가 → product·target 자동 생성.
 > **모듈·의존 그래프·표·DI·라우팅 상세 규칙 → 모듈/의존성 작업 전 [`docs/architecture.md`](docs/architecture.md) 필독.**
 
 ## 컨벤션
