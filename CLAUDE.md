@@ -9,7 +9,7 @@
 iOS 앱 (SwiftUI + Swift Concurrency). **최소 타깃 iOS 26**, 뷰 아키텍처는 **MVI**.
 
 - Xcode 프로젝트: `Parfait/Parfait.xcodeproj` (앱 타깃·스킴 `Parfait`, 진입점 `Parfait/Parfait/App/`).
-- 모듈: 단일 SPM 패키지 `Parfait/Parfait/ParfaitModules` 안의 레이어별 타깃 (`Sources/<Module>/`).
+- 모듈: 단일 SPM 패키지 `Parfait/Parfait/ParfaitModules` 안의 기능·레이어별 타깃 (`Sources/<Module>/`, 예: `AuthDomain`·`AuthData`·`LoginFeature` + 공용 `Common`·`Core`·`UIComponent`·`Routing`).
 
 ## 명령어
 
