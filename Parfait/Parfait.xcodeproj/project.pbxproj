@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AB4D0E632FECC28D00703DBC /* Data in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E622FECC28D00703DBC /* Data */; };
+		AB4D0E652FECC28D00703DBC /* Feature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E642FECC28D00703DBC /* Feature */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		ABB461FB2FD7FD12000B89AC /* Parfait.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Parfait.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB4D0E632FECC28D00703DBC /* Data in Frameworks */,
+				AB4D0E652FECC28D00703DBC /* Feature in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +72,8 @@
 			);
 			name = Parfait;
 			packageProductDependencies = (
+				AB4D0E622FECC28D00703DBC /* Data */,
+				AB4D0E642FECC28D00703DBC /* Feature */,
 			);
 			productName = Parfait;
 			productReference = ABB461FB2FD7FD12000B89AC /* Parfait.app */;
@@ -94,6 +103,9 @@
 			);
 			mainGroup = ABB461F22FD7FD12000B89AC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AB4D0E612FECC28D00703DBC /* XCLocalSwiftPackageReference "Parfait/ParfaitModules" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ABB461FC2FD7FD12000B89AC /* Products */;
 			projectDirPath = "";
@@ -340,6 +352,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AB4D0E612FECC28D00703DBC /* XCLocalSwiftPackageReference "Parfait/ParfaitModules" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Parfait/ParfaitModules;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AB4D0E622FECC28D00703DBC /* Data */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Data;
+		};
+		AB4D0E642FECC28D00703DBC /* Feature */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Feature;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = ABB461F32FD7FD12000B89AC /* Project object */;
 }
