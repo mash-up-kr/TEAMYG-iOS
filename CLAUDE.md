@@ -18,7 +18,7 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 | 작업 | 명령 |
 |------|------|
 | 린트 | `swiftlint` (레포 루트에서) |
-| 자산(색·이미지) 추가 후 | `cd Parfait/Parfait/ParfaitModules && make assets` → 생성된 `Sources/UIComponent/Resources/{Colors,Assets}+.swift` 커밋 (손편집 금지) |
+| 자산(색·이미지) 추가 후 | 빌드하면 런스크립트가 자동 생성 (수동: `./Parfait/Parfait/ParfaitModules/scripts/gen-assets.sh`) → 생성된 `Sources/UIComponent/Resources/{Colors,Assets}+.swift` 커밋 (손편집 금지) |
 
 > 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
 

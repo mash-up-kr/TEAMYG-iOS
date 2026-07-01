@@ -75,3 +75,6 @@ CLAUDE.local.md
 .claude/settings.local.json
 .mcp.local.json
 
+
+# 자산 코드젠 변경감지 해시(머신별 산출물)
+Parfait/Parfait/ParfaitModules/scripts/.assets.hash

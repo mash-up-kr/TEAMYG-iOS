@@ -75,6 +75,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = ABB462082FD7FD13000B89AC /* Build configuration list for PBXNativeTarget "Parfait" */;
 			buildPhases = (
+				AB4D0EAA2FF3629700703DBC /* asset generate */,
 				ABB461F72FD7FD12000B89AC /* Sources */,
 				ABB461F82FD7FD12000B89AC /* Frameworks */,
 				ABB461F92FD7FD12000B89AC /* Resources */,
@@ -145,6 +146,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AB4D0EAA2FF3629700703DBC /* asset generate */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "asset generate";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"🎨 asset generate\"\n\"${SRCROOT}/Parfait/ParfaitModules/scripts/gen-assets.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		ABB461F72FD7FD12000B89AC /* Sources */ = {
@@ -284,6 +307,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Parfait;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
@@ -321,6 +345,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Parfait;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";

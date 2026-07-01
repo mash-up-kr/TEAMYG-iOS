@@ -2,7 +2,7 @@
 # UIComponent 의 각 *.xcassets 를 스캔해 카탈로그별 public 접근자를 생성한다.
 #   Colors.xcassets -> Resources/Colors+.swift   (colorset -> Color)
 #   Assets.xcassets -> Resources/Assets+.swift   (imageset -> Image)
-# 자산 추가/이름변경/삭제 후 실행:  make assets   (또는 ./scripts/gen-assets.sh)
+# 빌드 시 Xcode 런스크립트("asset generate" 페이즈)가 자동 실행. 수동 실행: ./scripts/gen-assets.sh
 # 결과물(Resources/*+.swift)은 커밋한다 — 손으로 편집 금지.
 #
 # ponytail: 카탈로그별로 colorset/imageset 둘 다 스캔해 "있는 것만" 방출(타입은 카탈로그가 강제하는 게 아님).
@@ -17,6 +17,19 @@ RES="$PKG/Sources/UIComponent/Resources"
 if [ ! -d "$RES" ]; then
   echo "error: resources dir not found at $RES" >&2
   exit 1
+fi
+
+# 변경 감지: 카탈로그 입력의 해시가 직전 실행과 같으면 생성 스킵.
+# 빌드 페이즈에서 매번 호출돼도 자산이 안 바뀌었으면 즉시 종료 → 불필요한 재컴파일/working-tree churn 방지.
+# `--force` 로 무시. 해시 파일은 머신별 산출물이라 커밋하지 않는다(.gitignore).
+HASH_FILE="$SCRIPT_DIR/.assets.hash"
+# 경로(이름)만 해싱 — 파일 내용은 안 읽는다. set 추가/삭제/이름변경 감지.
+# ponytail: provides-namespace 토글(폴더명 그대로 두고 켜고/끄기)은 경로가 안 바뀌어 못 잡음.
+#           평평한 카탈로그라 미사용 — 쓰게 되면 토글 후 `--force` 1회, 또는 Contents.json 내용 해싱으로 교체.
+NEW_HASH="$(find "$RES"/*.xcassets | LC_ALL=C sort | shasum | cut -d' ' -f1)"
+if [ "${1:-}" != "--force" ] && [ -f "$HASH_FILE" ] && [ "$NEW_HASH" = "$(cat "$HASH_FILE")" ]; then
+  echo "assets unchanged — skip codegen"
+  exit 0
 fi
 
 # asset 의 런타임 이름(네임스페이스 포함). $1=asset 경로, $2=카탈로그 루트. 예: "Brand/Primary"
@@ -68,8 +81,10 @@ for catalog in "$RES"/*.xcassets; do
     if [ -n "$colors" ]; then echo; echo "public extension Color {"; echo "$colors"; echo "}"; fi
     if [ -n "$images" ]; then echo; echo "public extension Image {"; echo "$images"; echo "}"; fi
     if [ -z "$colors" ] && [ -z "$images" ]; then
-      echo; echo "// (이 카탈로그에 colorset/imageset 없음 — 자산 추가 후 make assets)"
+      echo; echo "// (이 카탈로그에 colorset/imageset 없음 — 자산 추가 후 재빌드)"
     fi
   } >"$out"
   echo "wrote $out"
 done
+
+printf '%s' "$NEW_HASH" >"$HASH_FILE"
