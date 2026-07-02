@@ -1,17 +1,11 @@
 //
-//  File.swift
+//  Suit+ViewModifier.swift
 //  ParfaitModules
 //
 //  Created by Enes on 7/2/26.
 //
 
 import SwiftUI
-
-public extension Text {
-    func suit(_ typography: Typography) -> some View {
-        modifier(TypographyModifier(typography: typography))
-    }
-}
 
 public extension View {
     /// 토큰 전체 스펙(폰트·자간·줄높이) 적용.
