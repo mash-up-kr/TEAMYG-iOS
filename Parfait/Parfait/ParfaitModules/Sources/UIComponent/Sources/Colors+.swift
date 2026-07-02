@@ -32,3 +32,35 @@ public extension Color {
     static let warning = Color("warning", bundle: .module)
     static let whiteFixed = Color("whiteFixed", bundle: .module)
 }
+
+public extension ShapeStyle where Self == Color {
+    static var accentColor: Color { .accentColor }
+    static var blackFixed: Color { .blackFixed }
+    static var cherry: Color { .cherry }
+    static var cherry100: Color { .cherry100 }
+    static var cherry200: Color { .cherry200 }
+    static var cherry300: Color { .cherry300 }
+    static var cherry400: Color { .cherry400 }
+    static var cherry50: Color { .cherry50 }
+    static var cherry500: Color { .cherry500 }
+    static var cherry700: Color { .cherry700 }
+    static var danger: Color { .danger }
+    static var gray100: Color { .gray100 }
+    static var gray200: Color { .gray200 }
+    static var gray300: Color { .gray300 }
+    static var gray400: Color { .gray400 }
+    static var gray50: Color { .gray50 }
+    static var gray500: Color { .gray500 }
+    static var gray600: Color { .gray600 }
+    static var gray700: Color { .gray700 }
+    static var gray800: Color { .gray800 }
+    static var gray850: Color { .gray850 }
+    static var gray900: Color { .gray900 }
+    static var gray950: Color { .gray950 }
+    static var info: Color { .info }
+    static var melon: Color { .melon }
+    static var pudding: Color { .pudding }
+    static var success: Color { .success }
+    static var warning: Color { .warning }
+    static var whiteFixed: Color { .whiteFixed }
+}

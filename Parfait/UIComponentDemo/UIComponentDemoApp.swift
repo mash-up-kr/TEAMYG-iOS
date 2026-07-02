@@ -19,6 +19,7 @@ struct DemoHomeView: View {
             Section("디자인 토큰") {
                 NavigationLink("Typography") { TypographyDemoView() }
                 NavigationLink("Colors") { ColorsDemoView() }
+                NavigationLink("Assets") { AssetsDemoView() }
             }
         }
         .navigationTitle("UIComponent Demo")
