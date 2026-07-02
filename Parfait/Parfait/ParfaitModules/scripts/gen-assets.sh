@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # UIComponent 의 각 *.xcassets 를 스캔해 카탈로그별 public 접근자를 생성한다.
-#   Colors.xcassets -> Resources/Colors+.swift   (colorset -> Color)
-#   Assets.xcassets -> Resources/Assets+.swift   (imageset -> Image)
+#   Colors.xcassets -> Sources/Colors+.swift   (colorset -> Color)
+#   Assets.xcassets -> Sources/Assets+.swift   (imageset -> Image)
 # 빌드 시 Xcode 런스크립트("asset generate" 페이즈)가 자동 실행. 수동 실행: ./scripts/gen-assets.sh
-# 결과물(Resources/*+.swift)은 커밋한다 — 손으로 편집 금지.
+# 결과물(Sources/UIComponent/Sources/*+.swift)은 커밋한다 — 손으로 편집 금지.
 #
 # ponytail: 카탈로그별로 colorset/imageset 둘 다 스캔해 "있는 것만" 방출(타입은 카탈로그가 강제하는 게 아님).
 #           네임스페이스 폴더(provides-namespace) 처리. 예약어(`default` 등)·이름 충돌은
@@ -13,11 +13,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG="$(dirname "$SCRIPT_DIR")"
 RES="$PKG/Sources/UIComponent/Resources"
+OUT_DIR="$PKG/Sources/UIComponent/Sources"
 
 if [ ! -d "$RES" ]; then
   echo "error: resources dir not found at $RES" >&2
   exit 1
 fi
+mkdir -p "$OUT_DIR"
 
 # 변경 감지: 카탈로그 입력의 해시가 직전 실행과 같으면 생성 스킵.
 # 빌드 페이즈에서 매번 호출돼도 자산이 안 바뀌었으면 즉시 종료 → 불필요한 재컴파일/working-tree churn 방지.
@@ -72,7 +74,7 @@ emit() {
 shopt -s nullglob
 for catalog in "$RES"/*.xcassets; do
   base="$(basename "$catalog" .xcassets)"
-  out="$RES/${base}+.swift"
+  out="$OUT_DIR/${base}+.swift"
   colors="$(emit "$catalog" colorset Color)"
   images="$(emit "$catalog" imageset Image)"
   {
