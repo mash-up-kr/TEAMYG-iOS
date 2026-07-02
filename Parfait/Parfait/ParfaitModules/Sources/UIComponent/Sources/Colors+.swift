@@ -64,3 +64,35 @@ public extension ShapeStyle where Self == Color {
     static var warning: Color { .warning }
     static var whiteFixed: Color { .whiteFixed }
 }
+
+public extension UIColor {
+    static var accentColor: UIColor { UIColor(resource: ColorResource(name: "AccentColor", bundle: .module)) }
+    static var blackFixed: UIColor { UIColor(resource: ColorResource(name: "blackFixed", bundle: .module)) }
+    static var cherry: UIColor { UIColor(resource: ColorResource(name: "cherry", bundle: .module)) }
+    static var cherry100: UIColor { UIColor(resource: ColorResource(name: "cherry100", bundle: .module)) }
+    static var cherry200: UIColor { UIColor(resource: ColorResource(name: "cherry200", bundle: .module)) }
+    static var cherry300: UIColor { UIColor(resource: ColorResource(name: "cherry300", bundle: .module)) }
+    static var cherry400: UIColor { UIColor(resource: ColorResource(name: "cherry400", bundle: .module)) }
+    static var cherry50: UIColor { UIColor(resource: ColorResource(name: "cherry50", bundle: .module)) }
+    static var cherry500: UIColor { UIColor(resource: ColorResource(name: "cherry500", bundle: .module)) }
+    static var cherry700: UIColor { UIColor(resource: ColorResource(name: "cherry700", bundle: .module)) }
+    static var danger: UIColor { UIColor(resource: ColorResource(name: "danger", bundle: .module)) }
+    static var gray100: UIColor { UIColor(resource: ColorResource(name: "gray100", bundle: .module)) }
+    static var gray200: UIColor { UIColor(resource: ColorResource(name: "gray200", bundle: .module)) }
+    static var gray300: UIColor { UIColor(resource: ColorResource(name: "gray300", bundle: .module)) }
+    static var gray400: UIColor { UIColor(resource: ColorResource(name: "gray400", bundle: .module)) }
+    static var gray50: UIColor { UIColor(resource: ColorResource(name: "gray50", bundle: .module)) }
+    static var gray500: UIColor { UIColor(resource: ColorResource(name: "gray500", bundle: .module)) }
+    static var gray600: UIColor { UIColor(resource: ColorResource(name: "gray600", bundle: .module)) }
+    static var gray700: UIColor { UIColor(resource: ColorResource(name: "gray700", bundle: .module)) }
+    static var gray800: UIColor { UIColor(resource: ColorResource(name: "gray800", bundle: .module)) }
+    static var gray850: UIColor { UIColor(resource: ColorResource(name: "gray850", bundle: .module)) }
+    static var gray900: UIColor { UIColor(resource: ColorResource(name: "gray900", bundle: .module)) }
+    static var gray950: UIColor { UIColor(resource: ColorResource(name: "gray950", bundle: .module)) }
+    static var info: UIColor { UIColor(resource: ColorResource(name: "info", bundle: .module)) }
+    static var melon: UIColor { UIColor(resource: ColorResource(name: "melon", bundle: .module)) }
+    static var pudding: UIColor { UIColor(resource: ColorResource(name: "pudding", bundle: .module)) }
+    static var success: UIColor { UIColor(resource: ColorResource(name: "success", bundle: .module)) }
+    static var warning: UIColor { UIColor(resource: ColorResource(name: "warning", bundle: .module)) }
+    static var whiteFixed: UIColor { UIColor(resource: ColorResource(name: "whiteFixed", bundle: .module)) }
+}
