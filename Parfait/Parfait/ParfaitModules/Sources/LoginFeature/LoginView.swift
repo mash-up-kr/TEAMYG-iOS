@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 import Routing
 import UIComponent
@@ -5,6 +6,7 @@ import UIComponent
 public struct LoginView: View {
     private let router: Router
     @State private var store = LoginStore()
+    @Environment(\.authorizationController) private var authorizationController
 
     private let pageCount = 3
 
@@ -15,7 +17,7 @@ public struct LoginView: View {
     public var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            
+
             pageIndicator
                 .padding(.bottom, 12)
             onboardingPager
@@ -93,7 +95,7 @@ public struct LoginView: View {
                 titleColor: .whiteFixed,
                 background: .blackFixed
             ) {
-                store.send(.appleLoginTapped)
+                store.send(.appleLoginTapped(authorizationController))
             }
         }
     }
