@@ -13,16 +13,23 @@
 		AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E742FECFD6700703DBC /* GroupData */; };
 		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
 		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
+		DEC0DE000000000000000001 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = DEC0DE000000000000000002 /* UIComponent */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		ABB461FB2FD7FD12000B89AC /* Parfait.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Parfait.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DEC0DE000000000000000003 /* UIComponentDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UIComponentDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		ABB461FD2FD7FD12000B89AC /* Parfait */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Parfait;
+			sourceTree = "<group>";
+		};
+		DEC0DE000000000000000004 /* UIComponentDemo */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UIComponentDemo;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -41,6 +48,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DEC0DE000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DEC0DE000000000000000001 /* UIComponent in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -55,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				ABB461FD2FD7FD12000B89AC /* Parfait */,
+				DEC0DE000000000000000004 /* UIComponentDemo */,
 				AB4D0E6D2FECFD6700703DBC /* Frameworks */,
 				ABB461FC2FD7FD12000B89AC /* Products */,
 			);
@@ -64,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				ABB461FB2FD7FD12000B89AC /* Parfait.app */,
+				DEC0DE000000000000000003 /* UIComponentDemo.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -100,6 +117,29 @@
 			productReference = ABB461FB2FD7FD12000B89AC /* Parfait.app */;
 			productType = "com.apple.product-type.application";
 		};
+		DEC0DE000000000000000008 /* UIComponentDemo */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DEC0DE000000000000000009 /* Build configuration list for PBXNativeTarget "UIComponentDemo" */;
+			buildPhases = (
+				DEC0DE000000000000000006 /* Sources */,
+				DEC0DE000000000000000005 /* Frameworks */,
+				DEC0DE000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				DEC0DE000000000000000004 /* UIComponentDemo */,
+			);
+			name = UIComponentDemo;
+			packageProductDependencies = (
+				DEC0DE000000000000000002 /* UIComponent */,
+			);
+			productName = UIComponentDemo;
+			productReference = DEC0DE000000000000000003 /* UIComponentDemo.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -133,12 +173,20 @@
 			projectRoot = "";
 			targets = (
 				ABB461FA2FD7FD12000B89AC /* Parfait */,
+				DEC0DE000000000000000008 /* UIComponentDemo */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		ABB461F92FD7FD12000B89AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DEC0DE000000000000000007 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -171,6 +219,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		ABB461F72FD7FD12000B89AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DEC0DE000000000000000006 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -375,6 +430,72 @@
 			};
 			name = Release;
 		};
+		DEC0DE00000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "UIComponent Demo";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.teamyg.parfait.uicomponentdemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DEC0DE00000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "UIComponent Demo";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.teamyg.parfait.uicomponentdemo;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -392,6 +513,15 @@
 			buildConfigurations = (
 				ABB462092FD7FD13000B89AC /* Debug */,
 				ABB4620A2FD7FD13000B89AC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DEC0DE000000000000000009 /* Build configuration list for PBXNativeTarget "UIComponentDemo" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DEC0DE00000000000000000A /* Debug */,
+				DEC0DE00000000000000000B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -429,6 +559,10 @@
 		AB4D0E782FECFD6700703DBC /* LoginFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LoginFeature;
+		};
+		DEC0DE000000000000000002 /* UIComponent */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UIComponent;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

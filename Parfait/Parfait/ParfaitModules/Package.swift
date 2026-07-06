@@ -35,10 +35,12 @@ let package = Package(
         .target(
             name: module.name,
             dependencies: module.dependencies.map { .target(name: $0) },
-            // 카탈로그만 콕 집어 .process → 같은 폴더의 생성 .swift(Colors+/Assets+)는 소스로 컴파일됨.
+            // 카탈로그만 콕 집어 .process → 같은 폴더의 생성 .swift(Colors+/Image+)는 소스로 컴파일됨.
             // (폴더 통째 .process 하면 .swift 까지 리소스로 복사돼 컴파일 안 됨 — 주의)
             resources: module.resources
-                ? [.process("Resources/Colors.xcassets"), .process("Resources/Assets.xcassets")]
+                ? [.process("Resources/Colors.xcassets"),
+                   .process("Resources/Assets.xcassets"),
+                   .copy("Resources/SUIT-ttf")] // 폰트: 폴더째 복사(하위경로 유지) → 런타임 등록
                 : []
         )
     }
