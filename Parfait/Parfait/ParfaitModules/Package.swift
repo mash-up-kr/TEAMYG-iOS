@@ -39,7 +39,7 @@ let package = Package(
     platforms: [.iOS(.v26)],
     products: modules.map { .library(name: $0.name, targets: [$0.name]) },
     dependencies: [
-        .package(url: "https://github.com/kakao/kakao-ios-sdk", branch: "master")
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.28.0")
     ],
     targets: modules.map { module in
         .target(
