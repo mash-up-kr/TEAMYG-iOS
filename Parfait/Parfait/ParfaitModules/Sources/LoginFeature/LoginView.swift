@@ -122,13 +122,13 @@ public struct LoginView: View {
 #Preview {
     LoginView(
         router: .preview,
-        store: LoginStore(authRepository: PreviewAuthRepository())
+        store: LoginStore(socialLoginUseCase: PreviewSocialLoginUseCase())
     )
 }
 
-/// 프리뷰 전용 스텁 — SDK 호출 없이 즉시 성공.
-private struct PreviewAuthRepository: AuthRepository {
-    func loginWithKakao() async throws -> SocialLoginToken {
-        SocialLoginToken(accessToken: "preview-token")
-    }
+/// 프리뷰 전용 스텁 — SDK·서버 호출 없이 즉시 성공.
+private struct PreviewSocialLoginUseCase: SocialLoginUseCase {
+    func loginWithKakao() async throws {}
+
+    func login(with credential: SocialLoginCredential) async throws {}
 }

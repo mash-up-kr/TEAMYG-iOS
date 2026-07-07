@@ -7,19 +7,18 @@
 
 import AuthDomain
 import AuthenticationServices
-import Observation
-import SwiftUI // AuthorizationController 는 AuthenticationServices+SwiftUI 크로스 임포트 타입
+import SwiftUI
 import UIComponent
 
 @Observable @MainActor
 public final class LoginStore: MVIStore {
     public private(set) var state = State()
 
-    private let authRepository: any AuthRepository
+    private let socialLoginUseCase: any SocialLoginUseCase
     @ObservationIgnored private var loginTask: Task<Void, Never>?
 
-    public init(authRepository: any AuthRepository) {
-        self.authRepository = authRepository
+    public init(socialLoginUseCase: any SocialLoginUseCase) {
+        self.socialLoginUseCase = socialLoginUseCase
     }
 
     public func send(_ intent: Intent) {
@@ -43,9 +42,8 @@ public final class LoginStore: MVIStore {
 
     private func performKakaoLogin() async {
         do {
-            let token = try await authRepository.loginWithKakao()
-            // ponytail: 서버 인증 미구현 — 토큰 교환은 백엔드 연동 시 (애플 로그인과 동일)
-            print("카카오 로그인 성공: accessToken 수신=\(!token.accessToken.isEmpty)")
+            try await socialLoginUseCase.loginWithKakao()
+            print("카카오 로그인 완료: 서버 교환 응답 수신")
         } catch SocialLoginError.cancelled {
             // 사용자가 로그인 창을 닫음 — 정상 흐름
         } catch {
@@ -60,9 +58,26 @@ public final class LoginStore: MVIStore {
             request.requestedScopes = [.fullName, .email]
 
             let result = try await authorizationController.performRequest(request)
-            guard case .appleID(let credential) = result else { return }
-            // ponytail: 서버 인증 미구현 — identityToken/authorizationCode 교환은 AuthDomain/AuthData 연동 시 이관
-            print("Apple 로그인 성공: user=\(credential.user), token=\(credential.identityToken != nil)")
+            guard case .appleID(let appleIDCredential) = result else { return }
+            guard
+                let identityTokenData = appleIDCredential.identityToken,
+                let identityToken = String(data: identityTokenData, encoding: .utf8)
+            else {
+                print("Apple 로그인 실패: identityToken 없음")
+                return
+            }
+
+            let credential = SocialLoginCredential(
+                provider: .apple,
+                token: identityToken,
+                authorizationCode: appleIDCredential.authorizationCode
+                    .flatMap { String(data: $0, encoding: .utf8) },
+                email: appleIDCredential.email,
+                name: appleIDCredential.fullName
+                    .map { PersonNameComponentsFormatter.localizedString(from: $0, style: .default) }
+            )
+            try await socialLoginUseCase.login(with: credential)
+            print("Apple 로그인 완료: 서버 교환 응답 수신")
         } catch let error as ASAuthorizationError where error.code == .canceled {
             // 사용자가 로그인 시트를 닫음 — 정상 흐름
         } catch {
