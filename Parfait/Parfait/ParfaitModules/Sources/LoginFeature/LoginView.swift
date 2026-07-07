@@ -1,3 +1,4 @@
+import AuthDomain
 import AuthenticationServices
 import SwiftUI
 import Routing
@@ -5,13 +6,14 @@ import UIComponent
 
 public struct LoginView: View {
     private let router: Router
-    @State private var store = LoginStore()
+    @State private var store: LoginStore
     @Environment(\.authorizationController) private var authorizationController
 
     private let pageCount = 3
 
-    public init(router: Router) {
+    public init(router: Router, store: LoginStore) {
         self.router = router
+        _store = State(initialValue: store)
     }
 
     public var body: some View {
@@ -118,5 +120,15 @@ public struct LoginView: View {
 }
 
 #Preview {
-    LoginView(router: .preview)
+    LoginView(
+        router: .preview,
+        store: LoginStore(authRepository: PreviewAuthRepository())
+    )
+}
+
+/// 프리뷰 전용 스텁 — SDK 호출 없이 즉시 성공.
+private struct PreviewAuthRepository: AuthRepository {
+    func loginWithKakao() async throws -> SocialLoginToken {
+        SocialLoginToken(accessToken: "preview-token")
+    }
 }

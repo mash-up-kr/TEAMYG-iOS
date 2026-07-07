@@ -11,10 +11,10 @@ import CanvasFeature
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
-    
+
     var body: some View {
         NavigationStack(path: $router.path) {
-            LoginView(router: router)
+            LoginView(router: router, store: diContainer.makeLoginStore())
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
                     case .group:  GroupView()
@@ -24,4 +24,3 @@ struct RootView: View {
         }
     }
 }
-

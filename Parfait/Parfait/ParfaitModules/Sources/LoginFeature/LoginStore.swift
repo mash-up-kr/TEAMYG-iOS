@@ -5,29 +5,51 @@
 //  Created by 김남수 on 7/3/26.
 //
 
+import AuthDomain
 import AuthenticationServices
 import Observation
 import SwiftUI // AuthorizationController 는 AuthenticationServices+SwiftUI 크로스 임포트 타입
 import UIComponent
 
 @Observable @MainActor
-final class LoginStore: MVIStore {
-    private(set) var state = State()
+public final class LoginStore: MVIStore {
+    public private(set) var state = State()
 
-    @ObservationIgnored private var appleLoginTask: Task<Void, Never>?
+    private let authRepository: any AuthRepository
+    @ObservationIgnored private var loginTask: Task<Void, Never>?
 
-    func send(_ intent: Intent) {
+    public init(authRepository: any AuthRepository) {
+        self.authRepository = authRepository
+    }
+
+    public func send(_ intent: Intent) {
         switch intent {
         case .pageChanged(let pageIndex):
             state.currentPageIndex = pageIndex
         case .kakaoLoginTapped:
-            break // ponytail: UI만 — 로그인 연동 시 구현
-        case .appleLoginTapped(let authorizationController):
-            guard appleLoginTask == nil else { return }
-            appleLoginTask = Task {
-                await performAppleLogin(using: authorizationController)
-                appleLoginTask = nil
+            guard loginTask == nil else { return }
+            loginTask = Task {
+                await performKakaoLogin()
+                loginTask = nil
             }
+        case .appleLoginTapped(let authorizationController):
+            guard loginTask == nil else { return }
+            loginTask = Task {
+                await performAppleLogin(using: authorizationController)
+                loginTask = nil
+            }
+        }
+    }
+
+    private func performKakaoLogin() async {
+        do {
+            let token = try await authRepository.loginWithKakao()
+            // ponytail: 서버 인증 미구현 — 토큰 교환은 백엔드 연동 시 (애플 로그인과 동일)
+            print("카카오 로그인 성공: accessToken 수신=\(!token.accessToken.isEmpty)")
+        } catch SocialLoginError.cancelled {
+            // 사용자가 로그인 창을 닫음 — 정상 흐름
+        } catch {
+            print("카카오 로그인 실패: \(error)")
         }
     }
 
@@ -48,11 +70,11 @@ final class LoginStore: MVIStore {
         }
     }
 
-    struct State: Equatable {
-        var currentPageIndex = 0
+    public struct State: Equatable {
+        public var currentPageIndex = 0
     }
 
-    enum Intent {
+    public enum Intent {
         case pageChanged(Int)
         case kakaoLoginTapped
         case appleLoginTapped(AuthorizationController)

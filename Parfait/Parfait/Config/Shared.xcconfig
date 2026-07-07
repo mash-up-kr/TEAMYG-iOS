@@ -1,0 +1,7 @@
+//
+//  Shared.xcconfig — Parfait 앱 타깃 base configuration.
+//  시크릿(커밋 금지)은 같은 폴더 Secrets.xcconfig 에 둔다.
+//  파일이 없어도 빌드는 된다 — 카카오 로그인만 비활성.
+//
+KAKAO_NATIVE_APP_KEY =
+#include? "Secrets.xcconfig"
