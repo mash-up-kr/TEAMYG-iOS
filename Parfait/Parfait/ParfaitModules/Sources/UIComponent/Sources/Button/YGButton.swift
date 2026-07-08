@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// 파르페 공용 캡슐 버튼. 스펙: docs/ygbutton-requirements.md
 public struct YGButton: View {
     public enum Variant {
         /// 높이 48 · 가로 유동(가용 폭 채움) · 좌우 패딩 20
@@ -46,7 +45,7 @@ private struct YGButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .suit(.body01SemiBold) // 스펙 body01subtitle 대응 토큰
+            .suit(.body01SemiBold)
             .foregroundStyle(textColor)
             .padding(.horizontal, .padding7)
             .frame(maxWidth: variant == .large ? .infinity : nil)
