@@ -3,9 +3,9 @@ import SwiftUI
 import UIKit
 
 public extension Image {
-    static let icSocialApple = Image("IC_Social_Apple", bundle: .module)
+    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
 }
 
 public extension UIImage {
-    static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "IC_Social_Apple", bundle: .module)) }
+    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
 }
