@@ -21,6 +21,12 @@ Icon
 # Xcode user settings
 xcuserdata/
 
+# Secrets (커밋 금지 — Secrets.xcconfig.template 참고)
+Secrets.xcconfig
+
+# superpowers 스킬 산출물 (개인 로컬용 설계/계획 문서)
+docs/superpowers/
+
 # Xcode build artifacts
 build/
 DerivedData/

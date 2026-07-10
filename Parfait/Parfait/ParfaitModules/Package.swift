@@ -17,7 +17,7 @@ let modules: [(name: String, dependencies: [String], resources: Bool)] = [
     ("CanvasDomain", ["Common"], false),
     
     // Domain 프로토콜 구현(DTO·매핑·소스).
-    ("AuthData", ["AuthDomain", "Core", "Common"], false),
+    ("AuthData", ["AuthDomain", "Core", "Common", "KakaoSDKAuth", "KakaoSDKCommon", "KakaoSDKUser"], false),
     ("GroupData", ["GroupDomain", "Core", "Common"], false),
     ("CanvasData", ["CanvasDomain", "Core", "Common"], false),
     
@@ -27,14 +27,29 @@ let modules: [(name: String, dependencies: [String], resources: Bool)] = [
     ("CanvasFeature", ["CanvasDomain", "Core", "UIComponent", "Routing", "Common"], false),
 ]
 
+// MARK: 외부 의존성 정의
+let externalProducts: [String: String] = [
+    "KakaoSDKAuth": "kakao-ios-sdk",
+    "KakaoSDKCommon": "kakao-ios-sdk",
+    "KakaoSDKUser": "kakao-ios-sdk",
+]
+
 let package = Package(
     name: "ParfaitModules",
     platforms: [.iOS(.v26)],
     products: modules.map { .library(name: $0.name, targets: [$0.name]) },
+    dependencies: [
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.28.0")
+    ],
     targets: modules.map { module in
         .target(
             name: module.name,
-            dependencies: module.dependencies.map { .target(name: $0) },
+            dependencies: module.dependencies.map { name in
+                if let package = externalProducts[name] {
+                    return .product(name: name, package: package)
+                }
+                return .target(name: name)
+            },
             // 카탈로그만 콕 집어 .process → 같은 폴더의 생성 .swift(Colors+/Image+)는 소스로 컴파일됨.
             // (폴더 통째 .process 하면 .swift 까지 리소스로 복사돼 컴파일 안 됨 — 주의)
             resources: module.resources

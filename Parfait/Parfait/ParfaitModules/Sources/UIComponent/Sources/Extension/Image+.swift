@@ -4,8 +4,20 @@ import UIKit
 
 public extension Image {
     static let icSocialApple = Image("IC_Social_Apple", bundle: .module)
+    static let icCheckRound = Image("Ic_Check_Round", bundle: .module)
+    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
+    static let icCopy = Image("Ic_Copy", bundle: .module)
+    static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
+    static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
+    static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
 }
 
 public extension UIImage {
     static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "IC_Social_Apple", bundle: .module)) }
+    static var icCheckRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Check_Round", bundle: .module)) }
+    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
+    static var icCopy: UIImage { UIImage(resource: ImageResource(name: "Ic_Copy", bundle: .module)) }
+    static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }
+    static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
+    static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
 }

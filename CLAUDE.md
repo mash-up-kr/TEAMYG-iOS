@@ -40,6 +40,8 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 - 모델/IO 레이어는 actor/struct 로 동시성 안전하게.
 - 의존성은 주입(이니셜라이저 주입)으로. 전역 싱글톤 신규 도입 금지.
 - 이름은 **풀어서** 쓴다. 짧게 줄인 약어·의미 없는 한 글자 식별자 금지: `m`→`module`, `deps`→`dependencies`, `tmp`→`temporary`, `e`→`error`. (`id`·`url`·`max` 등 널리 통용되는 약어, 짧은 스코프의 클로저 인자 `$0`는 예외)
+- 공통 UI 컴포넌트(디자인 컴포넌트)는 `YG` prefix 를 붙인다 (예: 버튼 → `YGButton`).
+- 레이어 기능 개발 시 Domain 계약 구현체 네이밍: `~UseCase`/`~Repository` 프로토콜의 구현체는 `~UseCaseImpl`/`~RepositoryImpl` (예: `AuthRepository` → `AuthRepositoryImpl`). 단 **전체 프로토콜에 강제 아님** — 범용 프로토콜은 역할이 드러나는 이름 (예: `Router` → `PreviewRouter`).
 - 새 Swift 파일은 Xcode 스타일 헤더 주석으로 시작한다 (파일명·모듈/타깃명·작성자·생성일 `M/D/YY`):
 
   ```swift
