@@ -31,7 +31,7 @@ public struct YGTextField: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 2) {
+            HStack(spacing: 0) {
                 TextField(
                     "",
                     text: $text,
@@ -52,11 +52,13 @@ public struct YGTextField: View {
                         text = ""
                     } label: {
                         Image.icCloseRound
+                            .frame(width: 44, height: 44)
                             .foregroundStyle(.gray300)
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.leading, 16)
+            .padding(.trailing, 4)
             .frame(height: 48)
             .background(
                 .whiteFixed.opacity(0.75),
