@@ -54,6 +54,8 @@ private struct YGButtonStyle: ButtonStyle {
                 backgroundColor(isPressed: configuration.isPressed),
                 in: .capsule
             )
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 
     private var textColor: Color {
