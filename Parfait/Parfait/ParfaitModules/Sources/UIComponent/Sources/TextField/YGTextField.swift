@@ -31,7 +31,7 @@ public struct YGTextField: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 0) {
+            HStack(spacing: 16) {
                 TextField(
                     "",
                     text: $text,
@@ -40,20 +40,21 @@ public struct YGTextField: View {
                 .suit(.body01Regular)
                 .foregroundStyle(.gray900)
                 .focused($isFocused)
-
-                if !text.isEmpty {
-                    Text("\(text.count)/\(maxLength)")
-                        .suit(errorMessage != nil ? .body02SemiBold : .body02Regular)
-                        .foregroundStyle(errorMessage != nil ? .cherry600 : .gray400)
-                }
-
-                if showsClearButton {
-                    Button {
-                        text = ""
-                    } label: {
-                        Image.icCloseRound
-                            .frame(width: 44, height: 44)
-                            .foregroundStyle(.gray300)
+                HStack(spacing: 0) {
+                    if !text.isEmpty {
+                        Text("\(text.count)/\(maxLength)")
+                            .suit(errorMessage != nil ? .body02SemiBold : .body02Regular)
+                            .foregroundStyle(errorMessage != nil ? .cherry600 : .gray400)
+                    }
+                    
+                    if showsClearButton {
+                        Button {
+                            text = ""
+                        } label: {
+                            Image.icCloseRound
+                                .frame(width: 44, height: 44)
+                                .foregroundStyle(.gray300)
+                        }
                     }
                 }
             }
@@ -103,7 +104,7 @@ public struct YGTextField: View {
         YGTextField(
             text: $empty,
             placeholder: "닉네임을 입력해주세요",
-            maxLength: 10
+            maxLength: 30
         )
 
         YGTextField(
