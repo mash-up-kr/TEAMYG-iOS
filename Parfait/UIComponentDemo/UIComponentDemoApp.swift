@@ -19,6 +19,7 @@ struct DemoHomeView: View {
             Section("디자인 토큰") {
                 NavigationLink("Typography") { TypographyDemoView() }
                 NavigationLink("Colors") { ColorsDemoView() }
+                NavigationLink("Radius") { RadiusDemoView() }
                 NavigationLink("Assets") { AssetsDemoView() }
             }
             Section("컴포넌트") {

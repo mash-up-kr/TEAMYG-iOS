@@ -22,13 +22,16 @@ struct ColorsDemoView: View {
     static let tokens: [(name: String, color: Color)] = [
         ("cherry", .cherry), ("cherry50", .cherry50), ("cherry100", .cherry100),
         ("cherry200", .cherry200), ("cherry300", .cherry300), ("cherry400", .cherry400),
-        ("cherry500", .cherry500), ("cherry700", .cherry700),
+        ("cherry500", .cherry500), ("cherry600", .cherry600), ("cherry700", .cherry700),
         ("gray50", .gray50), ("gray100", .gray100), ("gray200", .gray200),
         ("gray300", .gray300), ("gray400", .gray400), ("gray500", .gray500),
         ("gray600", .gray600), ("gray700", .gray700), ("gray800", .gray800),
         ("gray850", .gray850), ("gray900", .gray900), ("gray950", .gray950),
-        ("melon", .melon), ("pudding", .pudding),
-        ("success", .success), ("warning", .warning), ("danger", .cherry600), ("info", .info),
+        ("melon500", .melon500), ("melon600", .melon600),
+        ("pudding500", .pudding500), ("pudding600", .pudding600),
+        ("soda500", .soda500),
+        ("black5", .black5), ("black25", .black25), ("black50", .black50), ("black75", .black75),
+        ("white25", .white25), ("white50", .white50), ("white75", .white75),
         // accentColor 는 SwiftUI 내장 Color.accentColor 와 모호해 제외.
         ("blackFixed", .blackFixed), ("whiteFixed", .whiteFixed)
     ]
