@@ -28,7 +28,7 @@ struct ColorsDemoView: View {
         ("gray600", .gray600), ("gray700", .gray700), ("gray800", .gray800),
         ("gray850", .gray850), ("gray900", .gray900), ("gray950", .gray950),
         ("melon", .melon), ("pudding", .pudding),
-        ("success", .success), ("warning", .warning), ("danger", .danger), ("info", .info),
+        ("success", .success), ("warning", .warning), ("danger", .cherry600), ("info", .info),
         // accentColor 는 SwiftUI 내장 Color.accentColor 와 모호해 제외.
         ("blackFixed", .blackFixed), ("whiteFixed", .whiteFixed)
     ]

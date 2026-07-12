@@ -44,7 +44,7 @@ public struct YGTextField: View {
                 if !text.isEmpty {
                     Text("\(text.count)/\(maxLength)")
                         .suit(errorMessage != nil ? .body02SemiBold : .body02Regular)
-                        .foregroundStyle(errorMessage != nil ? .danger : .gray400)
+                        .foregroundStyle(errorMessage != nil ? .cherry600 : .gray400)
                 }
 
                 if showsClearButton {
@@ -77,7 +77,7 @@ public struct YGTextField: View {
             if let errorMessage {
                 Text(errorMessage)
                     .suit(.caption01Regular)
-                    .foregroundStyle(.danger)
+                    .foregroundStyle(.cherry600)
             }
         }
     }
@@ -87,7 +87,7 @@ public struct YGTextField: View {
     }
 
     private var borderColor: Color {
-        if errorMessage != nil { return .danger }
+        if errorMessage != nil { return .cherry600 }
         if isFocused { return .cherry200 }
         return .gray100
     }
