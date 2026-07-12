@@ -24,6 +24,7 @@ struct DemoHomeView: View {
             }
             Section("컴포넌트") {
                 NavigationLink("YGTextField") { YGTextFieldDemoView() }
+                NavigationLink("YGIconButton") { YGIconButtonDemoView() }
             }
         }
         .navigationTitle("UIComponent Demo")
