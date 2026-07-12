@@ -48,12 +48,8 @@ public struct YGTextField: View {
                     }
                     
                     if showsClearButton {
-                        Button {
+                        YGIconButton(.icCloseRound, size: .small) {
                             text = ""
-                        } label: {
-                            Image.icCloseRound
-                                .frame(width: 44, height: 44)
-                                .foregroundStyle(.gray300)
                         }
                     }
                 }
