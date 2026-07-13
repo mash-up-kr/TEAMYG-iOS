@@ -73,13 +73,7 @@ public struct YGTopBar: View {
     }
 
     private var leadingButton: some View {
-        Button(action: onLeadingTap) {
-            leadingIcon
-                .resizable()
-                .frame(width: 24, height: 24)
-                .padding(10)
-                .foregroundStyle(.gray900)
-        }
+        YGIconButton(leadingIcon, size: .small, action: onLeadingTap)
     }
 
     private var leadingIcon: Image {
