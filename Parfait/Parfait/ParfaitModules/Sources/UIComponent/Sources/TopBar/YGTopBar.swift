@@ -136,6 +136,7 @@ public extension View {
             YGTopBar(status, onLeadingTap: onLeadingTap, onNewGroupTap: onNewGroupTap)
             self
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
