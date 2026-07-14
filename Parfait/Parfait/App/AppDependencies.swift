@@ -17,4 +17,8 @@ struct AppDependencies {
             socialLoginUseCase: SocialLoginUseCaseImpl(authRepository: AuthRepositoryImpl())
         )
     }
+
+    func makeTermsStore() -> TermsStore {
+        TermsStore()
+    }
 }

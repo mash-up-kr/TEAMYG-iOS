@@ -14,11 +14,16 @@ import UIComponent
 public final class LoginStore: MVIStore {
     public private(set) var state = State()
 
+    /// 일회성 이벤트 채널(네비게이션 등). state 에 넣으면 재진입 시 재발화되므로 분리. (mvi.md)
+    let events: AsyncStream<Event>
+    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+
     private let socialLoginUseCase: any SocialLoginUseCase
     @ObservationIgnored private var loginTask: Task<Void, Never>?
 
     public init(socialLoginUseCase: any SocialLoginUseCase) {
         self.socialLoginUseCase = socialLoginUseCase
+        (events, eventContinuation) = AsyncStream.makeStream()
     }
 
     public func send(_ intent: Intent) {
@@ -44,6 +49,7 @@ public final class LoginStore: MVIStore {
         do {
             try await socialLoginUseCase.loginWithKakao()
             print("카카오 로그인 완료: 서버 교환 응답 수신")
+            eventContinuation.yield(.authenticated)
         } catch SocialLoginError.cancelled {
             // 사용자가 로그인 창을 닫음 — 정상 흐름
         } catch {
@@ -78,6 +84,7 @@ public final class LoginStore: MVIStore {
             )
             try await socialLoginUseCase.login(with: credential)
             print("Apple 로그인 완료: 서버 교환 응답 수신")
+            eventContinuation.yield(.authenticated)
         } catch let error as ASAuthorizationError where error.code == .canceled {
             // 사용자가 로그인 시트를 닫음 — 정상 흐름
         } catch {
@@ -93,5 +100,11 @@ public final class LoginStore: MVIStore {
         case pageChanged(Int)
         case kakaoLoginTapped
         case appleLoginTapped(AuthorizationController)
+    }
+
+    /// 뷰가 소비하는 일회성 이벤트.
+    enum Event: Sendable {
+        /// 로그인 성공 — 약관 동의 화면으로 이동.
+        case authenticated
     }
 }
