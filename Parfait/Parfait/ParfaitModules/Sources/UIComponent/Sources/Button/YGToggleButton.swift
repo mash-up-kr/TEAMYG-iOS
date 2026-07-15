@@ -13,39 +13,27 @@ import SwiftUI
 /// 아이콘은 선택적이다: 넘기면 텍스트 왼쪽에 붙고(Figma `Type=Parfait`),
 /// 생략하면 텍스트만 표시한다(Figma `Type=Edit`). Disabled 상태는 없다.
 ///
-/// 두 가지 사용법:
-/// - **독립 토글**: `isSelected` 에 `Binding<Bool>` 을 넘기면 탭할 때 값이 자동으로 전환된다.
-/// - **제어형**: 단일 선택 그룹처럼 탭 동작을 직접 정해야 하면 `isSelected: Bool` + `action` 을 쓴다.
+/// 상태는 `Binding<Bool>` 으로 소유한다. 탭하면 내부에서 값을 토글하므로 호출자가 상태 변경
+/// 코드를 쓸 필요가 없다. 토글에 부수효과가 필요하면 `action` 을 넘긴다(옵셔널).
 ///
-/// 어느 쪽이든 상태의 원본(source of truth)은 바깥에 있다. 내부 `@State` 를 두지 않으므로
-/// 외부 값이 바뀌면 항상 그대로 반영된다.
+/// ```swift
+/// YGToggleButton("Edit", isSelected: $isOn)                 // 상태만 토글
+/// YGToggleButton("Edit", isSelected: $isOn) { log("tap") }  // 토글 + 부수효과
+/// ```
 ///
 /// - Selected: 배경 `whiteFixed`, 텍스트 `gray900`, `body01SemiBold`
 /// - Default:  배경 투명,          텍스트 `black50`, `body01Regular`
 public struct YGToggleButton: View {
     private let title: String
     private let icon: Image?
-    private let isSelected: Bool
-    private let action: () -> Void
+    private let isSelected: Binding<Bool>
+    private let action: (() -> Void)?
 
-    /// 독립 토글. 탭하면 `isSelected` 값이 자동으로 on/off 전환된다.
     public init(
         _ title: String,
         icon: Image? = nil,
-        isSelected: Binding<Bool>
-    ) {
-        self.title = title
-        self.icon = icon
-        self.isSelected = isSelected.wrappedValue
-        self.action = { isSelected.wrappedValue.toggle() }
-    }
-
-    /// 제어형. 탭 동작(`action`)을 호출자가 정의한다 (예: 단일 선택 그룹).
-    public init(
-        _ title: String,
-        icon: Image? = nil,
-        isSelected: Bool,
-        action: @escaping () -> Void
+        isSelected: Binding<Bool>,
+        action: (() -> Void)? = nil
     ) {
         self.title = title
         self.icon = icon
@@ -53,8 +41,13 @@ public struct YGToggleButton: View {
         self.action = action
     }
 
+    private var isOn: Bool { isSelected.wrappedValue }
+
     public var body: some View {
-        Button(action: action) {
+        Button {
+            isSelected.wrappedValue.toggle()
+            action?()
+        } label: {
             HStack(spacing: .gap2) {
                 if let icon {
                     icon
@@ -63,12 +56,12 @@ public struct YGToggleButton: View {
                         .frame(width: 24, height: 24)
                 }
                 Text(title)
-                    .suit(isSelected ? .body01SemiBold : .body01Regular)
+                    .suit(isOn ? .body01SemiBold : .body01Regular)
                     .lineLimit(1)
             }
-            .foregroundStyle(isSelected ? Color.gray900 : Color.black50)
+            .foregroundStyle(isOn ? Color.gray900 : Color.black50)
         }
-        .buttonStyle(YGToggleButtonStyle(isSelected: isSelected, hasIcon: icon != nil))
+        .buttonStyle(YGToggleButtonStyle(isSelected: isOn, hasIcon: icon != nil))
     }
 }
 

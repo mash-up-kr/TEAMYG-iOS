@@ -9,30 +9,25 @@ import SwiftUI
 import UIComponent
 
 /// YGToggleButton 인터랙티브 데모.
-/// 개별 토글 · 단일 선택 그룹 · 상태 비교를 확인한다.
+/// 개별 토글 · 토글 + 부수효과(action) · 상태 비교를 확인한다.
 /// Selected 배경(whiteFixed)이 흰 배경에선 안 보여서, 확인용으로 회색 카드 위에 올린다.
 struct YGToggleButtonDemoView: View {
     @State private var parfaitSelected = true
     @State private var editSelected = false
-    @State private var groupSelection = 0
-
-    private let groupTitles = ["Day", "Week", "Month"]
+    @State private var actionSelected = false
+    @State private var tapCount = 0
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
-                section("개별 토글 (Binding — 탭하면 자동 전환)") {
+                section("개별 토글 (탭하면 자동 전환)") {
                     YGToggleButton("Parfait", icon: .icPlus, isSelected: $parfaitSelected)
                     YGToggleButton("Edit", isSelected: $editSelected)
                 }
 
-                section("단일 선택 그룹 (하나만 Selected)") {
-                    HStack(spacing: 8) {
-                        ForEach(Array(groupTitles.enumerated()), id: \.offset) { index, title in
-                            YGToggleButton(title, isSelected: groupSelection == index) {
-                                groupSelection = index
-                            }
-                        }
+                section("토글 + 부수효과 (action) — 탭 횟수: \(tapCount)") {
+                    YGToggleButton("Parfait", icon: .icPlus, isSelected: $actionSelected) {
+                        tapCount += 1
                     }
                 }
 
@@ -61,10 +56,11 @@ struct YGToggleButtonDemoView: View {
         }
     }
 
+    /// 정적 비교용 — `.constant` 라 탭해도 상태가 고정된다.
     private func row(_ title: String, icon: Image?) -> some View {
         HStack(spacing: 12) {
-            YGToggleButton(title, icon: icon, isSelected: true) {}
-            YGToggleButton(title, icon: icon, isSelected: false) {}
+            YGToggleButton(title, icon: icon, isSelected: .constant(true))
+            YGToggleButton(title, icon: icon, isSelected: .constant(false))
         }
     }
 }
