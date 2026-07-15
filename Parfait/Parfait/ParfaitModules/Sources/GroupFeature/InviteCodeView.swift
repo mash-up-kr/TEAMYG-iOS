@@ -17,14 +17,15 @@ public struct InviteCodeView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(spacing: 0) {
             Spacer().frame(height: 40)
-
-            title
-                .padding(.bottom, 8)
-            description
-                .padding(.bottom, 69)
-
+            VStack(alignment: .leading, spacing: 0) {
+                title
+                    .padding(.bottom, 8)
+                description
+                    .padding(.bottom, 69)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             InviteCodeInputField(
                 inviteCode: store.binding(
                     \.inviteCode,
