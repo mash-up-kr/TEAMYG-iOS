@@ -30,7 +30,7 @@ public struct TermsView: View {
             allAgreementButton
                 .padding(.top, 40)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 0) {
                 ForEach(TermsItem.allCases, id: \.self) { item in
                     termRow(item)
                 }
@@ -113,6 +113,7 @@ public struct TermsView: View {
             }
             .buttonStyle(.plain)
         }
+        .frame(height: 36)
     }
 }
 
