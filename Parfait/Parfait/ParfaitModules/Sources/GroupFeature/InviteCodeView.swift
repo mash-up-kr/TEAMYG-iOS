@@ -19,7 +19,7 @@ public struct InviteCodeView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer().frame(height: 40)
-            
+
             title
                 .padding(.bottom, 8)
             description
@@ -46,7 +46,7 @@ public struct InviteCodeView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
-        .padding(.bottom, 2)
+        .padding(.bottom, 20)
         .onDisappear {
             store.send(.screenDisappeared)
         }
@@ -111,7 +111,8 @@ public struct InviteCodeView: View {
 }
 
 /// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인 (`joinError == nil` 이면 성공).
-private struct PreviewJoinGroupUseCase: JoinGroupUseCase {
+/// GroupView 프리뷰도 함께 사용하므로 internal.
+struct PreviewJoinGroupUseCase: JoinGroupUseCase {
     let joinError: JoinGroupError?
 
     func join(inviteCode: String) async throws {

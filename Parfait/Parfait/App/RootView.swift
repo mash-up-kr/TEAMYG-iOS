@@ -14,13 +14,14 @@ struct RootView: View {
 
     var body: some View {
         NavigationStack(path: $router.path) {
-            LoginView(router: router, store: diContainer.makeLoginStore())
-                .navigationDestination(for: AppRoute.self) { route in
-                    switch route {
-                    case .group:  GroupView()
-                    case .canvas: CanvasView()
-                    }
-                }
+            GroupView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
+//            LoginView(router: router, store: diContainer.makeLoginStore())
+//                .navigationDestination(for: AppRoute.self) { route in
+//                    switch route {
+//                    case .group:  GroupView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
+//                    case .canvas: CanvasView()
+//                    }
+//                }
         }
     }
 }

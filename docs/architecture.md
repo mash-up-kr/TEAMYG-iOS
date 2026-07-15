@@ -44,6 +44,8 @@ struct AppDependencies {
 }
 ```
 
-## 라우팅 — App 소유
+## 라우팅 — 하이브리드 (피처 간 = App 소유, 피처 내부 = 피처 소유)
 
-Feature 끼리 import 금지이므로 화면 전환은 **Routing 모듈의 계약**(`AppRoute`·`Router`)으로 분리하고 App 이 구현(`App/AppRouter.swift`)·소유한다. 값 기반 `NavigationStack` + `enum AppRoute`. Feature 는 완료/요청 이벤트만 올리고 목적지는 모른다. 딥링크도 같은 `AppRoute` 로 매핑.
+- **피처 간 이동**(다른 피처의 대문): **Routing 모듈의 계약**(`AppRoute`·`Router`)으로 분리하고 App 이 구현(`App/AppRouter.swift`)·소유한다. 값 기반 `NavigationStack` + `enum AppRoute`. Feature 는 완료/요청 이벤트만 올리고 목적지는 모른다.
+- **피처 내부 화면**: 피처 로컬 라우트 enum(예: `GroupFeature` 의 `GroupRoute`) + 피처 자체 `navigationDestination` 으로 피처가 소유한다 — `NavigationPath` 는 타입 소거라 로컬 라우트도 같은 스택에 섞인다. Root 는 피처 대문만 알면 되고, 내부 화면이 늘어도 `AppRoute` 와 RootView 는 안 커진다.
+- **딥링크**: 대문은 `AppRoute` 로 매핑. 피처 내부 화면 직행이 필요하면 App 이 해당 피처의 public 로컬 라우트를 path 에 append 한다.
