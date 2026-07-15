@@ -45,6 +45,9 @@ public struct InviteCodeView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 2)
+        .onDisappear {
+            store.send(.screenDisappeared)
+        }
         .alert(
             "그룹 참여 완료", // ponytail: 공용 알림 컴포넌트 확정 시 교체
             isPresented: store.binding(

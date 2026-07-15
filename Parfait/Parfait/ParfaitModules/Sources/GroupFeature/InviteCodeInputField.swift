@@ -37,8 +37,10 @@ struct InviteCodeInputField: View {
             }
 
             // ponytail: 앱 전용 초대코드 포맷 확정 시 클립보드 자동 감지 추가 (현재는 시스템 붙여넣기로 충분)
+            // ponytail: 허용 문자 규칙 미정 — 포맷 확정 시 필터·대문자화 재검토
             TextField("", text: $inviteCode)
                 .keyboardType(.asciiCapable)
+                .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .focused($isFocused)
                 .foregroundStyle(.clear)

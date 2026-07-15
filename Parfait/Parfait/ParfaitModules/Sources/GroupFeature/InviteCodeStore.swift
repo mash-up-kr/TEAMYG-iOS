@@ -32,9 +32,10 @@ public final class InviteCodeStore: MVIStore {
             state.phase = .idle
         case .confirmTapped:
             guard joinTask == nil, state.inviteCode.count == Self.inviteCodeLength else { return }
+            let inviteCode = state.inviteCode
             state.phase = .loading
             joinTask = Task {
-                await requestJoin()
+                await requestJoin(inviteCode: inviteCode)
                 joinTask = nil
             }
         case .joinSucceeded:
@@ -44,14 +45,23 @@ public final class InviteCodeStore: MVIStore {
             state.phase = .failed
         case .successAlertVisibilityChanged(let isPresented):
             state.isSuccessAlertPresented = isPresented
+        case .screenDisappeared:
+            joinTask?.cancel()
+            joinTask = nil
+            if state.phase == .loading {
+                state.phase = .idle
+            }
         }
     }
 
     /// 서버 요청 후 결과를 다시 `send` 로 되돌려 상태 변이가 `send` 내부에서만 일어나도록 한다.
-    private func requestJoin() async {
+    /// 제출 시점의 코드를 파라미터로 받아, 통신 중 사용자가 입력을 바꿔도 실제로 보낸 코드와 어긋나지 않게 한다.
+    private func requestJoin(inviteCode: String) async {
         do {
-            try await joinGroupUseCase.join(inviteCode: state.inviteCode)
+            try await joinGroupUseCase.join(inviteCode: inviteCode)
             send(.joinSucceeded)
+        } catch is CancellationError {
+            // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
             send(.joinFailed)
         }
@@ -81,5 +91,6 @@ public final class InviteCodeStore: MVIStore {
         case joinSucceeded
         case joinFailed
         case successAlertVisibilityChanged(Bool)
+        case screenDisappeared
     }
 }
