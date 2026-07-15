@@ -48,7 +48,7 @@ public struct YGTopBar: View {
             Spacer(minLength: 0)
 
             if isDefault, let onNewGroupTap {
-                newGroupButton(action: onNewGroupTap)
+                YGChip("새 그룹", icon: .icPlus, placement: .leading, action: onNewGroupTap)
             }
         }
         .frame(maxWidth: .infinity)
@@ -89,23 +89,6 @@ public struct YGTopBar: View {
             .suit(.title03Bold)
             .foregroundStyle(.gray900)
             .padding(.leading, .gap2)
-    }
-
-    private func newGroupButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: .gap2) {           // + 와 새 그룹 사이 4
-                Image.icPlus
-                    .resizable()
-                    .frame(width: 16, height: 16)
-                Text("새 그룹")
-                    .suit(.body02Regular)
-            }
-            .foregroundStyle(.gray600)         // 새 그룹 텍스트·+ 아이콘 동일 색
-            .padding(.vertical, .padding2)     // 위아래 4
-            .padding(.leading, .padding3)      // 좌 8
-            .padding(.trailing, .padding5)     // 우 12
-            .background(.cherry50, in: .capsule)
-        }
     }
 
     private var isDefault: Bool {
