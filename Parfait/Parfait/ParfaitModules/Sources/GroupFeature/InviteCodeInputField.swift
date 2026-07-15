@@ -19,16 +19,22 @@ struct InviteCodeInputField: View {
 
     @FocusState private var isFocused: Bool
 
-    private let cellWidth: CGFloat = 49
-    private let cellHeight: CGFloat = 56
-    private let cellSpacing: CGFloat = 8
+    private static let cellWidth: CGFloat = 49
+    private static let cellHeight: CGFloat = 56
+    private static let cellSpacing: CGFloat = 8
+
+    /// 6칸 입력 UI 의 전체 너비 — 부모가 에러 메시지 정렬 폭을 맞출 때 참조.
+    static var fieldWidth: CGFloat {
+        cellWidth * CGFloat(InviteCodeStore.inviteCodeLength)
+            + cellSpacing * CGFloat(InviteCodeStore.inviteCodeLength - 1)
+    }
 
     var body: some View {
         let characters = Array(inviteCode)
         let activeIndex = inviteCode.count < InviteCodeStore.inviteCodeLength ? inviteCode.count : nil
 
         ZStack {
-            HStack(spacing: cellSpacing) {
+            HStack(spacing: Self.cellSpacing) {
                 ForEach(0..<InviteCodeStore.inviteCodeLength, id: \.self) { index in
                     cell(
                         character: index < characters.count ? String(characters[index]) : "",
@@ -47,14 +53,14 @@ struct InviteCodeInputField: View {
                 .focused($isFocused)
                 .foregroundStyle(.clear)
                 .tint(.clear)
-                .frame(width: fieldWidth, height: cellHeight)
+                .frame(width: Self.fieldWidth, height: Self.cellHeight)
                 .allowsHitTesting(false)
 
             // 터치는 전부 이 레이어가 받고 포커스만 넘긴다 — TextField 에 터치가
             // 닿지 않으므로 롱프레스/드래그해도 루페·선택 핸들·편집 메뉴가 뜨지 않는다.
             Color.clear
                 .contentShape(Rectangle())
-                .frame(width: fieldWidth, height: cellHeight)
+                .frame(width: Self.fieldWidth, height: Self.cellHeight)
                 .onTapGesture {
                     if isFailed {
                         onTapWhileFailed()
@@ -62,11 +68,6 @@ struct InviteCodeInputField: View {
                     isFocused = true
                 }
         }
-    }
-
-    private var fieldWidth: CGFloat {
-        cellWidth * CGFloat(InviteCodeStore.inviteCodeLength)
-            + cellSpacing * CGFloat(InviteCodeStore.inviteCodeLength - 1)
     }
 
     private func cell(character: String, isActive: Bool) -> some View {
@@ -79,7 +80,7 @@ struct InviteCodeInputField: View {
                 .fill(underlineColor(isActive: isActive))
                 .frame(height: 2)
         }
-        .frame(width: cellWidth, height: cellHeight)
+        .frame(width: Self.cellWidth, height: Self.cellHeight)
     }
 
     private func underlineColor(isActive: Bool) -> Color {

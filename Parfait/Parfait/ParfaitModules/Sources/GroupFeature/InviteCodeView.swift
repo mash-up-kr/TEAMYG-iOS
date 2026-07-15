@@ -26,17 +26,21 @@ public struct InviteCodeView: View {
                     .padding(.bottom, 69)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            InviteCodeInputField(
-                inviteCode: store.binding(
-                    \.inviteCode,
-                    InviteCodeStore.Intent.inviteCodeChanged
-                ),
-                isFailed: store.state.isFailed,
-                onTapWhileFailed: { store.send(.inviteCodeFieldTapped) }
-            )
-            .padding(.bottom, 12)
+            // 입력창은 화면 중앙, 에러 메시지 리딩은 입력창 리딩과 일치하도록
+            // 입력창 너비로 폭을 고정한 leading 정렬 그룹으로 묶는다.
+            VStack(alignment: .leading, spacing: 12) {
+                InviteCodeInputField(
+                    inviteCode: store.binding(
+                        \.inviteCode,
+                        InviteCodeStore.Intent.inviteCodeChanged
+                    ),
+                    isFailed: store.state.isFailed,
+                    onTapWhileFailed: { store.send(.inviteCodeFieldTapped) }
+                )
 
-            errorMessage
+                errorMessage
+            }
+            .frame(width: InviteCodeInputField.fieldWidth, alignment: .leading)
 
             Spacer()
 
