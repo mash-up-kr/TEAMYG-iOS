@@ -24,7 +24,10 @@ public struct InviteCodeView: View {
                 .padding(.bottom, 69)
 
             InviteCodeInputField(
-                inviteCode: store.binding(\.inviteCode, InviteCodeStore.Intent.inviteCodeChanged),
+                inviteCode: store.binding(
+                    \.inviteCode,
+                    InviteCodeStore.Intent.inviteCodeChanged
+                ),
                 isFailed: store.state.phase == .failed,
                 onTap: { store.send(.inviteCodeFieldTapped) }
             )

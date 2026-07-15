@@ -18,18 +18,17 @@ struct InviteCodeInputField: View {
 
     @FocusState private var isFocused: Bool
 
-    private static let inviteCodeLength = 6
     private let cellWidth: CGFloat = 49
     private let cellHeight: CGFloat = 56
     private let cellSpacing: CGFloat = 8
 
     var body: some View {
         let characters = Array(inviteCode)
-        let activeIndex = inviteCode.count < Self.inviteCodeLength ? inviteCode.count : nil
+        let activeIndex = inviteCode.count < InviteCodeStore.inviteCodeLength ? inviteCode.count : nil
 
         ZStack {
             HStack(spacing: cellSpacing) {
-                ForEach(0..<Self.inviteCodeLength, id: \.self) { index in
+                ForEach(0..<InviteCodeStore.inviteCodeLength, id: \.self) { index in
                     cell(
                         character: index < characters.count ? String(characters[index]) : "",
                         isActive: isFocused && activeIndex == index
@@ -46,17 +45,25 @@ struct InviteCodeInputField: View {
                 .tint(.clear)
                 .frame(width: fieldWidth, height: cellHeight)
                 .contentShape(Rectangle())
-                .simultaneousGesture(
-                    TapGesture().onEnded {
+
+            // 에러 상태에서만 탭을 가로채 클리어+포커싱. 평범한 뷰의 onTapGesture라
+            // TextField 위 제스처보다 신뢰도가 높고, 정상 상태에서는 존재하지 않아
+            // 네이티브 탭/포커스/붙여넣기를 그대로 둔다.
+            if isFailed {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .frame(width: fieldWidth, height: cellHeight)
+                    .onTapGesture {
                         onTap()
                         isFocused = true
                     }
-                )
+            }
         }
     }
 
     private var fieldWidth: CGFloat {
-        cellWidth * CGFloat(Self.inviteCodeLength) + cellSpacing * CGFloat(Self.inviteCodeLength - 1)
+        cellWidth * CGFloat(InviteCodeStore.inviteCodeLength)
+            + cellSpacing * CGFloat(InviteCodeStore.inviteCodeLength - 1)
     }
 
     private func cell(character: String, isActive: Bool) -> some View {
