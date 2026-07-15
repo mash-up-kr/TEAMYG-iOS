@@ -25,9 +25,14 @@ public final class InviteCodeStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .inviteCodeChanged(let inviteCode):
-            state.inviteCode = String(inviteCode.prefix(Self.inviteCodeLength))
+            // 초대코드는 대문자 알파벳+숫자만 허용 — 소문자는 승격, 나머지(붙여넣기 포함)는 버린다.
+            state.inviteCode = String(
+                inviteCode.uppercased()
+                    .filter { ("A"..."Z").contains($0) || ("0"..."9").contains($0) }
+                    .prefix(Self.inviteCodeLength)
+            )
         case .inviteCodeFieldTapped:
-            guard state.phase == .failed else { return }
+            guard state.isFailed else { return }
             state.inviteCode = ""
             state.phase = .idle
         case .confirmTapped:
@@ -41,8 +46,8 @@ public final class InviteCodeStore: MVIStore {
         case .joinSucceeded:
             state.phase = .idle
             state.isSuccessAlertPresented = true
-        case .joinFailed:
-            state.phase = .failed
+        case .joinFailed(let joinError):
+            state.phase = .failed(joinError)
         case .successAlertVisibilityChanged(let isPresented):
             state.isSuccessAlertPresented = isPresented
         case .screenDisappeared:
@@ -63,7 +68,7 @@ public final class InviteCodeStore: MVIStore {
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
-            send(.joinFailed)
+            send(.joinFailed(error as? JoinGroupError ?? .unknown))
         }
     }
 
@@ -75,12 +80,20 @@ public final class InviteCodeStore: MVIStore {
         public var isConfirmEnabled: Bool {
             phase != .loading && inviteCode.count == InviteCodeStore.inviteCodeLength
         }
+
+        /// `phase == .failed` 일 때의 실패 사유 — View 렌더링용 파생 값.
+        public var joinError: JoinGroupError? {
+            if case .failed(let joinError) = phase { return joinError }
+            return nil
+        }
+
+        public var isFailed: Bool { joinError != nil }
     }
 
     public enum Phase: Equatable {
         case idle
         case loading
-        case failed
+        case failed(JoinGroupError)
     }
 
     public enum Intent {
@@ -89,7 +102,7 @@ public final class InviteCodeStore: MVIStore {
         case confirmTapped
         /// `requestJoin()` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.
         case joinSucceeded
-        case joinFailed
+        case joinFailed(JoinGroupError)
         case successAlertVisibilityChanged(Bool)
         case screenDisappeared
     }

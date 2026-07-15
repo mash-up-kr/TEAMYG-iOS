@@ -14,7 +14,8 @@ import UIComponent
 struct InviteCodeInputField: View {
     @Binding var inviteCode: String
     let isFailed: Bool
-    let onTap: () -> Void
+    /// 실패 상태의 필드를 탭했을 때 호출 — 정상 상태 탭에는 불리지 않는다.
+    let onTapWhileFailed: () -> Void
 
     @FocusState private var isFocused: Bool
 
@@ -37,10 +38,10 @@ struct InviteCodeInputField: View {
             }
 
             // ponytail: 앱 전용 초대코드 포맷 확정 시 클립보드 자동 감지 추가 (현재는 시스템 붙여넣기로 충분)
-            // ponytail: 허용 문자 규칙 미정 — 포맷 확정 시 필터·대문자화 재검토
+            // 허용 문자(대문자+숫자) 필터·대문자화는 Store 의 inviteCodeChanged 에서 처리.
             TextField("", text: $inviteCode)
                 .keyboardType(.asciiCapable)
-                .textInputAutocapitalization(.never)
+                .textInputAutocapitalization(.characters)
                 .autocorrectionDisabled()
                 .focused($isFocused)
                 .foregroundStyle(.clear)
@@ -56,7 +57,7 @@ struct InviteCodeInputField: View {
                     .contentShape(Rectangle())
                     .frame(width: fieldWidth, height: cellHeight)
                     .onTapGesture {
-                        onTap()
+                        onTapWhileFailed()
                         isFocused = true
                     }
             }
@@ -93,7 +94,7 @@ struct InviteCodeInputField: View {
     @Previewable @State var isFailed = false
 
     VStack(spacing: 24) {
-        InviteCodeInputField(inviteCode: $inviteCode, isFailed: isFailed, onTap: {})
+        InviteCodeInputField(inviteCode: $inviteCode, isFailed: isFailed, onTapWhileFailed: {})
 
         Toggle("에러 상태", isOn: $isFailed)
     }

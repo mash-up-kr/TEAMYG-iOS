@@ -18,6 +18,8 @@ public struct InviteCodeView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Spacer().frame(height: 40)
+            
             title
                 .padding(.bottom, 8)
             description
@@ -28,8 +30,8 @@ public struct InviteCodeView: View {
                     \.inviteCode,
                     InviteCodeStore.Intent.inviteCodeChanged
                 ),
-                isFailed: store.state.phase == .failed,
-                onTap: { store.send(.inviteCodeFieldTapped) }
+                isFailed: store.state.isFailed,
+                onTapWhileFailed: { store.send(.inviteCodeFieldTapped) }
             )
             .padding(.bottom, 12)
 
@@ -64,15 +66,13 @@ public struct InviteCodeView: View {
     // MARK: - 상단 안내
 
     private var title: some View {
-        // ponytail: 디자인 카피 확정 시 교체
-        Text("초대코드를 입력해주세요")
+        Text("초대코드를 입력해 주세요")
             .suit(.title02Bold)
             .foregroundStyle(.gray900)
     }
 
     private var description: some View {
-        // ponytail: 디자인 카피 확정 시 교체
-        Text("그룹장에게 받은 초대코드를 입력하면 그룹에 참여할 수 있어요")
+        Text("초대코드는 그룹원에게 직접 받을 수 있어요")
             .suit(.body02Regular)
             .foregroundStyle(.gray500)
     }
@@ -80,37 +80,43 @@ public struct InviteCodeView: View {
     // MARK: - 에러 메시지 (기본 hidden, 공간은 항상 예약해 레이아웃 밀림 방지)
 
     private var errorMessage: some View {
-        // ponytail: 에러 메시지 문구 확정 시 교체
-        Text("유효하지 않은 초대코드예요")
+        Text(errorMessageText)
             .suit(.caption01Regular)
             .foregroundStyle(.cherry600)
-            .opacity(store.state.phase == .failed ? 1 : 0)
+            .opacity(store.state.isFailed ? 1 : 0)
+    }
+
+    /// 실패 사유별 안내 문구. `nil`(비실패 상태)은 숨겨진 채 공간만 차지하므로 아무 문구나 무방.
+    private var errorMessageText: String {
+        switch store.state.joinError {
+        case .invalidInviteCode, nil: "유효하지 않은 초대코드예요"
+        case .groupFull: "이미 최대 인원이 모두 참여한 그룹이에요"
+        case .alreadyJoined: "이미 참여한 그룹이에요"
+        case .server(let message): message
+        case .unknown: "잠시 후 다시 시도해 주세요"
+        }
     }
 }
 
 #Preview("성공") {
     InviteCodeView(
-        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(shouldSucceed: true))
+        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: nil))
     )
 }
 
-#Preview("실패") {
+#Preview("실패 - 최대 인원") {
     InviteCodeView(
-        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(shouldSucceed: false))
+        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: .groupFull))
     )
 }
 
-/// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인.
+/// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인 (`joinError == nil` 이면 성공).
 private struct PreviewJoinGroupUseCase: JoinGroupUseCase {
-    let shouldSucceed: Bool
+    let joinError: JoinGroupError?
 
     func join(inviteCode: String) async throws {
-        if !shouldSucceed {
-            throw PreviewJoinGroupError.stub
+        if let joinError {
+            throw joinError
         }
     }
-}
-
-private enum PreviewJoinGroupError: Error {
-    case stub
 }
