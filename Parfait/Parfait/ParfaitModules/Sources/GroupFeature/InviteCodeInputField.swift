@@ -10,7 +10,7 @@ import UIComponent
 
 /// 초대코드 6칸 입력 UI.
 /// 숨은 단일 TextField 가 실제 입력을 받고, 6개 표시 셀은 그 문자열에서 파생 렌더링한다
-/// (자동 칸 이동·붙여넣기가 텍스트필드 기본 동작으로 해결됨).
+/// (자동 칸 이동이 텍스트필드 기본 동작으로 해결됨).
 struct InviteCodeInputField: View {
     @Binding var inviteCode: String
     let isFailed: Bool
@@ -37,7 +37,8 @@ struct InviteCodeInputField: View {
                 }
             }
 
-            // ponytail: 앱 전용 초대코드 포맷 확정 시 클립보드 자동 감지 추가 (현재는 시스템 붙여넣기로 충분)
+            // ponytail: 터치 차단으로 시스템 롱프레스 붙여넣기도 막힘 —
+            // 붙여넣기 필요해지면 클립보드 자동 감지 or 키보드 툴바 PasteButton 추가.
             // 허용 문자(대문자+숫자) 필터·대문자화는 Store 의 inviteCodeChanged 에서 처리.
             TextField("", text: $inviteCode)
                 .keyboardType(.asciiCapable)
@@ -47,20 +48,19 @@ struct InviteCodeInputField: View {
                 .foregroundStyle(.clear)
                 .tint(.clear)
                 .frame(width: fieldWidth, height: cellHeight)
-                .contentShape(Rectangle())
+                .allowsHitTesting(false)
 
-            // 에러 상태에서만 탭을 가로채 클리어+포커싱. 평범한 뷰의 onTapGesture라
-            // TextField 위 제스처보다 신뢰도가 높고, 정상 상태에서는 존재하지 않아
-            // 네이티브 탭/포커스/붙여넣기를 그대로 둔다.
-            if isFailed {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .frame(width: fieldWidth, height: cellHeight)
-                    .onTapGesture {
+            // 터치는 전부 이 레이어가 받고 포커스만 넘긴다 — TextField 에 터치가
+            // 닿지 않으므로 롱프레스/드래그해도 루페·선택 핸들·편집 메뉴가 뜨지 않는다.
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(width: fieldWidth, height: cellHeight)
+                .onTapGesture {
+                    if isFailed {
                         onTapWhileFailed()
-                        isFocused = true
                     }
-            }
+                    isFocused = true
+                }
         }
     }
 
