@@ -8,9 +8,13 @@
 import GroupDomain
 import SwiftUI
 import UIComponent
+import UIKit
 
 public struct InviteCodeView: View {
     @State private var store: InviteCodeStore
+    /// 클립보드 문자열 존재 여부만으로 노출 결정 — 내용 형식 검사는 시스템
+    /// 붙여넣기 허용 팝업을 띄우므로 하지 않고, 탭 이후 Store 가 검증한다.
+    @State private var isPasteButtonVisible = false
 
     public init(store: InviteCodeStore) {
         _store = State(initialValue: store)
@@ -39,6 +43,11 @@ public struct InviteCodeView: View {
                 )
 
                 errorMessage
+
+                if isPasteButtonVisible {
+                    pasteButton
+                        .frame(maxWidth: .infinity)
+                }
             }
             .frame(width: InviteCodeInputField.fieldWidth, alignment: .leading)
 
@@ -52,6 +61,9 @@ public struct InviteCodeView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 20)
+        .onAppear {
+            isPasteButtonVisible = UIPasteboard.general.hasStrings
+        }
         .onDisappear {
             store.send(.screenDisappeared)
         }
@@ -80,6 +92,19 @@ public struct InviteCodeView: View {
         Text("초대코드는 그룹원에게 직접 받을 수 있어요")
             .suit(.body02Regular)
             .foregroundStyle(.gray500)
+    }
+
+    // MARK: - 붙여넣기 (시스템 PasteButton — 탭 시점에만 클립보드 접근이 허용돼 팝업이 없다)
+
+    private var pasteButton: some View {
+        PasteButton(payloadType: String.self) { strings in
+            guard let pastedString = strings.first else { return }
+            Task { @MainActor in
+                store.send(.pasted(pastedString))
+                isPasteButtonVisible = false
+            }
+        }
+        .buttonBorderShape(.capsule)
     }
 
     // MARK: - 에러 메시지 (기본 hidden, 공간은 항상 예약해 레이아웃 밀림 방지)

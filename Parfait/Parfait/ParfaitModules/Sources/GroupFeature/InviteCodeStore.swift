@@ -11,7 +11,7 @@ import UIComponent
 
 @Observable @MainActor
 public final class InviteCodeStore: MVIStore {
-    public nonisolated static let inviteCodeLength = 6
+    nonisolated static let inviteCodeLength = 6
 
     public private(set) var state = State()
 
@@ -25,24 +25,17 @@ public final class InviteCodeStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .inviteCodeChanged(let inviteCode):
-            // 초대코드는 대문자 알파벳+숫자만 허용 — 소문자는 승격, 나머지(붙여넣기 포함)는 버린다.
             state.inviteCode = String(
-                inviteCode.uppercased()
-                    .filter { ("A"..."Z").contains($0) || ("0"..."9").contains($0) }
-                    .prefix(Self.inviteCodeLength)
+                Self.normalizedInviteCode(from: inviteCode).prefix(Self.inviteCodeLength)
             )
         case .inviteCodeFieldTapped:
             guard state.isFailed else { return }
             state.inviteCode = ""
             state.phase = .idle
+        case .pasted(let pastedString):
+            applyPastedString(pastedString)
         case .confirmTapped:
-            guard joinTask == nil, state.inviteCode.count == Self.inviteCodeLength else { return }
-            let inviteCode = state.inviteCode
-            state.phase = .loading
-            joinTask = Task {
-                await requestJoin(inviteCode: inviteCode)
-                joinTask = nil
-            }
+            beginJoinRequest()
         case .joinSucceeded:
             state.phase = .idle
             state.isSuccessAlertPresented = true
@@ -57,6 +50,40 @@ public final class InviteCodeStore: MVIStore {
                 state.phase = .idle
             }
         }
+    }
+
+    /// 6자 입력 완료 상태에서만 참여 요청을 시작한다. 진행 중이면 중복 실행하지 않는다.
+    private func beginJoinRequest() {
+        guard joinTask == nil, state.inviteCode.count == Self.inviteCodeLength else { return }
+        let inviteCode = state.inviteCode
+        state.phase = .loading
+        joinTask = Task {
+            await requestJoin(inviteCode: inviteCode)
+            joinTask = nil
+        }
+    }
+
+    /// 붙여넣은 문자열이 공유 형식이면 초대코드를 채운다 — 실패 상태였다면 함께 해제.
+    private func applyPastedString(_ pastedString: String) {
+        guard let inviteCode = Self.inviteCode(fromPastedString: pastedString) else { return }
+        state.inviteCode = inviteCode
+        if state.isFailed {
+            state.phase = .idle
+        }
+    }
+
+    /// 초대코드로 허용되는 문자만 남긴다 — 소문자는 대문자로 승격, 나머지(붙여넣기 포함)는 버린다.
+    private static func normalizedInviteCode(from rawString: some StringProtocol) -> String {
+        rawString.uppercased().filter { ("A"..."Z").contains($0) || ("0"..."9").contains($0) }
+    }
+
+    /// 클립보드 공유 형식 "parfait <코드>" 문자열에서 초대코드를 추출한다. 형식이 아니면 nil.
+    /// prefix 뒤 구분 문자(공백·괄호 등)는 무엇이든 허용하고, 남은 영숫자가 정확히 6자일 때만 인정.
+    private static func inviteCode(fromPastedString pastedString: String) -> String? {
+        let trimmed = pastedString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.lowercased().hasPrefix("parfait") else { return nil }
+        let code = normalizedInviteCode(from: trimmed.dropFirst("parfait".count))
+        return code.count == inviteCodeLength ? code : nil
     }
 
     /// 서버 요청 후 결과를 다시 `send` 로 되돌려 상태 변이가 `send` 내부에서만 일어나도록 한다.
@@ -99,6 +126,8 @@ public final class InviteCodeStore: MVIStore {
     public enum Intent {
         case inviteCodeChanged(String)
         case inviteCodeFieldTapped
+        /// 클립보드 붙여넣기 버튼으로 받은 원본 문자열 — 형식 검증·추출은 Store 가 한다.
+        case pasted(String)
         case confirmTapped
         /// `requestJoin()` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.
         case joinSucceeded
