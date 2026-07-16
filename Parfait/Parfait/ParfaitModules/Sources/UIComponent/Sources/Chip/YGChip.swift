@@ -55,7 +55,6 @@ public struct YGChip: View {
         Text(title)
             .suit(.body02Regular)
             .lineLimit(1)
-            .foregroundStyle(.gray950)
     }
 
     private var iconView: some View {
@@ -63,7 +62,6 @@ public struct YGChip: View {
             .renderingMode(.template)
             .resizable()
             .frame(width: 16, height: 16)
-            .foregroundStyle(.gray950)
     }
 }
 
@@ -72,6 +70,7 @@ private struct YGChipStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .foregroundStyle(foreground(isPressed: configuration.isPressed))
             .padding(.vertical, .padding2)
             .padding(.leading, leadingPadding)
             .padding(.trailing, trailingPadding)
@@ -105,6 +104,17 @@ private struct YGChipStyle: ButtonStyle {
 
     private func showsBorder(isPressed: Bool) -> Bool {
         placement == .leading && isPressed
+    }
+
+    /// leading(Left): default gray600 → pressed gray700 (Figma Button-Chip-Left)
+    /// trailing(Right): gray950 유지 (Button-Chip-Right 스펙 미확인)
+    private func foreground(isPressed: Bool) -> Color {
+        switch placement {
+        case .leading:
+            return isPressed ? .gray700 : .gray600
+        case .trailing:
+            return .gray950
+        }
     }
 }
 
