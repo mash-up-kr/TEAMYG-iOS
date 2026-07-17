@@ -77,7 +77,6 @@ public struct YGInviteCard: View {
                 Text("복사")
                     .suit(.body02SemiBold)
                 Image.icCopy
-                    .renderingMode(.template)
                     .resizable()
                     .frame(width: 24, height: 24)
             }
