@@ -11,6 +11,7 @@ import UIComponent
 import UIKit
 
 public struct InviteCodeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var store: InviteCodeStore
     /// 클립보드 문자열 존재 여부만으로 노출 결정 — 내용 형식 검사는 시스템
     /// 붙여넣기 허용 팝업을 띄우므로 하지 않고, 탭 이후 Store 가 검증한다.
@@ -61,8 +62,11 @@ public struct InviteCodeView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 20)
-        .onAppear {
-            isPasteButtonVisible = UIPasteboard.general.hasStrings
+        // 진입 시(initial) + 코드 복사를 위해 앱을 나갔다 돌아왔을 때 클립보드 확인
+        .onChange(of: scenePhase, initial: true) { _, newPhase in
+            if newPhase == .active {
+                isPasteButtonVisible = UIPasteboard.general.hasStrings
+            }
         }
         .onDisappear {
             store.send(.screenDisappeared)
