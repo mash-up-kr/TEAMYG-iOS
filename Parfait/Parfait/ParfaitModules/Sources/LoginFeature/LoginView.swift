@@ -30,6 +30,15 @@ public struct LoginView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 2)
         }
+        .task {
+            // 로그인 성공 이벤트 → 약관 동의 화면으로 이동.
+            for await event in store.events {
+                switch event {
+                case .authenticated:
+                    router.push(.terms)
+                }
+            }
+        }
     }
 
     // MARK: - 인디케이터

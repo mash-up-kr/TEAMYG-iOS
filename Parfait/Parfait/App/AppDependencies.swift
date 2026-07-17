@@ -25,5 +25,8 @@ struct AppDependencies {
         InviteCodeStore(
             joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
         )
+      
+    func makeTermsStore() -> TermsStore {
+        TermsStore()
     }
 }
