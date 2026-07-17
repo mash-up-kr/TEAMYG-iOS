@@ -10,7 +10,7 @@ import UIComponent
 
 /// YGNametagChip 데모.
 /// 닉네임을 바꿔가며 12개 타입 × medium/large 와 오버플로(+N) 변형을 확인한다.
-/// 각 행 오른쪽의 색 견본은 토스트 닉네임·Grouptag Timestamp 에 매핑되는 강조색(accentColor).
+/// 각 행 오른쪽의 색 견본은 토스트 닉네임에 매핑되는 강조색(toastNicknameColor).
 struct YGNametagChipDemoView: View {
     @State private var nickname = "김남수"
 
@@ -29,7 +29,7 @@ struct YGNametagChipDemoView: View {
                             YGNametagChip(nickname: nickname, type: type, size: .medium)
                             YGNametagChip(nickname: nickname, type: type, size: .large)
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(type.accentColor)
+                                .fill(type.toastNicknameColor)
                                 .stroke(.gray200, lineWidth: 0.5)
                                 .frame(width: 24, height: 24)
                         }

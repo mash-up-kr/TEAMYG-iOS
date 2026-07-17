@@ -31,13 +31,15 @@ public struct YGNametagChip: View {
         case type11
         case type12
 
-        /// 유저 강조색 — 토스트 알림 닉네임 · `YGGrouptagChip` Timestamp 에 강제 매핑되는 색.
-        public var accentColor: Color {
+        /// 토스트 알림 닉네임 텍스트에 강제 매핑되는 강조색 (정책 문서 기준).
+        /// `YGGrouptagChip` 의 Timestamp 는 이보다 한 단계 낮은 색을 쓴다 (디자이너 확정) —
+        /// 해당 매핑은 `YGGrouptagChip` 내부에 있다.
+        public var toastNicknameColor: Color {
             switch self {
-            case .type1, .type2: return .cherry100
-            case .type3, .type4: return .cherry200
-            case .type5, .type6: return .cherry300
-            case .type7, .type8: return .gray200
+            case .type1, .type2: return .cherry200
+            case .type3, .type4: return .cherry300
+            case .type5, .type6: return .cherry400
+            case .type7, .type8: return .whiteFixed
             case .type9, .type10: return .melon500
             case .type11, .type12: return .pudding500
             }
