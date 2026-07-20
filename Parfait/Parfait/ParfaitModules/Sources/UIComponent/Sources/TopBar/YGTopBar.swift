@@ -9,6 +9,7 @@ import SwiftUI
 
 /// 파르페 공용 상단 바.
 /// 상태(Status)에 따라 좌측 버튼(사이드메뉴/뒤로가기)·중앙 콘텐츠(로고/타이틀)·우측 액션(새 그룹)이 결정된다.
+/// 적용 시 시스템 내비게이션 바를 숨기고, 끊긴 스와이프 백 제스처를 복원한다.
 public struct YGTopBar: View {
     public enum Status {
         /// 사이드메뉴 + 로고
@@ -22,16 +23,19 @@ public struct YGTopBar: View {
     }
 
     private let status: Status
-    private let onLeadingTap: () -> Void
+    private let onLeadingTap: (() -> Void)?
     private let onNewGroupTap: (() -> Void)?
+
+    @Environment(\.dismiss) private var dismiss
 
     /// - Parameters:
     ///   - status: 바 구성 상태.
     ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail` 은 뒤로가기.
+    ///     생략하면 뒤로가기(`dismiss`)가 기본 동작.
     ///   - onNewGroupTap: 새 그룹 버튼 탭. `default` 에서만 노출된다.
     public init(
         _ status: Status,
-        onLeadingTap: @escaping () -> Void,
+        onLeadingTap: (() -> Void)? = nil,
         onNewGroupTap: (() -> Void)? = nil
     ) {
         self.status = status
@@ -55,6 +59,8 @@ public struct YGTopBar: View {
         .padding(.vertical, .padding3)   // 상하 8
         .padding(.leading, .padding3)    // 좌 8
         .padding(.trailing, .padding7)   // 우 20
+        .toolbar(.hidden, for: .navigationBar)
+        .background(SwipeBackGestureRestorer())
         // 바의 위치를 상위로 알린다 → `.ygAlert` 가 선언 순서와 무관하게 바 아래에서 알림을 내리는 데 사용.
         .anchorPreference(key: YGTopBarBoundsPreferenceKey.self, value: .bounds) { $0 }
     }
@@ -75,7 +81,7 @@ public struct YGTopBar: View {
     }
 
     private var leadingButton: some View {
-        YGIconButton(leadingIcon, size: .small, action: onLeadingTap)
+        YGIconButton(leadingIcon, size: .small, action: onLeadingTap ?? { dismiss() })
     }
 
     private var leadingIcon: Image {
@@ -121,10 +127,11 @@ public extension View {
     /// - Parameters:
     ///   - status: 바 구성 상태.
     ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail` 은 뒤로가기.
+    ///     생략하면 뒤로가기(`dismiss`)가 기본 동작.
     ///   - onNewGroupTap: 새 그룹 버튼 탭. `default` 에서만 노출된다.
     func ygTopBar(
         _ status: YGTopBar.Status,
-        onLeadingTap: @escaping () -> Void,
+        onLeadingTap: (() -> Void)? = nil,
         onNewGroupTap: (() -> Void)? = nil
     ) -> some View {
         VStack(spacing: 0) {
@@ -132,6 +139,28 @@ public extension View {
             self
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+/// 시스템 내비게이션 바를 숨기면 `interactivePopGestureRecognizer` 의 delegate 가 동작을 막아
+/// 스와이프 백이 끊긴다. 화면에 나타날 때마다 delegate 를 재지정해 제스처를 복원한다.
+private struct SwipeBackGestureRestorer: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> RestorerViewController {
+        RestorerViewController()
+    }
+
+    func updateUIViewController(_ viewController: RestorerViewController, context: Context) {}
+
+    final class RestorerViewController: UIViewController, UIGestureRecognizerDelegate {
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            navigationController?.interactivePopGestureRecognizer?.delegate = self
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            // 루트 화면에서 제스처가 시작되면 내비게이션이 멈추는 문제 방지
+            (navigationController?.viewControllers.count ?? 0) > 1
+        }
     }
 }
 

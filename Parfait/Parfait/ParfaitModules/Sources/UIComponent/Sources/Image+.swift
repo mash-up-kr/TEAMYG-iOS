@@ -3,15 +3,17 @@ import SwiftUI
 import UIKit
 
 public extension Image {
+    static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
+    static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
     static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
     static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
     static let icCamera = Image("Ic_Camera", bundle: .module)
     static let icCaretLeft = Image("Ic_Caret_Left", bundle: .module)
     static let icCaretRight = Image("Ic_Caret_Right", bundle: .module)
-    static let icCheckRound = Image("Ic_Check_Round", bundle: .module)
     static let icCheck = Image("Ic_Check", bundle: .module)
-    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
+    static let icCheckRound = Image("Ic_Check_Round", bundle: .module)
     static let icClose = Image("Ic_Close", bundle: .module)
+    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
     static let icCopy = Image("Ic_Copy", bundle: .module)
     static let icEnter = Image("Ic_Enter", bundle: .module)
     static let icGallery = Image("Ic_Gallery", bundle: .module)
@@ -23,20 +25,20 @@ public extension Image {
     static let icSocialApple = Image("Ic_Social_Apple", bundle: .module)
     static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
     static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
-    static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
-    static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
 }
 
 public extension UIImage {
+    static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
+    static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
     static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
     static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
     static var icCamera: UIImage { UIImage(resource: ImageResource(name: "Ic_Camera", bundle: .module)) }
     static var icCaretLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Left", bundle: .module)) }
     static var icCaretRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Right", bundle: .module)) }
-    static var icCheckRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Check_Round", bundle: .module)) }
     static var icCheck: UIImage { UIImage(resource: ImageResource(name: "Ic_Check", bundle: .module)) }
-    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
+    static var icCheckRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Check_Round", bundle: .module)) }
     static var icClose: UIImage { UIImage(resource: ImageResource(name: "Ic_Close", bundle: .module)) }
+    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
     static var icCopy: UIImage { UIImage(resource: ImageResource(name: "Ic_Copy", bundle: .module)) }
     static var icEnter: UIImage { UIImage(resource: ImageResource(name: "Ic_Enter", bundle: .module)) }
     static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
@@ -48,6 +50,4 @@ public extension UIImage {
     static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Apple", bundle: .module)) }
     static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }
     static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }
-    static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
-    static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
 }

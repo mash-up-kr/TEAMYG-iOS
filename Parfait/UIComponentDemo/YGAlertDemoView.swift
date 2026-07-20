@@ -21,8 +21,6 @@ struct YGAlertDemoView: View {
         var hasAction: Bool
     }
 
-    @Environment(\.dismiss) private var dismiss
-
     @State private var presentedAlert: AlertConfiguration?
     @State private var actionTapCount = 0
 
@@ -55,7 +53,7 @@ struct YGAlertDemoView: View {
                     .foregroundStyle(.gray400)
             }
         }
-        .ygTopBar(.detail(title: "YGAlert"), onLeadingTap: { dismiss() })
+        .ygTopBar(.detail(title: "YGAlert")) // 내비바 숨김·뒤로가기(dismiss)는 YGTopBar 기본 동작
         .ygAlert(item: $presentedAlert) { configuration in
             YGAlert(
                 title: configuration.title,
@@ -64,7 +62,6 @@ struct YGAlertDemoView: View {
                 action: configuration.hasAction ? .init("보기") { actionTapCount += 1 } : nil
             )
         }
-        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
     private func present(_ newConfiguration: AlertConfiguration) {
