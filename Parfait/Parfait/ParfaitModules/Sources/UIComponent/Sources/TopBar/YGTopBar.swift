@@ -61,6 +61,8 @@ public struct YGTopBar: View {
         .padding(.trailing, .padding7)   // 우 20
         .toolbar(.hidden, for: .navigationBar)
         .background(SwipeBackGestureRestorer())
+        // 바의 위치를 상위로 알린다 → `.ygAlert` 가 선언 순서와 무관하게 바 아래에서 알림을 내리는 데 사용.
+        .anchorPreference(key: YGTopBarBoundsPreferenceKey.self, value: .bounds) { $0 }
     }
 
     @ViewBuilder
@@ -100,6 +102,16 @@ public struct YGTopBar: View {
     private var isDefault: Bool {
         if case .default = status { return true }
         return false
+    }
+}
+
+/// `YGTopBar` 의 bounds 를 상위 뷰로 전달하는 프리퍼런스.
+/// `.ygAlert` 가 같은 화면 계층의 바를 찾아 그 아래에서 알림을 내리는 데 쓴다.
+struct YGTopBarBoundsPreferenceKey: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = nextValue() ?? value
     }
 }
 
