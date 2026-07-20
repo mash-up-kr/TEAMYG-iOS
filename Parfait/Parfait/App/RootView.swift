@@ -17,8 +17,8 @@ struct RootView: View {
             LoginView(router: router, store: diContainer.makeLoginStore())
                 .navigationDestination(for: AppRoute.self) { route in
                     switch route {
+                    case .group:  GroupView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
                     case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())
-                    case .group:  GroupView()
                     case .canvas: CanvasView()
                     }
                 }
