@@ -55,6 +55,7 @@ struct InviteCodeInputField: View {
                 .tint(.clear)
                 .frame(width: Self.fieldWidth, height: Self.cellHeight)
                 .allowsHitTesting(false)
+                .onAppear { isFocused = true }
 
             // 터치는 전부 이 레이어가 받고 포커스만 넘긴다 — TextField 에 터치가
             // 닿지 않으므로 롱프레스/드래그해도 루페·선택 핸들·편집 메뉴가 뜨지 않는다.
