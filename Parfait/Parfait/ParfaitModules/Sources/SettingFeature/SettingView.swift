@@ -70,6 +70,7 @@ public struct SettingView: View {
                 Spacer(minLength: 0)
                 Image.icCaretRight
                     .frame(width: 44, height: 44)
+                    .foregroundStyle(.gray300)
             }
             .padding(.horizontal, .padding7)
             .frame(height: 52)
