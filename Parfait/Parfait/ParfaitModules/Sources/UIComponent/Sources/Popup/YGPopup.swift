@@ -70,7 +70,7 @@ public struct YGPopup: View {
         .padding(.top, .padding5)
         .padding(.bottom, .padding6)
         .frame(width: 312, height: 215)
-        .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))
+        .background(.whiteFixed)
     }
 }
 
