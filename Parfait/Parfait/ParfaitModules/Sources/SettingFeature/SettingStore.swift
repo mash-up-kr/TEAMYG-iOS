@@ -20,8 +20,6 @@ public final class SettingStore: MVIStore {
 
     public func send(_ intent: Intent) {
         switch intent {
-        case .accountInfoTapped:
-            break // TODO: 계정 정보 화면 라우팅 (AppRoute 케이스 필요 — Routing 수정은 팀 컨펌)
         case .termsOfServiceTapped:
             break // TODO: 서비스 이용약관 화면 라우팅
         case .privacyPolicyTapped:
@@ -47,7 +45,6 @@ public final class SettingStore: MVIStore {
     }
 
     public enum Intent {
-        case accountInfoTapped
         case termsOfServiceTapped
         case privacyPolicyTapped
     }

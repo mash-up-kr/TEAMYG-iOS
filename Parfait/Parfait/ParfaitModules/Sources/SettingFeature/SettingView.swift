@@ -23,6 +23,14 @@ public struct SettingView: View {
         }
         .ygTopBar(.detail(title: "설정"))
         .background(.whiteFixed)
+        .navigationDestination(for: SettingRoute.self) { route in
+            switch route {
+            case .accountInfo:
+                AccountInfoView(
+                    store: AccountInfoStore(state: .init(nickname: store.state.nickname))
+                )
+            }
+        }
     }
 
     // MARK: - 내 프로필 카드
@@ -53,7 +61,10 @@ public struct SettingView: View {
 
     private var settingList: some View {
         VStack(spacing: .gap3) {
-            navigationRow("계정 정보") { store.send(.accountInfoTapped) }
+            NavigationLink(value: SettingRoute.accountInfo) {
+                navigationRowLabel("계정 정보")
+            }
+            .buttonStyle(.plain)
             navigationRow("서비스 이용약관") { store.send(.termsOfServiceTapped) }
             navigationRow("개인정보 처리 방침") { store.send(.privacyPolicyTapped) }
             versionRow
@@ -65,17 +76,22 @@ public struct SettingView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: .gap2) {
-                rowTitle(title)
-                Spacer(minLength: 0)
-                Image.icCaretRight
-                    .frame(width: 44, height: 44)
-                    .foregroundStyle(.gray300)
-            }
-            .padding(.horizontal, .padding7)
-            .frame(height: 52)
+            navigationRowLabel(title)
         }
         .buttonStyle(.plain)
+    }
+
+    private func navigationRowLabel(_ title: String) -> some View {
+        HStack(spacing: .gap2) {
+            rowTitle(title)
+            Spacer(minLength: 0)
+            Image.icCaretRight
+                .frame(width: 44, height: 44)
+                .foregroundStyle(.gray300)
+        }
+        .padding(.horizontal, .padding7)
+        .frame(height: 52)
+        .contentShape(.rect)
     }
 
     private var versionRow: some View {
@@ -98,13 +114,15 @@ public struct SettingView: View {
 }
 
 #Preview {
-    SettingView(
-        store: SettingStore(
-            state: .init(
-                nickname: "아니야나그런데기니야",
-                loginProvider: "Kakao",
-                appVersion: "1.0v"
+    NavigationStack {
+        SettingView(
+            store: SettingStore(
+                state: .init(
+                    nickname: "아니야나그런데기니야",
+                    loginProvider: "Kakao",
+                    appVersion: "1.0v"
+                )
             )
         )
-    )
+    }
 }
