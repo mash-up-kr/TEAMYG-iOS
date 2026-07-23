@@ -9,7 +9,7 @@ import SwiftUI
 
 public struct YGButton: View {
     public enum Variant {
-        /// 높이 48 · 가로 유동(가용 폭 채움) · 좌우 패딩 20 · capsule 배경
+        /// 높이 48 · 가로 유동(가용 폭 채움) · 좌우 패딩 20 · 사각 배경
         case large
         /// 136×48 고정
         case mediumPrimary
@@ -52,14 +52,16 @@ private struct YGButtonStyle: ButtonStyle {
             .frame(width: variant == .large ? nil : 136, height: 48)
             .background(
                 backgroundColor(isPressed: configuration.isPressed),
-                in: .rect(cornerRadius: cornerRadius)
+                in: .rect
             )
+            .overlay {
+                if variant != .large {
+                    Rectangle()
+                        .strokeBorder(isEnabled ? Color.gray500 : .gray300, lineWidth: 1)
+                }
+            }
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-
-    private var cornerRadius: CGFloat {
-        variant == .large ? Radius.large : 0
     }
 
     private var textColor: Color {
