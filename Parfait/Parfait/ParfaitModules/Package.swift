@@ -25,6 +25,7 @@ let modules: [(name: String, dependencies: [String], resources: Bool)] = [
     ("LoginFeature", ["AuthDomain", "Core", "UIComponent", "Routing", "Common"], false),
     ("GroupFeature", ["GroupDomain", "Core", "UIComponent", "Routing", "Common"], false),
     ("CanvasFeature", ["CanvasDomain", "Core", "UIComponent", "Routing", "Common"], false),
+    ("SettingFeature", ["Core", "UIComponent", "Routing", "Common"], false),
 ]
 
 // MARK: 외부 의존성 정의

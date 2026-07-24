@@ -12,6 +12,7 @@ import GroupData
 import GroupDomain
 import GroupFeature
 import LoginFeature
+import SettingFeature
 
 /// 앱 시작 시 1회 조립하는 의존성 그래프. 싱글톤 아님 — 앱 루트가 소유.
 struct AppDependencies {
@@ -26,8 +27,12 @@ struct AppDependencies {
             joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
         )
     }
-    
+
     func makeTermsStore() -> TermsStore {
         TermsStore()
+    }
+
+    func makeSettingStore() -> SettingStore {
+        SettingStore(state: .init(nickname: "닉네임", loginProvider: "소셜로그인", appVersion: "1.0v"))
     }
 }
