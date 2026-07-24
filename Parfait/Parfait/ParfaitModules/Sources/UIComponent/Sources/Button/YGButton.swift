@@ -55,7 +55,7 @@ private struct YGButtonStyle: ButtonStyle {
                 in: .rect
             )
             .overlay {
-                if variant != .large {
+                if variant == .mediumSecondary {
                     Rectangle()
                         .strokeBorder(isEnabled ? Color.gray500 : .gray300, lineWidth: 1)
                 }
