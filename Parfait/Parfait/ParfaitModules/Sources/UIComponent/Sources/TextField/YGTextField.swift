@@ -45,6 +45,7 @@ public struct YGTextField: View {
                         Text("\(text.count)/\(maxLength)")
                             .suit(errorMessage != nil ? .body02SemiBold : .body02Regular)
                             .foregroundStyle(errorMessage != nil ? .cherry600 : .gray400)
+                            .padding(.trailing, showsClearButton ? 0 : 16)
                     }
                     
                     if showsClearButton {
@@ -57,12 +58,9 @@ public struct YGTextField: View {
             .padding(.leading, 16)
             .padding(.trailing, 4)
             .frame(height: 48)
-            .background(
-                .whiteFixed.opacity(0.75),
-                in: RoundedRectangle(cornerRadius: Radius.small)
-            )
+            .background(.whiteFixed)
             .overlay {
-                RoundedRectangle(cornerRadius: Radius.small)
+                Rectangle()
                     .strokeBorder(borderColor, lineWidth: 1)
             }
             .onChange(of: text) { _, newValue in

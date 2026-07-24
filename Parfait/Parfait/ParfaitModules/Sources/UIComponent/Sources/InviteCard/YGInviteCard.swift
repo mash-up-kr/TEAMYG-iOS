@@ -43,18 +43,15 @@ public struct YGInviteCard: View {
                     .suit(.body01SemiBold)
                     .foregroundStyle(isActive ? .gray900 : .gray500)
                     .frame(width: 218, height: 42)
-                    .background(
-                        isActive ? Color.cherry100 : .gray200,
-                        in: .rect(cornerRadius: Radius.small)
-                    )
+                    .background(isActive ? Color.cherry100 : .gray200)
                 copyButton
             }
         }
         .padding(.padding6)
         .frame(width: 335)
-        .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))
+        .background(.whiteFixed)
         .overlay(
-            RoundedRectangle(cornerRadius: Radius.medium1)
+            Rectangle()
                 .strokeBorder(isActive ? Color.cherry100 : .gray100, lineWidth: 1)
         )
         .onDisappear { revertTask?.cancel() }
@@ -106,8 +103,7 @@ private struct CopyButtonStyle: ButtonStyle {
             .foregroundStyle(isEnabled ? .whiteFixed : .gray500)
             .frame(width: 73, height: 42)
             .background(
-                backgroundColor(isPressed: configuration.isPressed),
-                in: .rect(cornerRadius: Radius.small)
+                backgroundColor(isPressed: configuration.isPressed)
             )
     }
 
