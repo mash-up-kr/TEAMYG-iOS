@@ -24,6 +24,10 @@ public final class SettingStore: MVIStore {
             break // TODO: 서비스 이용약관 화면 라우팅
         case .privacyPolicyTapped:
             break // TODO: 개인정보 처리 방침 화면 라우팅
+        case .logoutTapped:
+            break // TODO: 로그아웃 UseCase 연결
+        case .withdrawTapped:
+            break // TODO: 서비스 탈퇴 UseCase 연결
         }
     }
 
@@ -47,5 +51,7 @@ public final class SettingStore: MVIStore {
     public enum Intent {
         case termsOfServiceTapped
         case privacyPolicyTapped
+        case logoutTapped
+        case withdrawTapped
     }
 }

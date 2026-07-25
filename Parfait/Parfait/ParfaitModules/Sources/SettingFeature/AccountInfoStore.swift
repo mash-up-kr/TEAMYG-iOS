@@ -23,10 +23,6 @@ public final class AccountInfoStore: MVIStore {
         switch intent {
         case .nicknameChanged(let nickname):
             state.nickname = nickname
-        case .logoutTapped:
-            break // TODO: 로그아웃 UseCase 연결
-        case .withdrawTapped:
-            break // TODO: 서비스 탈퇴 UseCase 연결
         }
     }
 
@@ -45,7 +41,5 @@ public final class AccountInfoStore: MVIStore {
 
     public enum Intent {
         case nicknameChanged(String)
-        case logoutTapped
-        case withdrawTapped
     }
 }

@@ -20,6 +20,8 @@ public struct SettingView: View {
             profileCard
                 .padding(.horizontal, .padding7)
             settingList
+            dangerZone
+                .padding(.horizontal, .padding7)
         }
         .ygTopBar(.detail(title: "설정"))
         .background(.whiteFixed)
@@ -110,6 +112,37 @@ public struct SettingView: View {
         Text(title)
             .suit(.body02Regular)
             .foregroundStyle(.gray800)
+    }
+
+    // MARK: - 위험 액션 (로그아웃·서비스 탈퇴)
+
+    private var dangerZone: some View {
+        VStack(spacing: 0) {
+            YGActionItem("로그아웃") { store.send(.logoutTapped) }
+            DashedHorizontalLine()
+                .stroke(Color.gray100, style: dashedStrokeStyle)
+                .frame(height: 1)
+            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
+        }
+        .padding(.vertical, .padding2)
+        .overlay {
+            Rectangle()
+                .strokeBorder(Color.gray100, style: dashedStrokeStyle)
+        }
+    }
+
+    private var dashedStrokeStyle: StrokeStyle {
+        StrokeStyle(lineWidth: 1, dash: [4, 4])
+    }
+}
+
+/// 점선 가로줄. `Divider` 는 dash 를 지원하지 않아 직접 그린다.
+private struct DashedHorizontalLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        }
     }
 }
 
