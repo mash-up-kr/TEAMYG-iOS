@@ -11,6 +11,8 @@ import UIComponent
 
 public struct AccountInfoView: View {
     @State private var store: AccountInfoStore
+    @FocusState private var isNicknameFocused: Bool
+    @Environment(\.dismiss) private var dismiss
 
     public init(store: AccountInfoStore) {
         _store = State(initialValue: store)
@@ -24,9 +26,29 @@ public struct AccountInfoView: View {
             maxLength: NicknameValidator.maxLength,
             errorMessage: store.state.nicknameErrorMessage
         )
+        .focused($isNicknameFocused)
+        .submitLabel(.done)
+        .onSubmit { store.send(.confirmTapped) }
         .padding(.horizontal, .padding7)
         .ygTopBar(.detail(title: "계정 정보"))
         .background(.whiteFixed)
+        .safeAreaInset(edge: .bottom) {
+            // 닉네임 편집 중에만 키보드 위로 노출
+            if isNicknameFocused {
+                YGButton("확인", variant: .large) { store.send(.confirmTapped) }
+                    .disabled(store.state.nicknameErrorMessage != nil)
+                    .padding(.horizontal, .padding7)
+                    .padding(.vertical, .padding7)
+            }
+        }
+        .task {
+            for await event in store.events {
+                switch event {
+                case .nicknameSaved:
+                    dismiss()
+                }
+            }
+        }
     }
 }
 
