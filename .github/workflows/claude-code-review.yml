@@ -38,6 +38,13 @@ jobs:
           sparse-checkout-cone-mode: true
           fetch-depth: 1
 
+      # cone 모드는 wiki/ 뿐 아니라 repo 루트 파일까지 함께 받는다. 그중 CLAUDE.md 두 개에는
+      # "코드 작업 대상 = TJYG-Android", "작업 완료 시 wiki/index.md·log.md 를 갱신하라" 같은
+      # 이 리뷰와 무관한 에이전트 지시가 들어 있다. 중첩 CLAUDE.md 자동 로드로 리뷰 지침이
+      # 오염되지 않도록 제거한다. (.llm-wiki 는 CI 임시 체크아웃이라 삭제해도 무방)
+      - name: Strip wiki agent instructions
+        run: rm -f .llm-wiki/CLAUDE.md .llm-wiki/wiki/CLAUDE.md
+
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@v1
         with:
@@ -130,6 +137,13 @@ jobs:
             - 위키에서 실제로 읽지 않은 수치를 기억으로 지어내지 마라.
             - 코드와 위키가 다른데 PR 제목·본문이 정책 변경을 명시하면 지적하지 마라(의도된 변경).
             - 정책 코멘트는 PR당 최대 5개. 넘으면 영향 큰 것부터 자르고 판정에 "외 N건" 표기.
+            - `.llm-wiki/` 안에서 근거로 삼을 수 있는 것은 `wiki/sources/` 와 `wiki/concepts/` 뿐이다.
+              `log.md`·`README.md`·`llm-wiki.md`·`parfait/` 링크는 열지 마라(구현 로그·타 플랫폼 문서).
+            - **Android 구현을 iOS 코드의 근거로 삼지 마라.** 위키에 `TJYG-Android`·`YGColorChipType`·
+              Compose/ktlint 등 AOS 구현이 출처로 인용된 대목은 iOS PR 지적의 근거가 될 수 없다.
+              컴포넌트 이름(`YGListItem`·`YGTextField` 등)이 겹쳐도 AOS 구현 세부는 정책이 아니다.
+            - `synthesis/open-questions.md` 에서 **상태가 `미해결`인 항목은 정책 근거로 쓰지 마라.**
+              해당 지점은 지적 대신 ❓ 로 "정책 미확정(open-question)" 사실만 알려라.
 
             ## 코멘트 작성 규칙
             - 사람이 아니라 코드를 비판하라. ("이 동시성 모델은 성능 이득 없이 복잡도만 늘린다" O / "왜 스레드를 쓰셨나요" X)
