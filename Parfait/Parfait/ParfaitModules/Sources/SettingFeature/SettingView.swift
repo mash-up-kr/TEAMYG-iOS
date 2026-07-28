@@ -25,6 +25,17 @@ public struct SettingView: View {
         }
         .ygTopBar(.detail(title: "설정"))
         .background(.whiteFixed)
+        .ygPopup(
+            isPresented: store.binding(
+                \.isWithdrawPopupPresented,
+                SettingStore.Intent.withdrawPopupVisibilityChanged
+            ),
+            title: "파르페에서 탈퇴하시겠어요?",
+            description: "지금까지 올린 사진은 익명으로 표시되며,\n삭제되지 않아요.",
+            secondaryTitle: "탈퇴하기",
+            primaryTitle: "그만두기",
+            secondaryAction: { store.send(.withdrawConfirmed) }
+        )
         .navigationDestination(for: SettingRoute.self) { route in
             switch route {
             case .accountInfo:

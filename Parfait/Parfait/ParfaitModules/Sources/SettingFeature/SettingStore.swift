@@ -27,7 +27,11 @@ public final class SettingStore: MVIStore {
         case .logoutTapped:
             break // TODO: 로그아웃 UseCase 연결
         case .withdrawTapped:
-            break // TODO: 서비스 탈퇴 UseCase 연결
+            state.isWithdrawPopupPresented = true
+        case .withdrawPopupVisibilityChanged(let isPresented):
+            state.isWithdrawPopupPresented = isPresented
+        case .withdrawConfirmed:
+            print("서비스 탈퇴 확인") // TODO: 서비스 탈퇴 UseCase 연결
         }
     }
 
@@ -36,15 +40,18 @@ public final class SettingStore: MVIStore {
         public var loginProvider: String
         /// 표시용 문자열 그대로 (예: "1.0v")
         public var appVersion: String
+        public var isWithdrawPopupPresented: Bool
 
         public init(
             nickname: String = "",
             loginProvider: String = "",
-            appVersion: String = ""
+            appVersion: String = "",
+            isWithdrawPopupPresented: Bool = false
         ) {
             self.nickname = nickname
             self.loginProvider = loginProvider
             self.appVersion = appVersion
+            self.isWithdrawPopupPresented = isWithdrawPopupPresented
         }
     }
 
@@ -53,5 +60,7 @@ public final class SettingStore: MVIStore {
         case privacyPolicyTapped
         case logoutTapped
         case withdrawTapped
+        case withdrawPopupVisibilityChanged(Bool)
+        case withdrawConfirmed
     }
 }
