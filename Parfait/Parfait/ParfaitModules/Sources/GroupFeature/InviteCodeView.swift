@@ -82,6 +82,7 @@ public struct InviteCodeView: View {
         } message: {
             Text("초대코드로 그룹에 참여했어요")
         }
+        .ygTopBar(.detail(title: "그룹 참여하기"))
     }
 
     // MARK: - 상단 안내

@@ -46,6 +46,7 @@ public struct TermsView: View {
             .padding(.bottom, 2)
         }
         .padding(.horizontal, 20)
+        .ygTopBar(.back)
     }
 
     /// 다음 화면으로 이동. 목적지 미정 — 확정되면 채운다.
