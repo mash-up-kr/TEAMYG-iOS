@@ -20,9 +20,34 @@ public struct SettingView: View {
             profileCard
                 .padding(.horizontal, .padding7)
             settingList
+            dangerZone
+                .padding(.horizontal, .padding7)
         }
         .ygTopBar(.detail(title: "설정"))
         .background(.whiteFixed)
+        .ygPopup(
+            isPresented: store.binding(
+                \.isWithdrawPopupPresented,
+                SettingStore.Intent.withdrawPopupVisibilityChanged
+            ),
+            title: "파르페에서 탈퇴하시겠어요?",
+            description: "지금까지 올린 사진은 익명으로 표시되며,\n삭제되지 않아요.",
+            secondaryTitle: "탈퇴하기",
+            primaryTitle: "그만두기",
+            secondaryAction: { store.send(.withdrawConfirmed) }
+        )
+        .navigationDestination(for: SettingRoute.self) { route in
+            switch route {
+            case .accountInfo:
+                AccountInfoView(
+                    store: AccountInfoStore(state: .init(nickname: store.state.nickname))
+                )
+            case .termsOfService:
+                YGWebView(title: "서비스 이용약관", url: .termsOfService)
+            case .privacyPolicy:
+                YGWebView(title: "개인정보 처리 방침", url: .privacyPolicy)
+            }
+        }
     }
 
     // MARK: - 내 프로필 카드
@@ -53,29 +78,31 @@ public struct SettingView: View {
 
     private var settingList: some View {
         VStack(spacing: .gap3) {
-            navigationRow("계정 정보") { store.send(.accountInfoTapped) }
-            navigationRow("서비스 이용약관") { store.send(.termsOfServiceTapped) }
-            navigationRow("개인정보 처리 방침") { store.send(.privacyPolicyTapped) }
+            navigationRow("계정 정보", route: .accountInfo)
+            navigationRow("서비스 이용약관", route: .termsOfService)
+            navigationRow("개인정보 처리 방침", route: .privacyPolicy)
             versionRow
         }
     }
 
-    private func navigationRow(
-        _ title: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: .gap2) {
-                rowTitle(title)
-                Spacer(minLength: 0)
-                Image.icCaretRight
-                    .frame(width: 44, height: 44)
-                    .foregroundStyle(.gray300)
-            }
-            .padding(.horizontal, .padding7)
-            .frame(height: 52)
+    private func navigationRow(_ title: String, route: SettingRoute) -> some View {
+        NavigationLink(value: route) {
+            navigationRowLabel(title)
         }
         .buttonStyle(.plain)
+    }
+
+    private func navigationRowLabel(_ title: String) -> some View {
+        HStack(spacing: .gap2) {
+            rowTitle(title)
+            Spacer(minLength: 0)
+            Image.icCaretRight
+                .frame(width: 44, height: 44)
+                .foregroundStyle(.gray300)
+        }
+        .padding(.horizontal, .padding7)
+        .frame(height: 52)
+        .contentShape(.rect)
     }
 
     private var versionRow: some View {
@@ -95,16 +122,33 @@ public struct SettingView: View {
             .suit(.body02Regular)
             .foregroundStyle(.gray800)
     }
+
+    // MARK: - 위험 액션 (로그아웃·서비스 탈퇴)
+
+    private var dangerZone: some View {
+        YGDangerZone {
+            YGActionItem("로그아웃") { store.send(.logoutTapped) }
+            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
+        }
+    }
+}
+
+// ponytail: 실제 약관·방침 주소 확정 전 임시 링크
+private extension URL {
+    static let termsOfService = URL(string: "https://www.apple.com/legal/internet-services/terms/site.html")!
+    static let privacyPolicy = URL(string: "https://www.apple.com/legal/privacy/en-ww/")!
 }
 
 #Preview {
-    SettingView(
-        store: SettingStore(
-            state: .init(
-                nickname: "아니야나그런데기니야",
-                loginProvider: "Kakao",
-                appVersion: "1.0v"
+    NavigationStack {
+        SettingView(
+            store: SettingStore(
+                state: .init(
+                    nickname: "아니야나그런데기니야",
+                    loginProvider: "Kakao",
+                    appVersion: "1.0v"
+                )
             )
         )
-    )
+    }
 }

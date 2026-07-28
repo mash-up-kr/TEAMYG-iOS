@@ -52,7 +52,7 @@ public extension View {
         secondaryTitle: String,
         primaryTitle: String,
         secondaryAction: @escaping () -> Void = {},
-        primaryAction: @escaping () -> Void
+        primaryAction: @escaping () -> Void = {}
     ) -> some View {
         modifier(
             YGPopupModifier(

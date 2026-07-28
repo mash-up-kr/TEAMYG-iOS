@@ -20,12 +20,14 @@ public final class SettingStore: MVIStore {
 
     public func send(_ intent: Intent) {
         switch intent {
-        case .accountInfoTapped:
-            break // TODO: 계정 정보 화면 라우팅 (AppRoute 케이스 필요 — Routing 수정은 팀 컨펌)
-        case .termsOfServiceTapped:
-            break // TODO: 서비스 이용약관 화면 라우팅
-        case .privacyPolicyTapped:
-            break // TODO: 개인정보 처리 방침 화면 라우팅
+        case .logoutTapped:
+            break // TODO: 로그아웃 UseCase 연결
+        case .withdrawTapped:
+            state.isWithdrawPopupPresented = true
+        case .withdrawPopupVisibilityChanged(let isPresented):
+            state.isWithdrawPopupPresented = isPresented
+        case .withdrawConfirmed:
+            print("서비스 탈퇴 확인") // TODO: 서비스 탈퇴 UseCase 연결
         }
     }
 
@@ -34,21 +36,25 @@ public final class SettingStore: MVIStore {
         public var loginProvider: String
         /// 표시용 문자열 그대로 (예: "1.0v")
         public var appVersion: String
+        public var isWithdrawPopupPresented: Bool
 
         public init(
             nickname: String = "",
             loginProvider: String = "",
-            appVersion: String = ""
+            appVersion: String = "",
+            isWithdrawPopupPresented: Bool = false
         ) {
             self.nickname = nickname
             self.loginProvider = loginProvider
             self.appVersion = appVersion
+            self.isWithdrawPopupPresented = isWithdrawPopupPresented
         }
     }
 
     public enum Intent {
-        case accountInfoTapped
-        case termsOfServiceTapped
-        case privacyPolicyTapped
+        case logoutTapped
+        case withdrawTapped
+        case withdrawPopupVisibilityChanged(Bool)
+        case withdrawConfirmed
     }
 }
