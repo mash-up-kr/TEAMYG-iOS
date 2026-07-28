@@ -42,6 +42,10 @@ public struct SettingView: View {
                 AccountInfoView(
                     store: AccountInfoStore(state: .init(nickname: store.state.nickname))
                 )
+            case .termsOfService:
+                YGWebView(title: "서비스 이용약관", url: .termsOfService)
+            case .privacyPolicy:
+                YGWebView(title: "개인정보 처리 방침", url: .privacyPolicy)
             }
         }
     }
@@ -74,21 +78,15 @@ public struct SettingView: View {
 
     private var settingList: some View {
         VStack(spacing: .gap3) {
-            NavigationLink(value: SettingRoute.accountInfo) {
-                navigationRowLabel("계정 정보")
-            }
-            .buttonStyle(.plain)
-            navigationRow("서비스 이용약관") { store.send(.termsOfServiceTapped) }
-            navigationRow("개인정보 처리 방침") { store.send(.privacyPolicyTapped) }
+            navigationRow("계정 정보", route: .accountInfo)
+            navigationRow("서비스 이용약관", route: .termsOfService)
+            navigationRow("개인정보 처리 방침", route: .privacyPolicy)
             versionRow
         }
     }
 
-    private func navigationRow(
-        _ title: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
+    private func navigationRow(_ title: String, route: SettingRoute) -> some View {
+        NavigationLink(value: route) {
             navigationRowLabel(title)
         }
         .buttonStyle(.plain)
@@ -133,6 +131,12 @@ public struct SettingView: View {
             YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
         }
     }
+}
+
+// ponytail: 실제 약관·방침 주소 확정 전 임시 링크
+private extension URL {
+    static let termsOfService = URL(string: "https://www.apple.com/legal/internet-services/terms/site.html")!
+    static let privacyPolicy = URL(string: "https://www.apple.com/legal/privacy/en-ww/")!
 }
 
 #Preview {
