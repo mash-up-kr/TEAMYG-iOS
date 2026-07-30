@@ -61,10 +61,8 @@ private struct YGCircleButtonStyle: ButtonStyle {
             .overlay {
                 Circle().strokeBorder(borderColor, lineWidth: 1)
             }
-            // Figma 에 없지만 YGButton 과 같은 값으로 탭 피드백을 준다.
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
-            // .small 은 원이 28 이어도 터치 영역은 나머지와 같이 44×44.
             .frame(width: 44, height: 44)
             .contentShape(.rect)
     }
