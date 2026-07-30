@@ -17,6 +17,7 @@ public final class AlbumPickerStore: MVIStore {
     private let recentUploadsStorage = RecentUploadsStorage()
     private var recentUploadsTask: Task<Void, Never>?
     private var limitedPickerTask: Task<Void, Never>?
+    private var changeRelay: PhotoLibraryChangeRelay?
 
     public init(isLimited: Bool) {
         state = State(isLimited: isLimited)
@@ -25,11 +26,13 @@ public final class AlbumPickerStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .appeared:
+            registerChangeObserverIfNeeded()
             loadRecentUploads()
             fetchDeviceSections()
         case .disappeared:
             recentUploadsTask?.cancel()
             limitedPickerTask?.cancel()
+            unregisterChangeObserver()
         case .reselectTapped:
             presentLimitedLibraryPicker()
         case .photoTapped:
@@ -68,6 +71,26 @@ public final class AlbumPickerStore: MVIStore {
             .map { day, dayAssets in PhotoDaySection(day: day, assets: dayAssets) }
     }
 
+    /// 라이브러리 변경(일부허용 선택 변경·사진 추가 등) 시 재조회.
+    /// 첫 권한 요청에서 "접근 제한" 을 고르면 시스템이 선택 시트를 자동으로 띄우는데,
+    /// 그 시트는 우리가 띄운 게 아니라 종료 훅이 없다 — observer 가 유일한 갱신 경로.
+    private func registerChangeObserverIfNeeded() {
+        guard changeRelay == nil else { return }
+        let relay = PhotoLibraryChangeRelay { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.fetchDeviceSections()
+            }
+        }
+        PHPhotoLibrary.shared().register(relay)
+        changeRelay = relay
+    }
+
+    private func unregisterChangeObserver() {
+        guard let changeRelay else { return }
+        PHPhotoLibrary.shared().unregisterChangeObserver(changeRelay)
+        self.changeRelay = nil
+    }
+
     /// 일부허용에서 더 많은 사진을 고르는 진입점. 픽커 종료 후 재조회한다.
     private func presentLimitedLibraryPicker() {
         guard let rootViewController = UIApplication.shared.connectedScenes
@@ -94,6 +117,20 @@ public final class AlbumPickerStore: MVIStore {
         case disappeared
         case reselectTapped
         case photoTapped(PHAsset)
+    }
+}
+
+/// `PHPhotoLibraryChangeObserver` 는 NSObjectProtocol 이라 Store 가 직접 채택하지 않고
+/// 작은 릴레이로 감싼다. 콜백은 임의 스레드에서 오므로 클로저는 @Sendable.
+private final class PhotoLibraryChangeRelay: NSObject, PHPhotoLibraryChangeObserver {
+    private let onChange: @Sendable () -> Void
+
+    init(onChange: @escaping @Sendable () -> Void) {
+        self.onChange = onChange
+    }
+
+    func photoLibraryDidChange(_ changeInstance: PHChange) {
+        onChange()
     }
 }
 

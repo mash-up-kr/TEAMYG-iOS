@@ -17,6 +17,9 @@
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>선택한 사진을 캔버스에 추가하기 위해 갤러리 접근 권한이 필요합니다.</string>
+	<!-- 일부허용 시 매 실행마다 뜨는 시스템 얼럿 억제 — 재선택 진입점은 앨범 화면의 "사진 재선택" 버튼 -->
+	<key>PHPhotoLibraryPreventsAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>

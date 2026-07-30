@@ -81,21 +81,30 @@ public struct AlbumPickerView: View {
     }
 }
 
-/// 최근 업로드 파일 셀 — 로컬 파일 URL 을 AsyncImage 로 표시.
+/// 최근 업로드 파일 셀 — 로컬 파일을 UIImage 로 로드해 표시 (기기 사진 셀과 같은 렌더 경로).
 private struct RecentUploadCell: View {
     let fileURL: URL
+
+    @State private var image: UIImage?
 
     var body: some View {
         Color.gray100
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                AsyncImage(url: fileURL) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Color.gray100
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
                 }
             }
             .clipped()
+            .task(id: fileURL) {
+                // path() 는 percent-encoding 이 기본이라 "Application Support" 공백에서 깨짐 — URL 로 직접 읽는다.
+                image = await Task.detached {
+                    guard let imageData = try? Data(contentsOf: fileURL) else { return nil }
+                    return UIImage(data: imageData)
+                }.value
+            }
     }
 }
 
