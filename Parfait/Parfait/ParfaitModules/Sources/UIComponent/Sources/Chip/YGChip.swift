@@ -75,11 +75,6 @@ private struct YGChipStyle: ButtonStyle {
             .padding(.leading, leadingPadding)
             .padding(.trailing, trailingPadding)
             .background(background(isPressed: configuration.isPressed), in: .capsule)
-            .overlay {
-                if showsBorder(isPressed: configuration.isPressed) {
-                    Capsule().strokeBorder(.cherry100, lineWidth: 1)
-                }
-            }
     }
 
     /// 아이콘 쪽 padding-3(8) · 텍스트 쪽 padding-5(12)
@@ -98,7 +93,7 @@ private struct YGChipStyle: ButtonStyle {
         case .trailing:
             return isPressed ? .cherry200 : .cherry100
         case .leading:
-            return .cherry50
+            return isPressed ? .cherry100 : .cherry50
         }
     }
 
