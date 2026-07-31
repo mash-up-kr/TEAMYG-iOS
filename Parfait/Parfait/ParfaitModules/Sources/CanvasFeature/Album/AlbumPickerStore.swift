@@ -5,12 +5,12 @@
 //  Created by 김남수 on 7/30/26.
 //
 
+import CanvasDomain
 import Photos
 import PhotosUI
 import SwiftUI
 import UIComponent
 
-/// 사진 선택 화면 Store (Figma C-102-Reselect).
 @Observable @MainActor
 public final class AlbumPickerStore: MVIStore {
     public private(set) var state: State
@@ -44,9 +44,9 @@ public final class AlbumPickerStore: MVIStore {
     private func loadRecentUploads() {
         recentUploadsTask?.cancel()
         recentUploadsTask = Task { [weak self, recentUploadsStorage] in
-            let urls = await recentUploadsStorage.loadRecentURLs(limit: 6)
+            let uploads = await recentUploadsStorage.loadRecent(limit: 6)
             guard !Task.isCancelled else { return }
-            self?.state.recentUploadURLs = urls
+            self?.state.recentUploads = uploads
         }
     }
 
@@ -108,7 +108,7 @@ public final class AlbumPickerStore: MVIStore {
 
     public struct State: Equatable {
         public var isLimited: Bool
-        public var recentUploadURLs: [URL] = []
+        public var recentUploads: [StoredImage] = []
         public var sections: [PhotoDaySection] = []
     }
 

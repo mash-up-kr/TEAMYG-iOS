@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/30/26.
 //
 
+import CanvasDomain
 import Photos
 import SwiftUI
 import UIComponent
@@ -22,7 +23,7 @@ public struct AlbumPickerView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                if !store.state.recentUploadURLs.isEmpty {
+                if !store.state.recentUploads.isEmpty {
                     recentUploadsSection
                 }
                 ForEach(store.state.sections) { section in
@@ -53,8 +54,8 @@ public struct AlbumPickerView: View {
                 .suit(.body02Regular)
                 .foregroundStyle(Color.gray900)
             LazyVGrid(columns: gridColumns, spacing: 12) {
-                ForEach(store.state.recentUploadURLs, id: \.self) { fileURL in
-                    RecentUploadCell(fileURL: fileURL)
+                ForEach(store.state.recentUploads) { upload in
+                    RecentUploadCell(upload: upload)
                 }
             }
         }
@@ -81,9 +82,9 @@ public struct AlbumPickerView: View {
     }
 }
 
-/// 최근 업로드 파일 셀 — 로컬 파일을 UIImage 로 로드해 표시 (기기 사진 셀과 같은 렌더 경로).
+/// 최근 업로드 셀 — 저장소가 넘긴 Data 를 UIImage 로 표시 (파일 IO 없음).
 private struct RecentUploadCell: View {
-    let fileURL: URL
+    let upload: StoredImage
 
     @State private var image: UIImage?
 
@@ -98,12 +99,8 @@ private struct RecentUploadCell: View {
                 }
             }
             .clipped()
-            .task(id: fileURL) {
-                // path() 는 percent-encoding 이 기본이라 "Application Support" 공백에서 깨짐 — URL 로 직접 읽는다.
-                image = await Task.detached {
-                    guard let imageData = try? Data(contentsOf: fileURL) else { return nil }
-                    return UIImage(data: imageData)
-                }.value
+            .task(id: upload.id) {
+                image = UIImage(data: upload.imageData)
             }
     }
 }
