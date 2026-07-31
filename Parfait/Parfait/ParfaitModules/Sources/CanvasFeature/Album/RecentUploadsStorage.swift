@@ -26,17 +26,17 @@ public actor RecentUploadsStorage {
         return makeStoredImage(id: fileName, imageData: imageData, createdAt: .now)
     }
 
-    /// 최신순(파일 수정일 내림차순) 기록 목록. IO 실패는 빈 배열로 흡수한다 (스펙: 섹션 숨김).
+    /// 최신순(파일 생성일 내림차순) 기록 목록. IO 실패는 빈 배열로 흡수한다 (스펙: 섹션 숨김).
     /// 날짜 정렬 후 상위 `limit` 개만 Data 를 읽는다.
     public func loadRecent(limit: Int) -> [StoredImage] {
         guard let fileURLs = try? FileManager.default.contentsOfDirectory(
             at: directoryURL,
-            includingPropertiesForKeys: [.contentModificationDateKey]
+            includingPropertiesForKeys: [.creationDateKey]
         ) else {
             return []
         }
         return fileURLs
-            .map { fileURL in (fileURL: fileURL, createdAt: modificationDate(of: fileURL)) }
+            .map { fileURL in (fileURL: fileURL, createdAt: creationDate(of: fileURL)) }
             .sorted { $0.createdAt > $1.createdAt }
             .prefix(limit)
             .compactMap { fileURL, createdAt in
@@ -72,7 +72,7 @@ public actor RecentUploadsStorage {
         return (width, height)
     }
 
-    private func modificationDate(of fileURL: URL) -> Date {
-        (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+    private func creationDate(of fileURL: URL) -> Date {
+        (try? fileURL.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
     }
 }
