@@ -23,9 +23,9 @@ public final class CreateGroupStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .nameChanged(let name):
-            state.name = GroupNamePolicy.groupName.sanitized(name)
+            state.name = GroupNamePolicy.groupName.truncated(name)
         case .nicknameChanged(let nickname):
-            state.nickname = GroupNamePolicy.nickname.sanitized(nickname)
+            state.nickname = GroupNamePolicy.nickname.truncated(nickname)
         case .memberCountTapped(let memberCount):
             toggleMemberCount(memberCount)
         case .confirmTapped:

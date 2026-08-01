@@ -15,10 +15,10 @@ public struct CreateGroupView: View {
     @State private var store: CreateGroupStore
     private let onCreated: (YGGroup) -> Void
 
-    /// 타이핑이 직접 닿는 입력 사본. Store 로 바로 바인딩하지 않는 이유는 정책상 **입력을 되돌려야**
-    /// 하기 때문이다 — Store 가 값을 걸러 같은 값을 돌려주면 바인딩 값이 안 바뀌고, 그러면 SwiftUI 가
-    /// `TextField` 를 다시 밀어 넣지 않아 화면에는 걸러졌어야 할 글자가 그대로 남는다.
-    /// 로컬 값은 "11자 → 10자" 처럼 실제로 변하므로 화면이 정규화 결과를 따라온다.
+    /// 타이핑이 직접 닿는 입력 사본. Store 로 바로 바인딩하지 않는 이유는 최대 길이에서 **입력을
+    /// 되돌려야** 하기 때문이다 — Store 가 11자를 10자로 잘라 직전과 같은 값을 돌려주면 바인딩 값이
+    /// 안 바뀌고, 그러면 SwiftUI 가 `TextField` 를 다시 밀어 넣지 않아 화면에는 11번째 글자가 남는다.
+    /// 로컬 값은 "11자 → 10자" 로 실제로 변하므로 화면이 결과를 따라온다.
     /// (고빈도 입력은 로컬 `@State` 로 받으라는 docs/mvi.md 지침과도 같은 방향)
     @State private var nameInput: String
     @State private var nicknameInput: String
@@ -105,7 +105,7 @@ public struct CreateGroupView: View {
             errorMessage: store.state.displayedNameViolation.map { $0.message(subject: "그룹명") }
         )
         .onChange(of: nameInput) { _, newValue in
-            nameInput = GroupNamePolicy.groupName.sanitized(newValue)
+            nameInput = GroupNamePolicy.groupName.truncated(newValue)
             store.send(.nameChanged(nameInput))
         }
     }
@@ -119,7 +119,7 @@ public struct CreateGroupView: View {
             errorMessage: store.state.displayedNicknameViolation.map { $0.message(subject: "닉네임") }
         )
         .onChange(of: nicknameInput) { _, newValue in
-            nicknameInput = GroupNamePolicy.nickname.sanitized(newValue)
+            nicknameInput = GroupNamePolicy.nickname.truncated(newValue)
             store.send(.nicknameChanged(nicknameInput))
         }
     }
@@ -174,6 +174,7 @@ private extension GroupNameViolation {
     func message(subject: String) -> String {
         switch self {
         case .empty: "\(subject)을 입력해 주세요"
+        case .disallowedCharacter: "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요"
         case .leadingSpace, .trailingSpace: "\(subject) 앞뒤에는 공백을 넣을 수 없어요"
         case .consecutiveSpaces: "공백은 한 칸만 입력할 수 있어요"
         }
