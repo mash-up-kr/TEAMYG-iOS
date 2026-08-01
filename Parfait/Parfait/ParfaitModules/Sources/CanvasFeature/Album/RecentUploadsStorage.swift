@@ -27,8 +27,8 @@ public actor RecentUploadsStorage {
     }
 
     /// 최신순(파일 생성일 내림차순) 기록 목록. IO 실패는 빈 배열로 흡수한다 (스펙: 섹션 숨김).
-    /// 날짜 정렬 후 상위 `limit` 개만 Data 를 읽는다.
-    public func loadRecent(limit: Int) -> [StoredImage] {
+    /// `window` 를 주면 그 기간(시작 포함·끝 제외) 안의 기록만 남긴다. 날짜 정렬 후 상위 `limit` 개만 Data 를 읽는다.
+    public func loadRecent(limit: Int, within window: DateInterval? = nil) -> [StoredImage] {
         guard let fileURLs = try? FileManager.default.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: [.creationDateKey]
@@ -37,6 +37,10 @@ public actor RecentUploadsStorage {
         }
         return fileURLs
             .map { fileURL in (fileURL: fileURL, createdAt: creationDate(of: fileURL)) }
+            .filter { file in
+                guard let window else { return true }
+                return window.start <= file.createdAt && file.createdAt < window.end
+            }
             .sorted { $0.createdAt > $1.createdAt }
             .prefix(limit)
             .compactMap { fileURL, createdAt in
@@ -76,3 +80,45 @@ public actor RecentUploadsStorage {
         (try? fileURL.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
     }
 }
+
+#if DEBUG
+import UIKit
+
+extension RecentUploadsStorage {
+    /// 디버그 전용: 저장 기록이 없으면 번호 매긴 색상 샘플 이미지를 채운다 (최근 업로드 섹션 UI 테스트용).
+    /// 마지막 2장은 파일 생성일을 25시간 전으로 백데이트 → 정책 창 필터가 걸러내는지 확인용 (화면에 안 보여야 정상).
+    /// 업로드 기능이 붙으면 이 시딩과 호출부를 삭제한다.
+    func seedSampleDataIfEmpty(count: Int = 6) {
+        guard loadRecent(limit: 1).isEmpty else { return }
+        let colors: [UIColor] = [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple]
+        for index in 0..<count {
+            let isBackdated = index >= count - 2
+            let size = CGSize(width: 600, height: 600)
+            let image = UIGraphicsImageRenderer(size: size).image { context in
+                colors[index % colors.count].setFill()
+                context.fill(CGRect(origin: .zero, size: size))
+                let title = (isBackdated ? "어제 샘플 \(index + 1)" : "샘플 \(index + 1)") as NSString
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.boldSystemFont(ofSize: 72),
+                    .foregroundColor: UIColor.white
+                ]
+                let titleSize = title.size(withAttributes: attributes)
+                title.draw(
+                    at: CGPoint(x: (size.width - titleSize.width) / 2, y: (size.height - titleSize.height) / 2),
+                    withAttributes: attributes
+                )
+            }
+            guard let jpegData = image.jpegData(compressionQuality: 0.8),
+                  let stored = try? save(jpegData)
+            else { continue }
+            if isBackdated {
+                let backdate = Date.now.addingTimeInterval(-25 * 60 * 60)
+                try? FileManager.default.setAttributes(
+                    [.creationDate: backdate],
+                    ofItemAtPath: directoryURL.appending(path: stored.id).path()
+                )
+            }
+        }
+    }
+}
+#endif

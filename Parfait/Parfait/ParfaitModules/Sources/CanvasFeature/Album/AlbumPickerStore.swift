@@ -40,20 +40,39 @@ public final class AlbumPickerStore: MVIStore {
         }
     }
 
-    /// 최근 업로드 기록 로드 — 비면 뷰가 섹션을 숨긴다.
+    /// 최근 업로드 기록 로드 — 정책 창(03:00~다음날 02:59) 안의 기록만, 비면 뷰가 섹션을 숨긴다.
     private func loadRecentUploads() {
         recentUploadsTask?.cancel()
         recentUploadsTask = Task { [weak self, recentUploadsStorage] in
-            let uploads = await recentUploadsStorage.loadRecent(limit: 6)
+            #if DEBUG
+            await recentUploadsStorage.seedSampleDataIfEmpty()
+            #endif
+            let uploads = await recentUploadsStorage.loadRecent(limit: 6, within: self?.policyDayWindow())
             guard !Task.isCancelled else { return }
             self?.state.recentUploads = uploads
         }
     }
 
-    /// 기기 사진을 최신순으로 가져와 날짜별 섹션으로 묶는다.
+    /// 정책상 "오늘" 창: 가장 최근 03:00 부터 24시간 (03:00 ~ 다음날 02:59:59).
+    private func policyDayWindow(now: Date = .now, calendar: Calendar = .current) -> DateInterval {
+        let todayThreeAM = calendar.date(bySettingHour: 3, minute: 0, second: 0, of: now) ?? now
+        let start = now >= todayThreeAM
+            ? todayThreeAM
+            : (calendar.date(byAdding: .day, value: -1, to: todayThreeAM) ?? todayThreeAM)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        return DateInterval(start: start, end: end)
+    }
+
+    /// 기기 사진을 정책 창(03:00~다음날 02:59) 안에서 최신순으로 가져와 날짜별 섹션으로 묶는다.
     /// limited 면 Photos 가 선택된 사진만 돌려주므로 별도 분기가 없다.
     private func fetchDeviceSections() {
+        let window = self.policyDayWindow()
         let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(
+            format: "creationDate >= %@ AND creationDate < %@",
+            window.start as NSDate,
+            window.end as NSDate
+        )
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         let fetchResult = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
