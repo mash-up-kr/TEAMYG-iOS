@@ -78,7 +78,7 @@ public struct YGAlert: View {
         Color.gray200.ignoresSafeArea()
         Button("알림 표시") { isPresented = true }
     }
-    .ygTopBar(.default, onLeadingTap: {}, onNewGroupTap: {})
+    .ygTopBar(.default(date: .now), onLeadingTap: {}, onNewGroupTap: {})
     .ygAlert(isPresented: $isPresented) {
         YGAlert(title: "Username", subtitle: "Action", action: .init("Text") {})
     }

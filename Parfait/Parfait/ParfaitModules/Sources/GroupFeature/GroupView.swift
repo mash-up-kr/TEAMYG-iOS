@@ -41,7 +41,7 @@ public struct GroupView: View {
         ZStack(alignment: .topTrailing) {
             content
                 .ygTopBar(
-                    .default,
+                    .default(date: .now),
                     // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
                     onLeadingTap: {},
                     onNewGroupTap: { store.send(.addGroupTapped) }
@@ -91,7 +91,6 @@ public struct GroupView: View {
             ParfaitSceneView(groups: groups, scale: scale) { _ in
                 // ponytail: 캔버스(C-001) 화면이 붙으면 해당 그룹으로 이동.
             }
-            dateHeader
         }
         // 툴팁은 바깥 아무 데나 눌러 닫는다 — 툴팁 자신은 위에 떠 있어 이 제스처를 가린다.
         .simultaneousGesture(
@@ -120,7 +119,6 @@ public struct GroupView: View {
     private var loadFailure: some View {
         scaledScroll { scale in
             EmptyParfaitCupView(scale: scale)
-            dateHeader
             Text("앗, 파르페를 불러오지 못했어요.\n아래로 당겨 다시 시도해 주세요.")
                 .suit(.title03SemiBold)
                 .foregroundStyle(.gray500)
@@ -145,11 +143,6 @@ public struct GroupView: View {
         }
     }
 
-    private var dateHeader: some View {
-        GroupDateHeader(date: .now)
-            .padding(.leading, Self.horizontalInset)
-    }
-
     // MARK: - 그룹 추가하기 드롭다운 (G-002)
 
     /// 딤·칩·드롭다운을 따로 얹는다 — 셋의 등장 방식이 달라서 한 덩어리로 묶지 않는다.
@@ -162,7 +155,7 @@ public struct GroupView: View {
                 .transition(.opacity)
 
             // 딤 위에 칩을 다시 그려 누른 버튼만 밝게 남긴다. 아래 진짜 칩과 겹치므로 크기는 그대로 두고 밝기만.
-            YGChip("새 그룹", icon: .icPlus, placement: .leading) {
+            YGChip("그룹 추가하기", icon: .icPlus, placement: .leading) {
                 store.send(.addGroupMenuDismissed)
             }
             .frame(height: Self.addGroupChipHeight)

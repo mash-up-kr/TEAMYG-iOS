@@ -75,6 +75,11 @@ private struct YGChipStyle: ButtonStyle {
             .padding(.leading, leadingPadding)
             .padding(.trailing, trailingPadding)
             .background(background(isPressed: configuration.isPressed), in: .capsule)
+            .overlay {
+                if showsBorder {
+                    Capsule().strokeBorder(.gray500, lineWidth: 1)
+                }
+            }
     }
 
     /// 아이콘 쪽 padding-3(8) · 텍스트 쪽 padding-5(12)
@@ -87,26 +92,27 @@ private struct YGChipStyle: ButtonStyle {
     }
 
     /// trailing(Right): default cherry100 → pressed cherry200
-    /// leading(Left): default·pressed 모두 cherry50 (pressed 는 테두리로 구분)
+    /// leading(Left): default whiteFixed → pressed gray200 (테두리는 두 상태 모두)
     private func background(isPressed: Bool) -> Color {
         switch placement {
         case .trailing:
             return isPressed ? .cherry200 : .cherry100
         case .leading:
-            return isPressed ? .cherry100 : .cherry50
+            return isPressed ? .gray200 : .whiteFixed
         }
     }
 
-    private func showsBorder(isPressed: Bool) -> Bool {
-        placement == .leading && isPressed
+    /// leading(Left) 은 배경이 옅어 테두리로 형태를 잡는다.
+    private var showsBorder: Bool {
+        placement == .leading
     }
 
-    /// leading(Left): default gray600 → pressed gray700 (Figma Button-Chip-Left)
+    /// leading(Left): default gray900 → pressed gray950 (Figma Button-Chip-Left)
     /// trailing(Right): gray950 유지 (Button-Chip-Right 스펙 미확인)
     private func foreground(isPressed: Bool) -> Color {
         switch placement {
         case .leading:
-            return isPressed ? .gray700 : .gray600
+            return isPressed ? .gray950 : .gray900
         case .trailing:
             return .gray950
         }
