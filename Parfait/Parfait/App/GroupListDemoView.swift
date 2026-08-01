@@ -24,13 +24,15 @@ struct GroupListDemoView: View {
     /// 데이터와 무관해 새로고침이 필요 없으므로 `DemoKnobs` 와 분리해 둔다.
     @State private var isLayoutAnimationEnabled = true
     @State private var store: GroupStore
-    private let demoState: DemoGroupState
+    /// 저장소가 붙들고 있는 것과 같은 인스턴스여야 한다 — `let` 으로 두면 뷰가 다시 만들어질 때마다
+    /// 새 상자가 생겨 패널 조작이 저장소에 안 닿는다.
+    @State private var demoState: DemoGroupState
 
     @MainActor
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
         let demoState = DemoGroupState()
-        self.demoState = demoState
+        _demoState = State(initialValue: demoState)
         _store = State(
             initialValue: GroupStore(
                 fetchGroupsUseCase: FetchGroupsUseCaseImpl(

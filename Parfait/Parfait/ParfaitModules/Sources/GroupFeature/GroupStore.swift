@@ -33,17 +33,25 @@ public final class GroupStore: MVIStore {
             state.phase = .failed
         case .backgroundTapped:
             // 툴팁 밖 아무 데나 누르면 닫힌다. 드롭다운도 같은 제스처로 닫는다.
-            state.isTooltipDismissed = true
+            dismissTooltipIfVisible()
             state.isAddGroupMenuPresented = false
         case .addGroupTapped:
+            // 툴팁이 가리키던 버튼이라 함께 닫는다.
+            dismissTooltipIfVisible()
             state.isAddGroupMenuPresented.toggle()
-            state.isTooltipDismissed = true
         case .addGroupMenuDismissed:
             state.isAddGroupMenuPresented = false
         case .screenDisappeared:
             loadTask?.cancel()
             loadTask = nil
         }
+    }
+
+    /// "닫음" 은 사용자가 **떠 있는 툴팁을** 닫았다는 뜻이다.
+    /// 안 떠 있을 때도 플래그를 세우면, 그 뒤에 그룹이 0건이 됐을 때 떠야 할 툴팁이 막힌다.
+    private func dismissTooltipIfVisible() {
+        guard state.isTooltipVisible else { return }
+        state.isTooltipDismissed = true
     }
 
     /// `.refreshable` 이 완료를 기다릴 수 있게 열어둔 async 진입점.
