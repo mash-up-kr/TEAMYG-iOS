@@ -15,6 +15,8 @@ public final class GroupStore: MVIStore {
 
     private let fetchGroupsUseCase: any FetchGroupsUseCase
     @ObservationIgnored private var loadTask: Task<Void, Never>?
+    /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
+    @ObservationIgnored private var loadGeneration = 0
 
     public init(fetchGroupsUseCase: any FetchGroupsUseCase) {
         self.fetchGroupsUseCase = fetchGroupsUseCase
@@ -75,19 +77,28 @@ public final class GroupStore: MVIStore {
                 state.phase = .loading
             }
         }
+        loadGeneration += 1
+        let generation = loadGeneration
         loadTask = Task {
-            await loadGroups()
-            loadTask = nil
+            await loadGroups(generation: generation)
+            // 그 사이 새 로드가 시작됐다면 그건 남의 핸들이다 — 지우면 취소도 대기도 못 한다.
+            if generation == loadGeneration {
+                loadTask = nil
+            }
         }
     }
 
-    private func loadGroups() async {
+    /// 취소가 통하지 않는 구현(취소 지점이 없는 저장소)도 있어, 결과를 반영하기 전에
+    /// 자기 세대인지 한 번 더 본다 — 늦게 도착한 옛 응답이 새 응답을 덮지 않도록.
+    private func loadGroups(generation: Int) async {
         do {
             let groups = try await fetchGroupsUseCase.fetchGroups()
+            guard generation == loadGeneration else { return }
             send(.groupsLoaded(groups))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않는다.
         } catch {
+            guard generation == loadGeneration else { return }
             send(.loadFailed)
         }
     }

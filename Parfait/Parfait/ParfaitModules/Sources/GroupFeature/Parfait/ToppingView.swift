@@ -30,7 +30,7 @@ struct ToppingView: View {
     }
 
     var body: some View {
-        // 프레임 위쪽을 기준점으로 잡아 칩·이미지를 각자의 y 로 내린다.
+        // 프레임 위쪽을 기준점으로 잡아 칩·이미지를 각자의 y 로 내린다(칩은 가로 중앙).
         // Z 순서는 항상 Img > Chip — 칩을 먼저 깔고 이미지를 위에 올린다.
         ZStack(alignment: .top) {
             chip
@@ -52,14 +52,17 @@ struct ToppingView: View {
                 height: ParfaitLayout.toppingImageSize * scale
             )
             .rotationEffect(.degrees(variant.rotation))
-            .offset(y: Self.imageTopInFrame * scale)
+            .offset(x: imageOffset.width * scale, y: imageOffset.height * scale)
     }
 
-    /// 회전 전 Img 위 끝의 y — 중심을 프레임 중앙에서 `toppingImageCenterLift` 만큼 올린 자리.
-    private static var imageTopInFrame: CGFloat {
-        ParfaitLayout.toppingSize / 2
-            - ParfaitLayout.toppingImageCenterLift
-            - ParfaitLayout.toppingImageSize / 2
+    /// 회전 전 96×96 프레임을 밀 거리.
+    /// ZStack 이 가로는 중앙 정렬이라 x 는 프레임 중앙 기준, y 는 프레임 위 기준으로 잰다.
+    private var imageOffset: CGSize {
+        let center = variant.imageCenterInFrame
+        return CGSize(
+            width: center.x - ParfaitLayout.toppingSize / 2,
+            height: center.y - ParfaitLayout.toppingImageSize / 2
+        )
     }
 
     /// 칩은 회전하지 않고 Img 아래 끝에 붙는다. 글자는 확대하지 않으므로 위치만 scale 을 곱한다.

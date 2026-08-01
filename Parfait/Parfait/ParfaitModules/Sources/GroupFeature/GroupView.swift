@@ -114,7 +114,6 @@ public struct GroupView: View {
     private var tooltip: some View {
         if store.state.isTooltipVisible {
             GroupTooltipView()
-                .padding(.horizontal, Self.horizontalInset)
                 .padding(.top, Self.topBarHeight)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // 가리키는 칩 쪽을 붙잡고 펼쳐지도록 우상단을 기준으로.
