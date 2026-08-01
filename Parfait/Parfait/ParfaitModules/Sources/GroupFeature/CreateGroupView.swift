@@ -8,6 +8,7 @@
 import GroupDomain
 import SwiftUI
 import UIComponent
+import UIKit
 
 /// 그룹 만들기 화면 (A-005). 그룹명·그룹 속 내 닉네임·그룹 인원을 받아 새 그룹을 만든다.
 /// 세 값 모두 나중에 바꿀 수 없어, 확인 버튼과 생성 사이에 되돌릴 수 없음을 알리는 팝업을 한 번 더 둔다.
@@ -175,6 +176,7 @@ private extension GroupNameViolation {
         switch self {
         case .empty: "\(subject)을 입력해 주세요"
         case .disallowedCharacter: "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요"
+        case .tooLong(let maximum): "\(subject)은 \(maximum)자까지 입력할 수 있어요"
         case .leadingSpace, .trailingSpace: "\(subject) 앞뒤에는 공백을 넣을 수 없어요"
         case .consecutiveSpaces: "공백은 한 칸만 입력할 수 있어요"
         }

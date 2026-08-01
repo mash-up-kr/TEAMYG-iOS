@@ -32,11 +32,16 @@ public struct GroupNamePolicy: Sendable, Equatable {
 
     /// 이름의 위반 사유. 통과하면 `nil`.
     ///
-    /// 순서는 정책 문서와 같다 — 허용 문자 → 공백 위치. 한 번에 하나만 알려주는 편이
+    /// 순서는 정책 문서와 같다 — 허용 문자 → 글자 수 → 공백 위치. 한 번에 하나만 알려주는 편이
     /// 고칠 것이 분명해서, 먼저 걸린 사유에서 멈춘다.
+    ///
+    /// `truncated(_:)` 를 거친 입력이라면 `.tooLong` 은 나올 수 없다. 그래도 여기서 함께 보는 이유는
+    /// **규칙의 최종 판단을 Domain 이 갖기 위해서**다 — 화면을 거치지 않는 호출부(UseCase 직접 호출 등)
+    /// 까지 UI 의 자르기에 의존하게 두면 길이 규칙만 방어선이 없다.
     public func validate(_ name: String) -> GroupNameViolation? {
         guard !name.isEmpty else { return .empty }
         if name.contains(where: { !Self.isAllowed($0) }) { return .disallowedCharacter }
+        if name.count > maximumLength { return .tooLong(maximum: maximumLength) }
         // 공백으로만 채운 이름도 첫 글자가 공백이라 여기서 걸린다.
         if name.first?.isSpace == true { return .leadingSpace }
         if name.last?.isSpace == true { return .trailingSpace }
@@ -77,6 +82,9 @@ public enum GroupNameViolation: Sendable, Equatable {
     case empty
     /// 한글·영문·숫자·공백이 아닌 문자(특수문자·이모지 등)가 섞였다.
     case disallowedCharacter
+    /// 최대 글자 수를 넘겼다. 입력 단계에서 `GroupNamePolicy.truncated(_:)` 로 끊으므로
+    /// 화면에는 뜨지 않고, Domain 을 직접 호출하는 경로를 막는 몫이다.
+    case tooLong(maximum: Int)
     /// 맨 앞이 공백이다. 공백으로만 채운 이름도 여기에 해당한다.
     case leadingSpace
     case trailingSpace
