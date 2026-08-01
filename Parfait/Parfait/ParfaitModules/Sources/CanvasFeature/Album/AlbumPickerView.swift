@@ -105,15 +105,14 @@ private struct RecentUploadCell: View {
     }
 }
 
-/// 기기 사진 셀 — 셀 크기 썸네일만 요청 (원본 디코딩 방지).
+/// 기기 사진 셀 — 실제 셀 크기(포인트) × 스케일 픽셀의 썸네일만 요청 (원본 디코딩 방지, 기기 폭 대응).
 private struct PhotoAssetCell: View {
     let asset: PHAsset
     let onTap: () -> Void
 
     @State private var thumbnail: UIImage?
-
-    // ponytail: 3열 셀 ~110pt 가정 고정 픽셀 — 화면폭 대응이 필요해지면 GeometryReader 로.
-    private static let thumbnailTargetSize = CGSize(width: 360, height: 360)
+    @State private var cellSize = CGSize.zero
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         Button(action: onTap) {
@@ -129,13 +128,24 @@ private struct PhotoAssetCell: View {
                 .clipped()
         }
         .buttonStyle(.plain)
-        .task(id: asset.localIdentifier) {
-            thumbnail = await Self.requestThumbnail(for: asset)
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { newSize in
+            cellSize = newSize
+        }
+        // 셀 크기가 정해진 뒤 요청, 회전 등으로 크기가 바뀌면 재요청.
+        .task(id: cellSize) {
+            guard cellSize != .zero else { return }
+            let targetSize = CGSize(
+                width: cellSize.width * displayScale,
+                height: cellSize.height * displayScale
+            )
+            thumbnail = await self.requestThumbnail(for: asset, targetSize: targetSize)
         }
     }
 
     /// ponytail: 요청 취소·프리페치·캐싱은 성능 최적화 작업에서 (스펙: 스코프 제외).
-    private static func requestThumbnail(for asset: PHAsset) async -> UIImage? {
+    private func requestThumbnail(for asset: PHAsset, targetSize: CGSize) async -> UIImage? {
         await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat // 콜백 1회 보장 (opportunistic 은 다회 → continuation 중복 resume 크래시)
@@ -143,7 +153,7 @@ private struct PhotoAssetCell: View {
             options.isNetworkAccessAllowed = true // iCloud 최적화 사진도 표시
             PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: thumbnailTargetSize,
+                targetSize: targetSize,
                 contentMode: .aspectFill,
                 options: options
             ) { image, _ in
