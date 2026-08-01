@@ -26,6 +26,7 @@ public struct YGTopBar: View {
     private static let dateLocale = Locale(identifier: "en_US_POSIX")
 
     private let status: Status
+    private let showsBackground: Bool
     private let onLeadingTap: (() -> Void)?
     private let onNewGroupTap: (() -> Void)?
 
@@ -33,15 +34,19 @@ public struct YGTopBar: View {
 
     /// - Parameters:
     ///   - status: 바 구성 상태.
+    ///   - showsBackground: 바 자체 배경(반투명 흰색)을 그릴지. 딤 위에 바를 한 번 더 얹어
+    ///     조작부만 밝게 남길 때는 `false` — 배경까지 겹쳐 그리면 딤이 그 구간만 옅어진다.
     ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail` 은 뒤로가기.
     ///     생략하면 뒤로가기(`dismiss`)가 기본 동작.
     ///   - onNewGroupTap: 그룹 추가하기 버튼 탭. `default` 에서만 노출된다.
     public init(
         _ status: Status,
+        showsBackground: Bool = true,
         onLeadingTap: (() -> Void)? = nil,
         onNewGroupTap: (() -> Void)? = nil
     ) {
         self.status = status
+        self.showsBackground = showsBackground
         self.onLeadingTap = onLeadingTap
         self.onNewGroupTap = onNewGroupTap
     }
@@ -96,12 +101,21 @@ public struct YGTopBar: View {
     }
 
     /// 목록 화면은 배경 이미지 위에 얹히므로 바를 반투명 흰색으로 깔아 글자를 띄운다.
+    /// 상태바 영역까지 함께 덮어 위쪽이 끊기지 않게 한다 — 높이를 박지 않고 기기별 안전영역만큼 늘어난다.
     /// 상세·뒤로가기 화면은 단색 배경이라 그대로 둔다.
     @ViewBuilder
     private var barBackground: some View {
+        if showsBackground, hasTranslucentBackground {
+            Color.white75.ignoresSafeArea(edges: .top)
+        } else {
+            Color.clear
+        }
+    }
+
+    private var hasTranslucentBackground: Bool {
         switch status {
-        case .empty, .default: Color.white75
-        case .back, .detail: Color.clear
+        case .empty, .default: true
+        case .back, .detail: false
         }
     }
 

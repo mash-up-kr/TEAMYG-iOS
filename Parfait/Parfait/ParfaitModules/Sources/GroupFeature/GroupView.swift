@@ -36,17 +36,12 @@ public struct GroupView: View {
     }
 
     public var body: some View {
-        // 툴팁·드롭다운은 상단 바를 가리키는 오버레이라 스크롤 밖 이 자리에 둔다.
-        // 컨테이너가 화면 내내 살아 있어야 나타날 때도 애니메이션이 걸린다.
+        // 레이어 순서는 G-002 시안 그대로: 콘텐츠 → 상단 바 → 딤 → (딤 위) 상단 바 → 드롭다운.
+        // 상단 바는 `ygTopBar`(VStack 쌓기) 대신 오버레이로 띄운다 — 그래야 파르페가 반투명 바 밑으로 지나간다.
+        // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타날 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
-                .ygTopBar(
-                    .default(date: .now),
-                    // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
-                    onLeadingTap: {},
-                    onNewGroupTap: { store.send(.addGroupTapped) }
-                )
-
+            topBar()
             tooltip
             addGroupMenu
         }
@@ -69,6 +64,19 @@ public struct GroupView: View {
             .scaledToFill()
             .ignoresSafeArea()
             .clipped()
+    }
+
+    /// 화면 위에 떠 있는 상단 바. 콘텐츠가 이 바 밑으로 스크롤된다.
+    /// - Parameter showsBackground: 딤 위에 겹쳐 얹는 사본은 배경 없이 조작부만 그린다.
+    private func topBar(showsBackground: Bool = true) -> some View {
+        YGTopBar(
+            .default(date: .now),
+            showsBackground: showsBackground,
+            // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
+            onLeadingTap: {},
+            onNewGroupTap: { store.send(.addGroupTapped) }
+        )
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder
@@ -131,6 +139,8 @@ public struct GroupView: View {
     // MARK: - 공통
 
     /// 375pt 디자인 좌표를 화면 폭에 맞춰 확대해 그리는 스크롤 컨테이너.
+    /// 스크롤 자체는 화면 최상단부터 깔리고, 콘텐츠만 상단 바 높이만큼 내려 시작한다
+    /// → 처음엔 바 아래에 놓이고 스크롤하면 반투명 바 밑으로 지나간다.
     private func scaledScroll(@ViewBuilder _ scene: @escaping (CGFloat) -> some View) -> some View {
         GeometryReader { proxy in
             ScrollView {
@@ -139,13 +149,14 @@ public struct GroupView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .contentMargins(.top, Self.topBarHeight, for: .scrollContent)
             .refreshable { await store.refresh() }
         }
     }
 
     // MARK: - 그룹 추가하기 드롭다운 (G-002)
 
-    /// 딤·칩·드롭다운을 따로 얹는다 — 셋의 등장 방식이 달라서 한 덩어리로 묶지 않는다.
+    /// 딤·상단 바 사본·드롭다운을 따로 얹는다 — 셋의 등장 방식이 달라서 한 덩어리로 묶지 않는다.
     @ViewBuilder
     private var addGroupMenu: some View {
         if store.state.isAddGroupMenuPresented {
@@ -154,14 +165,10 @@ public struct GroupView: View {
                 .onTapGesture { store.send(.addGroupMenuDismissed) }
                 .transition(.opacity)
 
-            // 딤 위에 칩을 다시 그려 누른 버튼만 밝게 남긴다. 아래 진짜 칩과 겹치므로 크기는 그대로 두고 밝기만.
-            YGChip("그룹 추가하기", icon: .icPlus, placement: .leading) {
-                store.send(.addGroupMenuDismissed)
-            }
-            .frame(height: Self.addGroupChipHeight)
-            .padding(.top, Self.addGroupChipTopInset)
-            .padding(.trailing, Self.horizontalInset)
-            .transition(.opacity)
+            // 딤 위에 상단 바를 다시 그려 조작부만 밝게 남긴다(G-002).
+            // 배경은 딤 아래 진짜 바가 이미 깔았으므로 사본은 내용만 그린다.
+            topBar(showsBackground: false)
+                .transition(.opacity)
 
             AddGroupMenu {
                 // ponytail: 그룹 만들기 화면 미구현 — 화면 생기면 연결.

@@ -28,7 +28,7 @@ struct AddGroupMenu: View {
             .buttonStyle(.plain)
         }
         .frame(width: 136)
-        .background(.cherry50, in: .rect(cornerRadius: Radius.medium1))
+        .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))
     }
 }
 
