@@ -16,10 +16,13 @@ public struct CreateGroupView: View {
     @State private var store: CreateGroupStore
     private let onCreated: (YGGroup) -> Void
 
-    /// 타이핑이 직접 닿는 입력 사본. Store 로 바로 바인딩하지 않는 이유는 최대 길이에서 **입력을
-    /// 되돌려야** 하기 때문이다 — Store 가 11자를 10자로 잘라 직전과 같은 값을 돌려주면 바인딩 값이
-    /// 안 바뀌고, 그러면 SwiftUI 가 `TextField` 를 다시 밀어 넣지 않아 화면에는 11번째 글자가 남는다.
-    /// 로컬 값은 "11자 → 10자" 로 실제로 변하므로 화면이 결과를 따라온다.
+    /// 타이핑이 직접 닿는 입력 사본. 자르기는 `maxLength` 를 받은 `YGTextField` 가 하고,
+    /// 여기서는 그 결과를 Store 로 넘기기만 한다.
+    ///
+    /// Store 로 바로 바인딩하면 최대 길이에서 화면이 깨진다 — 11번째 글자가 Store 에 닿는 순간
+    /// 10자로 잘려 **직전과 같은 값**이 되고, 바인딩 값이 안 변하니 `YGTextField` 의 자르기도
+    /// 발동하지 않아 `UITextField` 에는 11자가 그대로 남는다. 로컬 값은 11자를 일단 받아
+    /// "11자 → 10자" 로 실제로 변하므로 SwiftUI 가 화면을 다시 맞춘다.
     /// (고빈도 입력은 로컬 `@State` 로 받으라는 docs/mvi.md 지침과도 같은 방향)
     @State private var nameInput: String
     @State private var nicknameInput: String
@@ -105,8 +108,7 @@ public struct CreateGroupView: View {
             maxLength: GroupNamePolicy.groupName.maximumLength,
             errorMessage: store.state.displayedNameViolation.map { $0.message(subject: "그룹명") }
         )
-        .onChange(of: nameInput) { _, newValue in
-            nameInput = GroupNamePolicy.groupName.truncated(newValue)
+        .onChange(of: nameInput) { _, _ in
             store.send(.nameChanged(nameInput))
         }
     }
@@ -119,8 +121,7 @@ public struct CreateGroupView: View {
             maxLength: GroupNamePolicy.nickname.maximumLength,
             errorMessage: store.state.displayedNicknameViolation.map { $0.message(subject: "닉네임") }
         )
-        .onChange(of: nicknameInput) { _, newValue in
-            nicknameInput = GroupNamePolicy.nickname.truncated(newValue)
+        .onChange(of: nicknameInput) { _, _ in
             store.send(.nicknameChanged(nicknameInput))
         }
     }
