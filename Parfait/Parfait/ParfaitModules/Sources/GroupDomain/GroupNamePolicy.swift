@@ -16,7 +16,6 @@ public struct GroupNamePolicy: Sendable, Equatable {
     /// 그룹명 정책. 최소 1자 ~ 최대 10자.
     public static let groupName = GroupNamePolicy(maximumLength: 10)
     /// 그룹 속 내 닉네임 정책. 문자·공백 규칙은 그룹명과 같고 최대 길이만 15자.
-    /// ponytail: 닉네임 전용 정책이 확정되면 이 값과 규칙을 다시 맞출 것.
     public static let nickname = GroupNamePolicy(maximumLength: 15)
 
     public let maximumLength: Int
