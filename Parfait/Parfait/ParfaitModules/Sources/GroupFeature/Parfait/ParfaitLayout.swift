@@ -50,7 +50,8 @@ struct ParfaitLayout {
     static let creamBodyFirstY: CGFloat = 255
     /// 크림 한 장이 아래로 자라는 양(장끼리 겹침).
     static let creamBodyStep: CGFloat = 66
-    /// N ≤ 3 이면 크림은 최소 장수로 고정 — 파르페가 자라지 않는다.
+    /// 여기까지는 파르페가 자라지 않는다 — 크림은 최소 장수 고정.
+    static let parfaitGrowthThreshold = 3
     static let minimumCreamBodyCount = 2
 
     static let cupSize = CGSize(width: 324.3, height: 239.2)
@@ -85,11 +86,15 @@ struct ParfaitLayout {
 
     /// 크림(몸통) 장수.
     ///
-    /// 기본은 "N ≤ 3 이면 최소 2장, 4부터 그룹당 한 장". 다만 크림 한 장(66)이 토핑 한 칸(74)보다
-    /// 짧아서 그룹이 많아지면 접시가 마지막 토핑 위로 올라온다 — 그때는 마지막 토핑이 접시에
-    /// `lastToppingCupOverlap` 만큼만 걸치도록 크림을 더 쌓아 접시를 밀어낸다.
+    /// 기본은 "N ≤ 3 이면 최소 2장, 4부터 그룹당 한 장" — 디자인 프레임(N=3·4·5) 실측과 같다.
+    ///
+    /// 다만 크림 한 장(66)이 토핑 한 칸(74)보다 짧아서, 그룹이 많아지면 접시가 마지막 토핑
+    /// 위로 올라온다. 그때는 마지막 토핑이 접시에 `lastToppingCupOverlap` 을 넘겨 걸치지 않도록
+    /// 크림을 더 쌓아 접시를 밀어낸다.
     var creamBodyCount: Int {
-        let byGroupCount = max(Self.minimumCreamBodyCount, groupCount)
+        let byGroupCount = groupCount <= Self.parfaitGrowthThreshold
+            ? Self.minimumCreamBodyCount
+            : groupCount
         guard let lastToppingBottom = toppingFrames.last?.maxY else { return byGroupCount }
         let requiredCupY = lastToppingBottom - Self.lastToppingCupOverlap
         let stepsToReachCup = (requiredCupY - Self.cupGapFromLastCreamBody - Self.creamBodyFirstY)
