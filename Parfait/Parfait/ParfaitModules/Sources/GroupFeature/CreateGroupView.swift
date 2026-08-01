@@ -171,14 +171,16 @@ public struct CreateGroupView: View {
 
 private extension GroupNameViolation {
     /// 위반 사유별 안내 문구. `subject` 는 "그룹명"·"닉네임" 처럼 필드를 가리키는 말.
-    /// ponytail: 디자인 확정 문구 받으면 교체.
+    ///
+    /// `.empty`·`.tooLong` 은 화면에 뜨지 않는다 — 빈 입력은 Empty 상태로 두고, 길이는
+    /// `truncated(_:)` 가 먼저 끊는다. 그래도 문구를 두는 건 사유가 늘었을 때 빠뜨리지 않기 위함이다.
     func message(subject: String) -> String {
         switch self {
         case .empty: "\(subject)을 입력해 주세요"
         case .disallowedCharacter: "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요"
         case .tooLong(let maximum): "\(subject)은 \(maximum)자까지 입력할 수 있어요"
-        case .leadingSpace, .trailingSpace: "\(subject) 앞뒤에는 공백을 넣을 수 없어요"
-        case .consecutiveSpaces: "공백은 한 칸만 입력할 수 있어요"
+        case .leadingSpace, .trailingSpace: "\(subject)의 처음과 끝에는 공백을 사용할 수 없어요"
+        case .consecutiveSpaces: "공백은 글자 사이에 1칸만 사용할 수 있어요"
         }
     }
 }
