@@ -14,7 +14,7 @@ import UIComponent
 /// 프레임 안에서만 좌표를 계산하고, 파르페 어디에 놓일지는 `ParfaitLayout` 이 정한다.
 /// 렌더링 크기는 화면 폭에 맞춘 `scale` 로 확대하되 칩 글자는 확대하지 않는다.
 struct ToppingView: View {
-    let group: GroupDomain.Group
+    let group: YGGroup
     /// 목록에서의 순번 — 짝수 Left / 홀수 Right.
     let index: Int
     let scale: CGFloat
@@ -83,7 +83,7 @@ private extension GroupDomain.NametagType {
 
 /// 토핑 이미지 자리. 대표 이미지 → 없으면 템플릿 그래픽 → 불러오기 실패면 물음표 그래픽.
 private struct ToppingImage: View {
-    let group: GroupDomain.Group
+    let group: YGGroup
 
     var body: some View {
         if let thumbnailURL = group.thumbnailURL {

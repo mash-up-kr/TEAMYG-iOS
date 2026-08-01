@@ -77,7 +77,7 @@ public struct GroupView: View {
 
     // MARK: - 목록
 
-    private func parfaitScroll(groups: [GroupDomain.Group]) -> some View {
+    private func parfaitScroll(groups: [YGGroup]) -> some View {
         scaledScroll { scale in
             ParfaitSceneView(groups: groups, scale: scale) { _ in
                 // ponytail: 캔버스(C-001) 화면이 붙으면 해당 그룹으로 이동.
@@ -176,7 +176,7 @@ public struct GroupView: View {
 // MARK: - Preview
 
 @MainActor
-private func previewGroupView(_ groups: [GroupDomain.Group]?) -> some View {
+private func previewGroupView(_ groups: [YGGroup]?) -> some View {
     NavigationStack {
         GroupView(
             store: GroupStore(fetchGroupsUseCase: PreviewFetchGroupsUseCase(groups: groups)),
@@ -188,26 +188,26 @@ private func previewGroupView(_ groups: [GroupDomain.Group]?) -> some View {
 }
 
 #Preview("목록 5건") { previewGroupView(.previewSample) }
-#Preview("3건") { previewGroupView(Array([GroupDomain.Group].previewSample.prefix(3))) }
+#Preview("3건") { previewGroupView(Array([YGGroup].previewSample.prefix(3))) }
 #Preview("0건 — 툴팁") { previewGroupView([]) }
 #Preview("조회 실패") { previewGroupView(nil) }
 
 /// 프리뷰 전용 스텁. `groups` 가 nil 이면 조회 실패를 흉내낸다.
 private struct PreviewFetchGroupsUseCase: FetchGroupsUseCase {
-    let groups: [GroupDomain.Group]?
+    let groups: [YGGroup]?
 
-    func fetchGroups() async throws -> [GroupDomain.Group] {
+    func fetchGroups() async throws -> [YGGroup] {
         guard let groups else { throw CocoaError(.coderValueNotFound) }
         return groups
     }
 }
 
-private extension [GroupDomain.Group] {
-    static var previewSample: [GroupDomain.Group] {
+private extension [YGGroup] {
+    static var previewSample: [YGGroup] {
         let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
         let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
         return names.indices.map { index in
-            GroupDomain.Group(
+            YGGroup(
                 id: "group-\(index)",
                 name: names[index],
                 thumbnailURL: nil,

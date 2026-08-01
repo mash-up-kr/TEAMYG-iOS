@@ -11,5 +11,5 @@ public protocol GroupRepository: Sendable {
     func join(inviteCode: String) async throws
 
     /// 내가 속한 그룹 전체. 정렬은 UseCase 가 맡는다.
-    func fetchGroups() async throws -> [Group]
+    func fetchGroups() async throws -> [YGGroup]
 }

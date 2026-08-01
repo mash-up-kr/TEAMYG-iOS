@@ -1,5 +1,5 @@
 //
-//  Group.swift
+//  YGGroup.swift
 //  GroupDomain
 //
 //  Created by 신상우 on 8/1/26.
@@ -8,7 +8,7 @@
 import Foundation
 
 /// 사용자가 속한 그룹 하나. 그룹 목록(G-001)에서 파르페 위 토핑 한 개로 그려진다.
-public struct Group: Sendable, Identifiable, Hashable {
+public struct YGGroup: Sendable, Identifiable, Hashable {
     public let id: String
     public let name: String
     /// 대표 토핑 이미지. 아직 토핑이 하나도 없는 그룹은 nil — UI 가 템플릿 그래픽으로 대체한다.
