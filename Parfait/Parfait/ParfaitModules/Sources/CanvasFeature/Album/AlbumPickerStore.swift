@@ -35,7 +35,11 @@ public final class AlbumPickerStore: MVIStore {
             unregisterChangeObserver()
         case .reselectTapped:
             presentLimitedLibraryPicker()
-        case .photoTapped:
+        case let .photoTapped(asset, thumbnail):
+            state.selectedPhoto = SelectedPhoto(asset: asset, thumbnail: thumbnail)
+        case .confirmReselectTapped:
+            state.selectedPhoto = nil
+        case .confirmNextTapped:
             break // TODO(#54): 캔버스 연결 시 선택 결과 전달 정의 (스펙: 스코프 외)
         }
     }
@@ -129,13 +133,22 @@ public final class AlbumPickerStore: MVIStore {
         public var isLimited: Bool
         public var recentUploads: [StoredImage] = []
         public var sections: [PhotoDaySection] = []
+        var selectedPhoto: SelectedPhoto?
     }
 
     public enum Intent {
         case appeared
         case disappeared
         case reselectTapped
-        case photoTapped(PHAsset)
+        case photoTapped(PHAsset, thumbnail: UIImage?)
+        case confirmReselectTapped
+        case confirmNextTapped
+    }
+
+    /// 확인 화면(C-102-Confirm)에 표시할 선택 사진. 썸네일은 고화질 로드 전 줌 애니메이션용 플레이스홀더.
+    struct SelectedPhoto: Equatable {
+        let asset: PHAsset
+        let thumbnail: UIImage?
     }
 }
 

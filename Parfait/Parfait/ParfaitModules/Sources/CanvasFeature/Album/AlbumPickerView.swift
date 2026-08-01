@@ -13,6 +13,7 @@ import UIComponent
 /// 사진 선택 화면 (Figma C-102-Reselect). 우상단 닫기 버튼은 컨테이너(AlbumView) 소유.
 public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
+    @Namespace private var zoomNamespace
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
@@ -21,27 +22,43 @@ public struct AlbumPickerView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                if !store.state.recentUploads.isEmpty {
-                    recentUploadsSection
+        ZStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if !store.state.recentUploads.isEmpty {
+                        recentUploadsSection
+                    }
+                    ForEach(store.state.sections) { section in
+                        daySection(section)
+                    }
                 }
-                ForEach(store.state.sections) { section in
-                    daySection(section)
+                .padding(.horizontal, 20)
+                .padding(.top, 76) // 플로팅 닫기 버튼 영역(60) + 16
+            }
+            .background(Color.whiteFixed)
+            .safeAreaInset(edge: .bottom) {
+                if store.state.isLimited {
+                    YGButton("사진 재선택", variant: .mediumPrimary) {
+                        store.send(.reselectTapped)
+                    }
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.whiteFixed)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 76) // 플로팅 닫기 버튼 영역(60) + 16
-        }
-        .background(Color.whiteFixed)
-        .safeAreaInset(edge: .bottom) {
-            if store.state.isLimited {
-                YGButton("사진 재선택", variant: .mediumPrimary) {
-                    store.send(.reselectTapped)
-                }
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
-                .background(Color.whiteFixed)
+
+            if let selectedPhoto = store.state.selectedPhoto {
+                PhotoConfirmView(
+                    photo: selectedPhoto,
+                    zoomNamespace: zoomNamespace,
+                    onReselect: {
+                        withAnimation(.smooth(duration: 0.35)) {
+                            store.send(.confirmReselectTapped)
+                        }
+                    },
+                    onNext: { store.send(.confirmNextTapped) }
+                )
+                .zIndex(1) // 축소(제거) 애니메이션 동안 그리드 위에 유지
             }
         }
         .onAppear { store.send(.appeared) }
@@ -73,8 +90,14 @@ public struct AlbumPickerView: View {
             }
             LazyVGrid(columns: gridColumns, spacing: 12) {
                 ForEach(section.assets, id: \.localIdentifier) { asset in
-                    PhotoAssetCell(asset: asset) {
-                        store.send(.photoTapped(asset))
+                    PhotoAssetCell(
+                        asset: asset,
+                        zoomNamespace: zoomNamespace,
+                        isZoomSource: store.state.selectedPhoto == nil
+                    ) { thumbnail in
+                        withAnimation(.smooth(duration: 0.35)) {
+                            store.send(.photoTapped(asset, thumbnail: thumbnail))
+                        }
                     }
                 }
             }
@@ -108,14 +131,19 @@ private struct RecentUploadCell: View {
 /// 기기 사진 셀 — 실제 셀 크기(포인트) × 스케일 픽셀의 썸네일만 요청 (원본 디코딩 방지, 기기 폭 대응).
 private struct PhotoAssetCell: View {
     let asset: PHAsset
-    let onTap: () -> Void
+    let zoomNamespace: Namespace.ID
+    /// 확인 화면이 떠 있는 동안 false — matched geometry 소스는 확인 화면 이미지 하나여야 한다.
+    let isZoomSource: Bool
+    let onTap: (UIImage?) -> Void
 
     @State private var thumbnail: UIImage?
     @State private var cellSize = CGSize.zero
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        Button(action: onTap) {
+        Button {
+            onTap(thumbnail)
+        } label: {
             Color.gray100
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
@@ -126,6 +154,10 @@ private struct PhotoAssetCell: View {
                     }
                 }
                 .clipped()
+                .overlay {
+                    Rectangle().strokeBorder(Color.black5, lineWidth: 1)
+                }
+                .matchedGeometryEffect(id: asset.localIdentifier, in: zoomNamespace, isSource: isZoomSource)
         }
         .buttonStyle(.plain)
         .onGeometryChange(for: CGSize.self) { proxy in
@@ -140,19 +172,27 @@ private struct PhotoAssetCell: View {
                 width: cellSize.width * displayScale,
                 height: cellSize.height * displayScale
             )
-            thumbnail = await self.requestThumbnail(for: asset, targetSize: targetSize)
+            thumbnail = await asset.requestImage(targetSize: targetSize)
         }
     }
+}
 
+extension PHAsset {
+    /// 셀·확인 화면 공용 이미지 요청.
     /// ponytail: 요청 취소·프리페치·캐싱은 성능 최적화 작업에서 (스펙: 스코프 제외).
-    private func requestThumbnail(for asset: PHAsset, targetSize: CGSize) async -> UIImage? {
-        await withCheckedContinuation { continuation in
+    func requestImage(targetSize: CGSize) async -> UIImage? {
+        // 빈 asset(프리뷰의 PHAsset() 등)은 PHImageManager 내부 assertion 으로 크래시 — 요청 자체를 건너뛴다.
+        // 실제 asset 의 localIdentifier 는 "UUID/L0/001" 형식, 빈 asset 은 "(null)/L0/001" (isEmpty 아님 주의).
+        guard let uuidPart = localIdentifier.split(separator: "/").first,
+              UUID(uuidString: String(uuidPart)) != nil
+        else { return nil }
+        return await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat // 콜백 1회 보장 (opportunistic 은 다회 → continuation 중복 resume 크래시)
             options.resizeMode = .fast
             options.isNetworkAccessAllowed = true // iCloud 최적화 사진도 표시
             PHImageManager.default().requestImage(
-                for: asset,
+                for: self,
                 targetSize: targetSize,
                 contentMode: .aspectFill,
                 options: options
