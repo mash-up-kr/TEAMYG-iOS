@@ -72,7 +72,15 @@ public struct AlbumPickerView: View {
                 .foregroundStyle(Color.gray900)
             LazyVGrid(columns: gridColumns, spacing: 12) {
                 ForEach(store.state.recentUploads) { upload in
-                    RecentUploadCell(upload: upload)
+                    RecentUploadCell(
+                        upload: upload,
+                        zoomNamespace: zoomNamespace,
+                        isZoomSource: store.state.selectedPhoto == nil
+                    ) { thumbnail in
+                        withAnimation(.smooth(duration: 0.35)) {
+                            store.send(.recentUploadTapped(upload, thumbnail: thumbnail))
+                        }
+                    }
                 }
             }
         }
@@ -108,23 +116,33 @@ public struct AlbumPickerView: View {
 /// 최근 업로드 셀 — 저장소가 넘긴 Data 를 UIImage 로 표시 (파일 IO 없음).
 private struct RecentUploadCell: View {
     let upload: StoredImage
+    let zoomNamespace: Namespace.ID
+    /// 확인 화면이 떠 있는 동안 false — matched geometry 소스는 확인 화면 이미지 하나여야 한다.
+    let isZoomSource: Bool
+    let onTap: (UIImage?) -> Void
 
     @State private var image: UIImage?
 
     var body: some View {
-        Color.gray100
-            .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
+        Button {
+            onTap(image)
+        } label: {
+            Color.gray100
+                .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    }
                 }
-            }
-            .clipped()
-            .task(id: upload.id) {
-                image = UIImage(data: upload.imageData)
-            }
+                .clipped()
+                .matchedGeometryEffect(id: upload.zoomIdentifier, in: zoomNamespace, isSource: isZoomSource)
+        }
+        .buttonStyle(.plain)
+        .task(id: upload.id) {
+            image = UIImage(data: upload.imageData)
+        }
     }
 }
 

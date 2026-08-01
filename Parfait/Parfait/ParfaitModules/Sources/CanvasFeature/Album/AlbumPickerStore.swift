@@ -36,11 +36,13 @@ public final class AlbumPickerStore: MVIStore {
         case .reselectTapped:
             presentLimitedLibraryPicker()
         case let .photoTapped(asset, thumbnail):
-            state.selectedPhoto = SelectedPhoto(asset: asset, thumbnail: thumbnail)
+            state.selectedPhoto = SelectedPhoto(id: asset.localIdentifier, asset: asset, thumbnail: thumbnail)
+        case let .recentUploadTapped(upload, thumbnail):
+            state.selectedPhoto = SelectedPhoto(id: upload.zoomIdentifier, asset: nil, thumbnail: thumbnail)
         case .confirmReselectTapped:
             state.selectedPhoto = nil
         case .confirmNextTapped:
-            break // TODO(#54): 캔버스 연결 시 선택 결과 전달 정의 (스펙: 스코프 외)
+            print("다음 버튼 클릭! 누끼를 따러갑니다")
         }
     }
 
@@ -141,15 +143,25 @@ public final class AlbumPickerStore: MVIStore {
         case disappeared
         case reselectTapped
         case photoTapped(PHAsset, thumbnail: UIImage?)
+        case recentUploadTapped(StoredImage, thumbnail: UIImage?)
         case confirmReselectTapped
         case confirmNextTapped
     }
 
-    /// 확인 화면(C-102-Confirm)에 표시할 선택 사진. 썸네일은 고화질 로드 전 줌 애니메이션용 플레이스홀더.
+    /// 확인 화면(C-102-Confirm)에 표시할 선택 사진 — 기기 사진·최근 업로드 공용.
+    /// 썸네일은 고화질 로드 전 줌 애니메이션용 플레이스홀더.
     struct SelectedPhoto: Equatable {
-        let asset: PHAsset
+        /// matched geometry 전환 식별자 (기기 사진: localIdentifier, 최근 업로드: zoomIdentifier)
+        let id: String
+        /// 고화질 후속 로드용 — 최근 업로드는 nil (썸네일이 이미 원본 데이터).
+        let asset: PHAsset?
         let thumbnail: UIImage?
     }
+}
+
+extension StoredImage {
+    /// 기기 사진 localIdentifier 와 겹치지 않는 matched geometry 식별자.
+    var zoomIdentifier: String { "recent-upload-\(id)" }
 }
 
 /// `PHPhotoLibraryChangeObserver` 는 NSObjectProtocol 이라 Store 가 직접 채택하지 않고

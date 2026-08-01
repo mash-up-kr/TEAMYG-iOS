@@ -36,19 +36,20 @@ struct PhotoConfirmView: View {
                 .overlay {
                     Rectangle().strokeBorder(Color.gray500, lineWidth: 1)
                 }
-                .matchedGeometryEffect(id: photo.asset.localIdentifier, in: zoomNamespace)
+                .matchedGeometryEffect(id: photo.id, in: zoomNamespace)
                 .onGeometryChange(for: CGSize.self) { proxy in
                     proxy.size
                 } action: { newSize in
                     imageAreaSize = newSize
                 }
+                // 최근 업로드(asset 없음)는 썸네일이 곧 원본이라 후속 로드가 없다.
                 .task(id: imageAreaSize) {
-                    guard imageAreaSize != .zero else { return }
+                    guard let asset = photo.asset, imageAreaSize != .zero else { return }
                     let targetSize = CGSize(
                         width: imageAreaSize.width * displayScale,
                         height: imageAreaSize.height * displayScale
                     )
-                    fullImage = await photo.asset.requestImage(targetSize: targetSize)
+                    fullImage = await asset.requestImage(targetSize: targetSize)
                 }
 
             HStack(spacing: .gap4) {
@@ -67,7 +68,7 @@ struct PhotoConfirmView: View {
 #Preview {
     @Previewable @Namespace var zoomNamespace
     PhotoConfirmView(
-        photo: .init(asset: PHAsset(), thumbnail: nil),
+        photo: .init(id: "preview", asset: nil, thumbnail: nil),
         zoomNamespace: zoomNamespace,
         onReselect: {},
         onNext: {}
