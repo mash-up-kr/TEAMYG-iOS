@@ -15,6 +15,14 @@ public struct CreateGroupView: View {
     @State private var store: CreateGroupStore
     private let onCreated: (YGGroup) -> Void
 
+    /// 타이핑이 직접 닿는 입력 사본. Store 로 바로 바인딩하지 않는 이유는 정책상 **입력을 되돌려야**
+    /// 하기 때문이다 — Store 가 값을 걸러 같은 값을 돌려주면 바인딩 값이 안 바뀌고, 그러면 SwiftUI 가
+    /// `TextField` 를 다시 밀어 넣지 않아 화면에는 걸러졌어야 할 글자가 그대로 남는다.
+    /// 로컬 값은 "11자 → 10자" 처럼 실제로 변하므로 화면이 정규화 결과를 따라온다.
+    /// (고빈도 입력은 로컬 `@State` 로 받으라는 docs/mvi.md 지침과도 같은 방향)
+    @State private var nameInput: String
+    @State private var nicknameInput: String
+
     @Environment(\.dismiss) private var dismiss
 
     /// 상단 바 아래 첫 입력까지의 간격.
@@ -26,6 +34,9 @@ public struct CreateGroupView: View {
     /// - Parameter onCreated: 생성 성공 시 만들어진 그룹을 넘긴다. 화면 이동은 호출부가 결정한다.
     public init(store: CreateGroupStore, onCreated: @escaping (YGGroup) -> Void = { _ in }) {
         _store = State(initialValue: store)
+        // 미리 값을 채워 둔 Store(프리뷰·복원)로 들어와도 화면과 어긋나지 않게 초기 사본을 맞춘다.
+        _nameInput = State(initialValue: store.state.name)
+        _nicknameInput = State(initialValue: store.state.nickname)
         self.onCreated = onCreated
     }
 
@@ -88,21 +99,29 @@ public struct CreateGroupView: View {
     private var nameField: some View {
         YGTitledTextField(
             title: "그룹명",
-            text: store.binding(\.name, CreateGroupStore.Intent.nameChanged),
+            text: $nameInput,
             placeholder: "그룹명을 입력해 주세요",
             maxLength: GroupNamePolicy.groupName.maximumLength,
             errorMessage: store.state.displayedNameViolation.map { $0.message(subject: "그룹명") }
         )
+        .onChange(of: nameInput) { _, newValue in
+            nameInput = GroupNamePolicy.groupName.sanitized(newValue)
+            store.send(.nameChanged(nameInput))
+        }
     }
 
     private var nicknameField: some View {
         YGTitledTextField(
             title: "그룹 속 내 닉네임",
-            text: store.binding(\.nickname, CreateGroupStore.Intent.nicknameChanged),
+            text: $nicknameInput,
             placeholder: "닉네임을 입력해 주세요",
             maxLength: GroupNamePolicy.nickname.maximumLength,
             errorMessage: store.state.displayedNicknameViolation.map { $0.message(subject: "닉네임") }
         )
+        .onChange(of: nicknameInput) { _, newValue in
+            nicknameInput = GroupNamePolicy.nickname.sanitized(newValue)
+            store.send(.nicknameChanged(nicknameInput))
+        }
     }
 
     // MARK: - 그룹 인원
