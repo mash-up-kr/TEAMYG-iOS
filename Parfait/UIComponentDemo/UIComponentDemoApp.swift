@@ -28,6 +28,7 @@ struct DemoHomeView: View {
                 NavigationLink("YGChip") { YGChipDemoView() }
                 NavigationLink("YGTab") { YGTabDemoView() }
                 NavigationLink("YGTopBar") { YGTopBarDemoView() }
+                NavigationLink("YGToast") { YGToastDemoView() }
             }
         }
         .navigationTitle("UIComponent Demo")

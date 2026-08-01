@@ -80,6 +80,8 @@ playground.xcworkspace
 CLAUDE.local.md
 .claude/settings.local.json
 .mcp.local.json
+# 에이전트 워크트리 (머신별 산출물 — 각 워크트리가 전체 체크아웃+빌드산출물이라 수 GB)
+.claude/worktrees/
 
 
 # 자산 코드젠 변경감지 해시(머신별 산출물)
