@@ -36,6 +36,11 @@ public struct AlbumPickerView: View {
                 .padding(.top, 76) // 플로팅 닫기 버튼 영역(60) + 16
             }
             .background(Color.whiteFixed)
+            .overlay {
+                if store.state.recentUploads.isEmpty && store.state.sections.isEmpty {
+                    emptyView
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 if store.state.isLimited {
                     YGButton("사진 재선택", variant: .mediumPrimary) {
@@ -63,6 +68,18 @@ public struct AlbumPickerView: View {
         }
         .onAppear { store.send(.appeared) }
         .onDisappear { store.send(.disappeared) }
+    }
+
+    /// 빈 상태 (Figma C-102-Empty) — 최근 업로드·앨범 사진이 모두 없을 때 중앙 표시.
+    private var emptyView: some View {
+        VStack(spacing: 2) {
+            Image.imageGalleryEmpty
+            Text("오늘 찍은 사진이 없어요\n사진을 찍고 토핑을 추가해 보세요")
+                .suit(.body02Regular)
+                .foregroundStyle(Color.gray300)
+                .multilineTextAlignment(.center)
+                .fixedSize() // 이미지 폭에 맞춰 줄바꿈되지 않도록 텍스트 고유 폭 유지 (디자인: 2줄 고정)
+        }
     }
 
     private var recentUploadsSection: some View {
