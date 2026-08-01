@@ -44,6 +44,8 @@ public final class GroupStore: MVIStore {
         case .screenDisappeared:
             loadTask?.cancel()
             loadTask = nil
+            // 드롭다운 항목으로 다른 화면에 들어갔다 돌아왔을 때 열린 채로 남지 않게 함께 닫는다.
+            state.isAddGroupMenuPresented = false
         }
     }
 

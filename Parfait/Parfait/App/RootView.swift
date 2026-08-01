@@ -46,7 +46,8 @@ struct RootView: View {
                     #else
                     GroupView(
                         store: diContainer.makeGroupStore(),
-                        makeInviteCodeStore: diContainer.makeInviteCodeStore
+                        makeInviteCodeStore: diContainer.makeInviteCodeStore,
+                        makeCreateGroupStore: diContainer.makeCreateGroupStore
                     )
                     #endif
                 case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())

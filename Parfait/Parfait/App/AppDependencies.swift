@@ -34,6 +34,12 @@ struct AppDependencies {
         )
     }
 
+    func makeCreateGroupStore() -> CreateGroupStore {
+        CreateGroupStore(
+            createGroupUseCase: CreateGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
+        )
+    }
+
     func makeTermsStore() -> TermsStore {
         TermsStore()
     }

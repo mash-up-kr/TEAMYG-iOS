@@ -43,7 +43,11 @@ struct GroupListDemoView: View {
     }
 
     var body: some View {
-        GroupView(store: store, makeInviteCodeStore: dependencies.makeInviteCodeStore)
+        GroupView(
+            store: store,
+            makeInviteCodeStore: dependencies.makeInviteCodeStore,
+            makeCreateGroupStore: dependencies.makeCreateGroupStore
+        )
             .parfaitLayoutAnimationEnabled(isLayoutAnimationEnabled)
             .overlay(alignment: .bottomTrailing) { panel }
             .onChange(of: knobs) { _, newKnobs in
@@ -217,6 +221,19 @@ private struct DemoGroupRepository: GroupRepository {
     ]
 
     func join(inviteCode: String) async throws {}
+
+    /// 데모 목록은 패널 값으로만 만들어져서, 만든 그룹은 목록에 남지 않고 결과만 돌려준다.
+    func create(_ draft: GroupDraft) async throws -> YGGroup {
+        let now = Date()
+        return YGGroup(
+            id: "demo-created-\(draft.name)",
+            name: draft.name,
+            thumbnailURL: nil,
+            lastActivityAt: now,
+            createdAt: now,
+            lastActorNametagType: .type1
+        )
+    }
 
     func fetchGroups() async throws -> [YGGroup] {
         let knobs = demoState.knobs
