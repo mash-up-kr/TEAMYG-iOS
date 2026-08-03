@@ -75,6 +75,11 @@ private struct YGChipStyle: ButtonStyle {
             .padding(.leading, leadingPadding)
             .padding(.trailing, trailingPadding)
             .background(background(isPressed: configuration.isPressed), in: .capsule)
+            .overlay {
+                if placement == .leading {
+                    Capsule().strokeBorder(.gray500, lineWidth: 1)
+                }
+            }
     }
 
     /// 아이콘 쪽 padding-3(8) · 텍스트 쪽 padding-5(12)
@@ -86,27 +91,24 @@ private struct YGChipStyle: ButtonStyle {
         placement == .leading ? .padding5 : .padding3
     }
 
-    /// trailing(Right): default cherry100 → pressed cherry200
-    /// leading(Left): default·pressed 모두 cherry50 (pressed 는 테두리로 구분)
+    /// leading(Left): whiteFixed + gray500 보더 (2026-08 컨셉변경, Figma Button-Chip-Left).
+    ///   pressed 는 Figma 에 변형이 없어 새 컨셉 원형 버튼 관례(gray100)를 따랐다.
+    /// trailing(Right): default cherry100 → pressed cherry200 (구 컨셉, 새 스펙 미확인)
     private func background(isPressed: Bool) -> Color {
         switch placement {
         case .trailing:
             return isPressed ? .cherry200 : .cherry100
         case .leading:
-            return isPressed ? .cherry100 : .cherry50
+            return isPressed ? .gray100 : .whiteFixed
         }
     }
 
-    private func showsBorder(isPressed: Bool) -> Bool {
-        placement == .leading && isPressed
-    }
-
-    /// leading(Left): default gray600 → pressed gray700 (Figma Button-Chip-Left)
+    /// leading(Left): gray900 (2026-08 컨셉변경)
     /// trailing(Right): gray950 유지 (Button-Chip-Right 스펙 미확인)
     private func foreground(isPressed: Bool) -> Color {
         switch placement {
         case .leading:
-            return isPressed ? .gray700 : .gray600
+            return .gray900
         case .trailing:
             return .gray950
         }
