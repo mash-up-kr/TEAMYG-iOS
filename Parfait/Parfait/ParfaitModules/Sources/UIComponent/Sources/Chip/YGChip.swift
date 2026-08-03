@@ -91,24 +91,24 @@ private struct YGChipStyle: ButtonStyle {
         placement == .leading ? .padding5 : .padding3
     }
 
-    /// leading(Left): whiteFixed + gray500 보더 (2026-08 컨셉변경, Figma Button-Chip-Left).
-    ///   pressed 는 Figma 에 변형이 없어 새 컨셉 원형 버튼 관례(gray100)를 따랐다.
+    /// leading(Left): default whiteFixed → pressed gray200, 보더는 gray500 고정
+    ///   (2026-08 컨셉변경, Figma Button-Chip-Left Type=Default·Pressed).
     /// trailing(Right): default cherry100 → pressed cherry200 (구 컨셉, 새 스펙 미확인)
     private func background(isPressed: Bool) -> Color {
         switch placement {
         case .trailing:
             return isPressed ? .cherry200 : .cherry100
         case .leading:
-            return isPressed ? .gray100 : .whiteFixed
+            return isPressed ? .gray200 : .whiteFixed
         }
     }
 
-    /// leading(Left): gray900 (2026-08 컨셉변경)
+    /// leading(Left): default gray900 → pressed gray950 (2026-08 컨셉변경)
     /// trailing(Right): gray950 유지 (Button-Chip-Right 스펙 미확인)
     private func foreground(isPressed: Bool) -> Color {
         switch placement {
         case .leading:
-            return .gray900
+            return isPressed ? .gray950 : .gray900
         case .trailing:
             return .gray950
         }
