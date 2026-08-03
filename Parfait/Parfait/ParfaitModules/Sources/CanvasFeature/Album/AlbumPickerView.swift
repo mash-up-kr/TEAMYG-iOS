@@ -69,10 +69,7 @@ public struct AlbumPickerView: View {
         }
         .onAppear {
             store.send(.appeared)
-            toasts.append(YGToastItem(
-                kind: .alert(username: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요", nametagType: .type1),
-                message: ""
-            ))
+            toasts.append(YGToastItem(kind: .warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요"))
         }
         .onDisappear { store.send(.disappeared) }
         .ygToastOverlay($toasts)
