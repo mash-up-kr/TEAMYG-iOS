@@ -53,8 +53,8 @@ struct PhotoConfirmView: View {
                 }
 
             HStack(spacing: .gap4) {
-                YGButton("다시 선택", variant: .mediumSecondary, action: onReselect)
-                YGButton("다음", variant: .mediumPrimary, action: onNext)
+                YGButton("다시 선택", variant: .mediumSecondary, fillsWidth: true, action: onReselect)
+                YGButton("다음", variant: .mediumPrimary, fillsWidth: true, action: onNext)
             }
         }
         .padding(.horizontal, .padding7)
