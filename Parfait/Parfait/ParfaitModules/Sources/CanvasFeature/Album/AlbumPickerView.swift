@@ -14,6 +14,7 @@ import UIComponent
 public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
     @Namespace private var zoomNamespace
+    @State private var toasts: [YGToastItem] = []
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
@@ -66,8 +67,15 @@ public struct AlbumPickerView: View {
                 .zIndex(1) // 축소(제거) 애니메이션 동안 그리드 위에 유지
             }
         }
-        .onAppear { store.send(.appeared) }
+        .onAppear {
+            store.send(.appeared)
+            toasts.append(YGToastItem(
+                kind: .alert(username: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요", nametagType: .type1),
+                message: ""
+            ))
+        }
         .onDisappear { store.send(.disappeared) }
+        .ygToastOverlay($toasts)
     }
 
     /// 빈 상태 (Figma C-102-Empty) — 최근 업로드·앨범 사진이 모두 없을 때 중앙 표시.
