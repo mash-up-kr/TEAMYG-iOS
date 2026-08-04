@@ -7,7 +7,7 @@
 
 import AuthData
 import AuthDomain
-import Foundation
+import CanvasFeature
 import GroupData
 import GroupDomain
 import GroupFeature
@@ -30,6 +30,16 @@ struct AppDependencies {
 
     func makeTermsStore() -> TermsStore {
         TermsStore()
+    }
+
+    func makeCanvasStore() -> CanvasStore {
+        CanvasStore(
+            dependencies: .init(
+                loadCanvas: { _ in .empty },
+                loadRecordedDates: { _ in [] },
+                loadRecordedYears: { [] }
+            )
+        )
     }
 
     func makeSettingStore() -> SettingStore {

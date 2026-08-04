@@ -81,6 +81,12 @@ CLAUDE.local.md
 .claude/settings.local.json
 .mcp.local.json
 
+### Codex / GPT ###
+AGENTS.md
+.agents/
+.codex/
+Codex.local.md
+docs/
 
 # 자산 코드젠 변경감지 해시(머신별 산출물)
 Parfait/Parfait/ParfaitModules/scripts/.assets.hash

@@ -41,7 +41,7 @@ struct RootView: View {
                 switch route {
                 case .group:  GroupView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
                 case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())
-                case .canvas: CanvasView()
+                case .canvas: CanvasView(store: diContainer.makeCanvasStore())
                 }
             }
         }
