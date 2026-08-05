@@ -33,6 +33,7 @@ public struct AlbumPickerView: View {
                         daySection(section)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 20)
                 .padding(.top, 76) // 플로팅 닫기 버튼 영역(60) + 16
             }
