@@ -50,29 +50,19 @@ public final class AlbumPickerStore: MVIStore {
     private func loadRecentUploads() {
         recentUploadsTask?.cancel()
         recentUploadsTask = Task { [weak self, recentUploadsStorage] in
-            #if DEBUG
-            await recentUploadsStorage.seedSampleDataIfEmpty()
-            #endif
-            let uploads = await recentUploadsStorage.loadRecent(limit: 6, within: self?.policyDayWindow())
+            let uploads = await recentUploadsStorage.loadRecent(
+                limit: AlbumPolicy.recentUploadsLimit,
+                within: AlbumPolicy.todayWindow()
+            )
             guard !Task.isCancelled else { return }
             self?.state.recentUploads = uploads
         }
     }
 
-    /// 정책상 "오늘" 창: 가장 최근 03:00 부터 24시간 (03:00 ~ 다음날 02:59:59).
-    private func policyDayWindow(now: Date = .now, calendar: Calendar = .current) -> DateInterval {
-        let todayThreeAM = calendar.date(bySettingHour: 3, minute: 0, second: 0, of: now) ?? now
-        let start = now >= todayThreeAM
-            ? todayThreeAM
-            : (calendar.date(byAdding: .day, value: -1, to: todayThreeAM) ?? todayThreeAM)
-        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
-        return DateInterval(start: start, end: end)
-    }
-
     /// 기기 사진을 정책 창(03:00~다음날 02:59) 안에서 최신순으로 가져와 날짜별 섹션으로 묶는다.
     /// limited 면 Photos 가 선택된 사진만 돌려주므로 별도 분기가 없다.
     private func fetchDeviceSections() {
-        let window = self.policyDayWindow()
+        let window = AlbumPolicy.todayWindow()
         let fetchOptions = PHFetchOptions()
         fetchOptions.predicate = NSPredicate(
             format: "creationDate >= %@ AND creationDate < %@",
