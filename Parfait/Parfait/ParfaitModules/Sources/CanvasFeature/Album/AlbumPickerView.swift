@@ -18,8 +18,8 @@ public struct AlbumPickerView: View {
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
-    public init(isLimited: Bool) {
-        _store = State(initialValue: AlbumPickerStore(isLimited: isLimited))
+    public init(store: AlbumPickerStore) {
+        _store = State(initialValue: store)
     }
 
     public var body: some View {
@@ -245,9 +245,19 @@ extension PHAsset {
 }
 
 #Preview("일부허용 (재선택 버튼)") {
-    AlbumPickerView(isLimited: true)
+    AlbumPickerView(
+        store: AlbumPickerStore(
+            isLimited: true,
+            recentUploadsRepository: PreviewRecentUploadsRepository()
+        )
+    )
 }
 
 #Preview("전체허용") {
-    AlbumPickerView(isLimited: false)
+    AlbumPickerView(
+        store: AlbumPickerStore(
+            isLimited: false,
+            recentUploadsRepository: PreviewRecentUploadsRepository()
+        )
+    )
 }

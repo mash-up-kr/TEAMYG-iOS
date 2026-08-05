@@ -1,18 +1,17 @@
 //
-//  RecentUploadsStorage.swift
-//  CanvasFeature
+//  RecentUploadsRepositoryImpl.swift
+//  CanvasData
 //
-//  Created by 김남수 on 7/30/26.
+//  Created by 김남수 on 8/5/26.
 //
 
 import CanvasDomain
 import Foundation
 import ImageIO
 
-/// 우리 앱에서 업로드한 이미지의 로컬 기록 저장소.
+/// `RecentUploadsRepository` 파일 구현.
 /// Application Support/RecentUploads/ 에 파일로 저장하고, 조회 시 `StoredImage` 로 읽어 넘긴다.
-/// 업로드 기능이 생기면 업로드 성공 시점에 `save(_:)` 한 줄로 연결한다.
-public actor RecentUploadsStorage {
+public actor RecentUploadsRepositoryImpl: RecentUploadsRepository {
     private let directoryURL = URL.applicationSupportDirectory.appending(path: "RecentUploads")
 
     public init() {}
@@ -80,45 +79,3 @@ public actor RecentUploadsStorage {
         (try? fileURL.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
     }
 }
-
-#if DEBUG
-import UIKit
-
-extension RecentUploadsStorage {
-    /// 디버그 전용: 저장 기록이 없으면 번호 매긴 색상 샘플 이미지를 채운다 (최근 업로드 섹션 UI 테스트용).
-    /// 마지막 2장은 파일 생성일을 25시간 전으로 백데이트 → 정책 창 필터가 걸러내는지 확인용 (화면에 안 보여야 정상).
-    /// 업로드 기능이 붙으면 이 시딩과 호출부를 삭제한다.
-    func seedSampleDataIfEmpty(count: Int = 6) {
-        guard loadRecent(limit: 1).isEmpty else { return }
-        let colors: [UIColor] = [.systemRed, .systemOrange, .systemYellow, .systemGreen, .systemBlue, .systemPurple]
-        for index in 0..<count {
-            let isBackdated = index >= count - 2
-            let size = CGSize(width: 600, height: 600)
-            let image = UIGraphicsImageRenderer(size: size).image { context in
-                colors[index % colors.count].setFill()
-                context.fill(CGRect(origin: .zero, size: size))
-                let title = (isBackdated ? "어제 샘플 \(index + 1)" : "샘플 \(index + 1)") as NSString
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.boldSystemFont(ofSize: 72),
-                    .foregroundColor: UIColor.white
-                ]
-                let titleSize = title.size(withAttributes: attributes)
-                title.draw(
-                    at: CGPoint(x: (size.width - titleSize.width) / 2, y: (size.height - titleSize.height) / 2),
-                    withAttributes: attributes
-                )
-            }
-            guard let jpegData = image.jpegData(compressionQuality: 0.8),
-                  let stored = try? save(jpegData)
-            else { continue }
-            if isBackdated {
-                let backdate = Date.now.addingTimeInterval(-25 * 60 * 60)
-                try? FileManager.default.setAttributes(
-                    [.creationDate: backdate],
-                    ofItemAtPath: directoryURL.appending(path: stored.id).path()
-                )
-            }
-        }
-    }
-}
-#endif

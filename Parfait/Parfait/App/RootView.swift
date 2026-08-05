@@ -36,7 +36,7 @@ struct RootView: View {
                 switch entry {
                 case .login:   LoginView(router: router, store: diContainer.makeLoginStore())
                 case .setting: SettingView(store: diContainer.makeSettingStore())
-                case .album:   AlbumView()
+                case .album:   AlbumView(makeAlbumPickerStore: diContainer.makeAlbumPickerStore)
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in

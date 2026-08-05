@@ -14,7 +14,13 @@ public struct AlbumView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
-    public init() {}
+    /// 사진 선택 화면 Store 팩토리 — `isLimited` 는 권한이 풀린 뒤에야 아는 런타임 값이라
+    /// composition root 가 store 를 미리 만들지 못하고 클로저로 주입한다.
+    private let makeAlbumPickerStore: (_ isLimited: Bool) -> AlbumPickerStore
+
+    public init(makeAlbumPickerStore: @escaping (_ isLimited: Bool) -> AlbumPickerStore) {
+        self.makeAlbumPickerStore = makeAlbumPickerStore
+    }
 
     public var body: some View {
         ZStack {
@@ -23,9 +29,9 @@ public struct AlbumView: View {
             Group {
                 switch store.state.permission {
                 case .fullAccess:
-                    AlbumPickerView(isLimited: false)
+                    AlbumPickerView(store: makeAlbumPickerStore(false))
                 case .limited:
-                    AlbumPickerView(isLimited: true)
+                    AlbumPickerView(store: makeAlbumPickerStore(true))
                 case .denied:
                     AlbumPermissionDeniedView()
                 case .notDetermined, nil:
@@ -51,5 +57,10 @@ public struct AlbumView: View {
 }
 
 #Preview {
-    AlbumView()
+    AlbumView { isLimited in
+        AlbumPickerStore(
+            isLimited: isLimited,
+            recentUploadsRepository: PreviewRecentUploadsRepository()
+        )
+    }
 }

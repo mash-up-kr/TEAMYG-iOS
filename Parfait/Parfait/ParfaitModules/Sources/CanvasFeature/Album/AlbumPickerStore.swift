@@ -14,12 +14,13 @@ import UIComponent
 @Observable @MainActor
 public final class AlbumPickerStore: MVIStore {
     public private(set) var state: State
-    private let recentUploadsStorage = RecentUploadsStorage()
+    private let recentUploadsRepository: any RecentUploadsRepository
     private var recentUploadsTask: Task<Void, Never>?
     private var limitedPickerTask: Task<Void, Never>?
     private var changeRelay: PhotoLibraryChangeRelay?
 
-    public init(isLimited: Bool) {
+    public init(isLimited: Bool, recentUploadsRepository: any RecentUploadsRepository) {
+        self.recentUploadsRepository = recentUploadsRepository
         state = State(isLimited: isLimited)
     }
 
@@ -49,8 +50,8 @@ public final class AlbumPickerStore: MVIStore {
     /// 최근 업로드 기록 로드 — 정책 창(03:00~다음날 02:59) 안의 기록만, 비면 뷰가 섹션을 숨긴다.
     private func loadRecentUploads() {
         recentUploadsTask?.cancel()
-        recentUploadsTask = Task { [weak self, recentUploadsStorage] in
-            let uploads = await recentUploadsStorage.loadRecent(
+        recentUploadsTask = Task { [weak self, recentUploadsRepository] in
+            let uploads = await recentUploadsRepository.loadRecent(
                 limit: AlbumPolicy.recentUploadsLimit,
                 within: AlbumPolicy.todayWindow()
             )
