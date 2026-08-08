@@ -18,29 +18,26 @@ struct MemberCountPicker: View {
     let onSelect: (Int) -> Void
 
     private static let columnCount = 6
-    /// Figma `Button-Input-Number` 는 50×50 고정이라 화면 폭에 따라 늘리지 않는다.
+    /// Figma `Button-Input-Number` 50×50 고정. 화면 폭에 따라 늘리지 않는다.
     private static let cellSize: CGFloat = 50
-    /// 열 사이 최소 간격. 디자인 375pt 기준으로 6칸(300) + 간격 5개(35) = 335 로 딱 맞고,
-    /// 더 넓은 화면에서 남는 폭은 `Spacer` 가 간격에 고르게 나눠 갖는다 —
-    /// 셀을 늘리면 정사각형이 깨지고, 한쪽에 몰아 두면 위 입력 필드와 좌우가 어긋난다.
+    /// Figma `Number-Container` 의 Column gap 7 · Row gap 6 고정.
     private static let columnGap: CGFloat = 7
     private static let rowGap: CGFloat = 6
 
     var body: some View {
         VStack(spacing: Self.rowGap) {
             ForEach(rows, id: \.first) { row in
-                HStack(spacing: 0) {
+                HStack(spacing: Self.columnGap) {
                     ForEach(row, id: \.self) { count in
                         cell(count)
-                        if count != row.last {
-                            Spacer(minLength: Self.columnGap)
-                        }
                     }
                 }
-                // 6칸을 채운 행은 `Spacer` 가 이미 폭을 채운다. 못 채운 행만 왼쪽으로 붙인다.
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        // 셀과 간격이 모두 고정이라 그리드 폭은 375pt 디자인 기준 335 로 고정된다
+        // (6×50 + 5×7). 더 넓은 화면에서 남는 폭은 오른쪽에 두고 왼쪽 리딩을 맞춘다 —
+        // 위 입력 필드·라벨과 시작선이 같아야 한 덩어리로 읽힌다.
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 6칸씩 끊은 행들. 마지막 행이 6칸을 못 채우면 남는 자리는 비워 둔다(현재 1...12 는 딱 2행).
