@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
@@ -105,21 +106,23 @@ public struct CreateGroupView: View {
             title: "그룹명",
             text: $nameInput,
             placeholder: "그룹명을 입력해 주세요",
-            maxLength: GroupNamePolicy.groupName.maximumLength,
-            errorMessage: store.state.displayedNameViolation.map { $0.message(subject: "그룹명") }
+            maxLength: GroupNamePolicy.maxLength,
+            errorMessage: store.state.displayedNameViolation?.message
         )
         .onChange(of: nameInput) { _, _ in
             store.send(.nameChanged(nameInput))
         }
     }
 
+    /// 닉네임은 앱 닉네임 화면과 같은 정책이라 `NicknameValidator` 를 그대로 쓴다 —
+    /// 그래서 그룹명 필드와 달리 문구를 여기서 매핑하지 않고 검증기가 준 것을 바로 넘긴다.
     private var nicknameField: some View {
         YGTitledTextField(
             title: "그룹 속 내 닉네임",
             text: $nicknameInput,
             placeholder: "닉네임을 입력해 주세요",
-            maxLength: GroupNamePolicy.nickname.maximumLength,
-            errorMessage: store.state.displayedNicknameViolation.map { $0.message(subject: "닉네임") }
+            maxLength: NicknameValidator.maxLength,
+            errorMessage: store.state.displayedNicknameErrorMessage
         )
         .onChange(of: nicknameInput) { _, _ in
             store.send(.nicknameChanged(nicknameInput))
@@ -171,16 +174,16 @@ public struct CreateGroupView: View {
 // MARK: - 문구
 
 private extension GroupNameViolation {
-    /// 위반 사유별 안내 문구. `subject` 는 "그룹명"·"닉네임" 처럼 필드를 가리키는 말.
+    /// 그룹명 위반 사유별 안내 문구. 닉네임 쪽 문구는 `NicknameValidator` 가 직접 들고 있다.
     ///
     /// `.empty`·`.tooLong` 은 화면에 뜨지 않는다 — 빈 입력은 Empty 상태로 두고, 길이는
     /// `truncated(_:)` 가 먼저 끊는다. 그래도 문구를 두는 건 사유가 늘었을 때 빠뜨리지 않기 위함이다.
-    func message(subject: String) -> String {
+    var message: String {
         switch self {
-        case .empty: "\(subject)을 입력해 주세요"
+        case .empty: "그룹명을 입력해 주세요"
         case .disallowedCharacter: "한글, 영문, 숫자, 띄어쓰기만 사용할 수 있어요"
-        case .tooLong(let maximum): "\(subject)은 \(maximum)자까지 입력할 수 있어요"
-        case .leadingSpace, .trailingSpace: "\(subject)의 처음과 끝에는 공백을 사용할 수 없어요"
+        case .tooLong: "그룹명은 \(GroupNamePolicy.maxLength)자까지 사용할 수 있어요"
+        case .edgeSpace: "그룹명의 처음과 끝에는 공백을 사용할 수 없어요"
         case .consecutiveSpaces: "공백은 글자 사이에 1칸만 사용할 수 있어요"
         }
     }

@@ -5,6 +5,8 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import Common
+
 /// 새 그룹을 만드는 비즈니스 규칙. 이름 규칙 검증도 여기서 한 번 더 거친다 —
 /// UI 가 막아주긴 하지만 규칙의 최종 판단은 Domain 이 갖는다.
 public protocol CreateGroupUseCase: Sendable {
@@ -19,11 +21,13 @@ public struct CreateGroupUseCaseImpl: CreateGroupUseCase {
     }
 
     public func create(_ draft: GroupDraft) async throws -> YGGroup {
-        if let violation = GroupNamePolicy.groupName.validate(draft.name) {
+        if let violation = GroupNamePolicy.validate(draft.name) {
             throw CreateGroupError.invalidName(violation)
         }
-        if let violation = GroupNamePolicy.nickname.validate(draft.nickname) {
-            throw CreateGroupError.invalidNickname(violation)
+        // 닉네임은 사유 대신 안내 문구를 돌려주는 검증기라 위반 여부만 본다 —
+        // 여기까지 온 값은 UI 가 이미 막은 뒤라, 사유를 세분해도 쓸 곳이 없다.
+        if NicknameValidator.errorMessage(for: draft.nickname) != nil {
+            throw CreateGroupError.invalidNickname
         }
         guard GroupDraft.memberCountRange.contains(draft.memberCount) else {
             throw CreateGroupError.invalidMemberCount
@@ -51,7 +55,7 @@ public struct GroupDraft: Sendable, Equatable {
 /// 그룹 생성 실패 사유. Data 레이어가 서버 에러 응답을 이 타입으로 매핑한다.
 public enum CreateGroupError: Error, Equatable {
     case invalidName(GroupNameViolation)
-    case invalidNickname(GroupNameViolation)
+    case invalidNickname
     case invalidMemberCount
     /// 같은 이름의 그룹을 이미 갖고 있다.
     case duplicatedName

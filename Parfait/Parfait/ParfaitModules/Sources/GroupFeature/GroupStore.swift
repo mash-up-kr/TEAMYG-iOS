@@ -23,6 +23,11 @@ public final class GroupStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            // 드롭다운 항목으로 들어갔던 화면에서 돌아오면 열린 채로 남으므로 여기서 닫는다.
+            //
+            // `screenDisappeared` 에서 닫으면 안 된다 — 드롭다운의 `NavigationLink` 가 조건부 뷰라,
+            // push 직후 `onDisappear` 에서 플래그를 내리면 링크가 트리에서 사라지며 push 가 취소된다.
+            state.isAddGroupMenuPresented = false
             // 재진입마다 새 Store 라 툴팁도 자연히 다시 뜬다 — "0건이면 항상 노출" 정책.
             beginLoad(isRefresh: false)
         case .refreshRequested:
@@ -44,8 +49,6 @@ public final class GroupStore: MVIStore {
         case .screenDisappeared:
             loadTask?.cancel()
             loadTask = nil
-            // 드롭다운 항목으로 다른 화면에 들어갔다 돌아왔을 때 열린 채로 남지 않게 함께 닫는다.
-            state.isAddGroupMenuPresented = false
         }
     }
 

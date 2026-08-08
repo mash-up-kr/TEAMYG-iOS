@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
@@ -23,9 +24,9 @@ public final class CreateGroupStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .nameChanged(let name):
-            state.name = GroupNamePolicy.groupName.truncated(name)
+            state.name = GroupNamePolicy.truncated(name)
         case .nicknameChanged(let nickname):
-            state.nickname = GroupNamePolicy.nickname.truncated(nickname)
+            state.nickname = String(nickname.prefix(NicknameValidator.maxLength))
         case .memberCountTapped(let memberCount):
             toggleMemberCount(memberCount)
         case .confirmTapped:
@@ -100,18 +101,22 @@ public final class CreateGroupStore: MVIStore {
         public var isCreateConfirmPopupPresented = false
 
         /// 세 입력이 모두 유효할 때만 만들어지는 제출용 값. `nil` 이면 아직 보낼 수 없다는 뜻.
+        ///
+        /// 그룹명과 닉네임의 검증기가 다르다 — 닉네임은 `Common` 의 `NicknameValidator` 를 그대로
+        /// 쓰고(앱 닉네임 화면과 같은 정책), 그룹명만 `GroupDomain` 의 규칙을 따른다.
         public var draft: GroupDraft? {
-            guard nameViolation == nil, nicknameViolation == nil, let memberCount else { return nil }
+            guard nameViolation == nil, nicknameErrorMessage == nil, let memberCount else { return nil }
             return GroupDraft(name: name, nickname: nickname, memberCount: memberCount)
         }
 
         /// 그룹명 위반 사유. 아직 한 글자도 안 쳤으면 에러로 다그치지 않는다(Empty 상태).
         public var nameViolation: GroupNameViolation? {
-            name.isEmpty ? .empty : GroupNamePolicy.groupName.validate(name)
+            name.isEmpty ? .empty : GroupNamePolicy.validate(name)
         }
 
-        public var nicknameViolation: GroupNameViolation? {
-            nickname.isEmpty ? .empty : GroupNamePolicy.nickname.validate(nickname)
+        /// 닉네임 위반 안내 문구. `NicknameValidator` 가 사유 대신 문구를 돌려주므로 그대로 받는다.
+        public var nicknameErrorMessage: String? {
+            NicknameValidator.errorMessage(for: nickname)
         }
 
         /// 화면에 빨간 문구로 띄울 위반 — 빈 입력은 "아직 안 씀"이지 "틀림"이 아니라 뺀다.
@@ -119,8 +124,8 @@ public final class CreateGroupStore: MVIStore {
             name.isEmpty ? nil : nameViolation
         }
 
-        public var displayedNicknameViolation: GroupNameViolation? {
-            nickname.isEmpty ? nil : nicknameViolation
+        public var displayedNicknameErrorMessage: String? {
+            nickname.isEmpty ? nil : nicknameErrorMessage
         }
 
         public var isConfirmEnabled: Bool {
