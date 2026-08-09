@@ -22,6 +22,12 @@ struct AppDependencies {
         )
     }
 
+    func makeGroupStore() -> GroupStore {
+        GroupStore(
+            fetchGroupsUseCase: FetchGroupsUseCaseImpl(groupRepository: GroupRepositoryImpl())
+        )
+    }
+
     func makeInviteCodeStore() -> InviteCodeStore {
         InviteCodeStore(
             joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
