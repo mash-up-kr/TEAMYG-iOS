@@ -36,12 +36,12 @@ public struct GroupView: View {
     }
 
     public var body: some View {
-        // 딤은 상단 바 **아래** 층에 둔다 — 바를 한 번만 그리면 되고, 조작부가 딤에 묻히지 않는다.
+        // 레이어 순서는 G-002 시안 그대로: 콘텐츠 → 상단 바 → 딤 → 칩 사본 → 드롭다운.
+        // 딤이 바까지 덮어야 바 배경이 시안처럼 어두워지고, 바 영역 탭으로도 메뉴가 닫힌다.
         // 상단 바는 `ygTopBar`(VStack 쌓기) 대신 오버레이로 띄운다 — 그래야 파르페가 반투명 바 밑으로 지나간다.
         // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타날 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
-            addGroupMenuDim
             topBar
             tooltip
             addGroupMenu
@@ -149,21 +149,26 @@ public struct GroupView: View {
 
     // MARK: - 그룹 추가하기 드롭다운 (G-002)
 
-    /// 본문을 덮는 딤. 상단 바보다 아래 층이라 바의 조작부는 밝게 남는다.
+    /// 딤·칩 사본·드롭다운. 셋의 등장 방식이 달라 한 덩어리로 묶지 않는다.
     @ViewBuilder
-    private var addGroupMenuDim: some View {
+    private var addGroupMenu: some View {
         if store.state.isAddGroupMenuPresented {
+            // 상단 바까지 덮는다 — 시안에서 바 배경도 함께 어두워진다(배경 250 → 193).
             Color.black25
                 .ignoresSafeArea()
                 .onTapGesture { store.send(.addGroupMenuDismissed) }
                 .transition(.opacity)
-        }
-    }
 
-    /// 칩 아래 펼쳐지는 드롭다운. 딤·바보다 위 층.
-    @ViewBuilder
-    private var addGroupMenu: some View {
-        if store.state.isAddGroupMenuPresented {
+            // 딤 위에 칩만 다시 그려 누른 버튼을 밝게 남긴다 — 시안도 칩만 250 으로 남는다.
+            // 바 전체를 다시 그리면 배경(white75)까지 겹쳐 딤이 그 구간만 옅어진다.
+            YGChip("그룹 추가하기", icon: .icPlus, placement: .leading) {
+                store.send(.addGroupMenuDismissed)
+            }
+            .frame(height: Self.addGroupChipHeight)
+            .padding(.top, Self.addGroupChipTopInset)
+            .padding(.trailing, Self.horizontalInset)
+            .transition(.opacity)
+
             AddGroupMenu {
                 // ponytail: 그룹 만들기 화면 미구현 — 화면 생기면 연결.
                 store.send(.addGroupMenuDismissed)
