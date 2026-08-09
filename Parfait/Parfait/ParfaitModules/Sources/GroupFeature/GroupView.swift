@@ -48,7 +48,7 @@ public struct GroupView: View {
         }
         .animation(Self.overlayAnimation, value: store.state.isTooltipVisible)
         .animation(Self.overlayAnimation, value: store.state.isAddGroupMenuPresented)
-        .background(GridBackground())
+        .background(background)
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
             case .inviteCode: InviteCodeView(store: makeInviteCodeStore())
@@ -56,6 +56,15 @@ public struct GroupView: View {
         }
         .task { store.send(.screenAppeared) }
         .onDisappear { store.send(.screenDisappeared) }
+    }
+
+    /// 화면 전체를 덮는 배경. 비율을 유지한 채 채우고 넘치는 부분은 잘라낸다.
+    private var background: some View {
+        Image.groupListBG
+            .resizable()
+            .scaledToFill()
+            .ignoresSafeArea()
+            .clipped()
     }
 
     /// 화면 위에 떠 있는 상단 바. 콘텐츠가 이 바 밑으로 스크롤된다.
