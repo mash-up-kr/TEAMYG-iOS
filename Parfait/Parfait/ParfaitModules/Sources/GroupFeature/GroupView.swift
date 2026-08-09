@@ -58,11 +58,13 @@ public struct GroupView: View {
         .onDisappear { store.send(.screenDisappeared) }
     }
 
-    /// 화면 전체를 덮는 배경. 비율을 유지한 채 채우고 넘치는 부분은 잘라낸다.
+    /// 화면 전체를 덮는 배경.
+    ///
+    /// 원본 크기 그대로 그리고 넘치는 부분은 잘라낸다 — 늘리면 격자 칸까지 커져서
+    /// 기기마다 격자가 달라진다. 그래서 `resizable()` 을 쓰지 않는다.
+    /// 에셋은 가장 큰 기기를 덮고도 남는 크기여야 한다.
     private var background: some View {
         Image.groupListBG
-            .resizable()
-            .scaledToFill()
             .ignoresSafeArea()
             .clipped()
     }
