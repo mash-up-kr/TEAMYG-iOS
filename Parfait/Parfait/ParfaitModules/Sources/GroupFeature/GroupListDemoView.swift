@@ -1,13 +1,12 @@
 //
 //  GroupListDemoView.swift
-//  Parfait
+//  GroupFeature
 //
 //  Created by 신상우 on 8/1/26.
 //
 
 #if DEBUG
 import GroupDomain
-import GroupFeature
 import SwiftUI
 import UIComponent
 
@@ -15,8 +14,8 @@ import UIComponent
 ///
 /// 패널 값이 바뀌면 화면을 다시 만들지 않고 `GroupStore` 에 새로고침만 시킨다 —
 /// 뷰를 새로 만들면 로딩 단계를 거치며 화면이 한 번 비어 깜빡이기 때문이다.
-struct GroupListDemoView: View {
-    let dependencies: AppDependencies
+public struct GroupListDemoView: View {
+    private let makeInviteCodeStore: () -> InviteCodeStore
 
     /// 패널이 직접 쓰는 값. 저장소가 읽어 가는 사본은 `demoState` 안에 따로 둔다.
     @State private var knobs = DemoKnobs()
@@ -29,8 +28,8 @@ struct GroupListDemoView: View {
     @State private var demoState: DemoGroupState
 
     @MainActor
-    init(dependencies: AppDependencies) {
-        self.dependencies = dependencies
+    public init(makeInviteCodeStore: @escaping () -> InviteCodeStore) {
+        self.makeInviteCodeStore = makeInviteCodeStore
         let demoState = DemoGroupState()
         _demoState = State(initialValue: demoState)
         _store = State(
@@ -42,8 +41,8 @@ struct GroupListDemoView: View {
         )
     }
 
-    var body: some View {
-        GroupView(store: store, makeInviteCodeStore: dependencies.makeInviteCodeStore)
+    public var body: some View {
+        GroupView(store: store, makeInviteCodeStore: makeInviteCodeStore)
             .parfaitLayoutAnimationEnabled(isLayoutAnimationEnabled)
             .overlay(alignment: .bottomTrailing) { panel }
             .onChange(of: knobs) { _, newKnobs in
@@ -147,7 +146,7 @@ struct GroupListDemoView: View {
     private static let maximumDemoGroupCount = 12
 }
 
-/// 앱 타깃은 기본 격리가 MainActor라, 저장소가 백그라운드에서 읽는 이 값은 명시적으로 풀어 둔다.
+/// 저장소가 어느 스레드에서든 읽는 값이라 MainActor 에 묶이지 않게 명시해 둔다.
 private nonisolated struct DemoKnobs: Hashable {
     var groupCount = 5
     var bumpsActivityOnRefresh = false
