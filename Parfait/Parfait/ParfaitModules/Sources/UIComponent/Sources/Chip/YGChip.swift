@@ -76,7 +76,7 @@ private struct YGChipStyle: ButtonStyle {
             .padding(.trailing, trailingPadding)
             .background(background(isPressed: configuration.isPressed), in: .capsule)
             .overlay {
-                if showsBorder {
+                if placement == .leading {
                     Capsule().strokeBorder(.gray500, lineWidth: 1)
                 }
             }
@@ -91,8 +91,9 @@ private struct YGChipStyle: ButtonStyle {
         placement == .leading ? .padding5 : .padding3
     }
 
-    /// trailing(Right): default cherry100 → pressed cherry200
-    /// leading(Left): default whiteFixed → pressed gray200 (테두리는 두 상태 모두)
+    /// leading(Left): default whiteFixed → pressed gray200, 보더는 gray500 고정
+    ///   (2026-08 컨셉변경, Figma Button-Chip-Left Type=Default·Pressed).
+    /// trailing(Right): default cherry100 → pressed cherry200 (구 컨셉, 새 스펙 미확인)
     private func background(isPressed: Bool) -> Color {
         switch placement {
         case .trailing:
@@ -102,12 +103,7 @@ private struct YGChipStyle: ButtonStyle {
         }
     }
 
-    /// leading(Left) 은 배경이 옅어 테두리로 형태를 잡는다.
-    private var showsBorder: Bool {
-        placement == .leading
-    }
-
-    /// leading(Left): default gray900 → pressed gray950 (Figma Button-Chip-Left)
+    /// leading(Left): default gray900 → pressed gray950 (2026-08 컨셉변경)
     /// trailing(Right): gray950 유지 (Button-Chip-Right 스펙 미확인)
     private func foreground(isPressed: Bool) -> Color {
         switch placement {

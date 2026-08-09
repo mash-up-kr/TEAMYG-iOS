@@ -8,47 +8,60 @@
 import SwiftUI
 
 /// 파르페 공용 상단 바.
-/// 상태(Status)에 따라 좌측 버튼(사이드메뉴/뒤로가기)·중앙 콘텐츠(날짜/타이틀)·우측 액션(그룹 추가하기)이 결정된다.
+/// 상태(Status)에 따라 좌측 버튼(사이드메뉴/뒤로가기)·중앙 콘텐츠(날짜/타이틀)·우측 액션이 결정된다.
 /// 적용 시 시스템 내비게이션 바를 숨기고, 끊긴 스와이프 백 제스처를 복원한다.
 public struct YGTopBar: View {
     public enum Status {
-        /// 사이드메뉴 + 오늘 날짜
-        case empty(date: Date)
-        /// 사이드메뉴 + 오늘 날짜 + 그룹 추가 버튼
-        case `default`(date: Date)
+        /// 사이드메뉴 + 날짜
+        case empty
+        /// 사이드메뉴 + 날짜 + 그룹 추가하기 버튼
+        case `default`
         /// 뒤로가기만
         case back
         /// 뒤로가기 + 타이틀
         case detail(title: String)
+        /// 뒤로가기 + 타이틀 + 멤버 네임태그 칩 + 사이드메뉴
+        case canvas(title: String, members: [Member])
     }
 
-    /// 디자인 표기가 영문 월·요일이라 로케일을 고정한다.
-    private static let dateLocale = Locale(identifier: "en_US_POSIX")
+    /// `canvas` 상태 우측에 표시할 그룹 멤버.
+    /// 네임태그 타입 배정·저장은 Domain 책임이라 이 컴포넌트는 받기만 한다.
+    public struct Member {
+        let nickname: String
+        let nametagType: YGNametagChip.NametagType
+
+        public init(nickname: String, nametagType: YGNametagChip.NametagType) {
+            self.nickname = nickname
+            self.nametagType = nametagType
+        }
+    }
+
+    /// 멤버 칩 최대 노출 수. 초과분은 `+N` 오버플로 칩 하나로 합쳐진다.
+    private static let maximumVisibleMemberCount = 5
 
     private let status: Status
-    private let showsBackground: Bool
     private let onLeadingTap: (() -> Void)?
     private let onNewGroupTap: (() -> Void)?
+    private let onTrailingTap: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
 
     /// - Parameters:
     ///   - status: 바 구성 상태.
-    ///   - showsBackground: 바 자체 배경(반투명 흰색)을 그릴지. 딤 위에 바를 한 번 더 얹어
-    ///     조작부만 밝게 남길 때는 `false` — 배경까지 겹쳐 그리면 딤이 그 구간만 옅어진다.
-    ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail` 은 뒤로가기.
+    ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail`/`canvas` 는 뒤로가기.
     ///     생략하면 뒤로가기(`dismiss`)가 기본 동작.
     ///   - onNewGroupTap: 그룹 추가하기 버튼 탭. `default` 에서만 노출된다.
+    ///   - onTrailingTap: 우측 사이드메뉴 버튼 탭. `canvas` 에서만 노출된다.
     public init(
         _ status: Status,
-        showsBackground: Bool = true,
         onLeadingTap: (() -> Void)? = nil,
-        onNewGroupTap: (() -> Void)? = nil
+        onNewGroupTap: (() -> Void)? = nil,
+        onTrailingTap: (() -> Void)? = nil
     ) {
         self.status = status
-        self.showsBackground = showsBackground
         self.onLeadingTap = onLeadingTap
         self.onNewGroupTap = onNewGroupTap
+        self.onTrailingTap = onTrailingTap
     }
 
     public var body: some View {
@@ -59,15 +72,13 @@ public struct YGTopBar: View {
 
             Spacer(minLength: 0)
 
-            if isDefault, let onNewGroupTap {
-                YGChip("그룹 추가하기", icon: .icPlus, placement: .leading, action: onNewGroupTap)
-            }
+            trailing
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, .padding3)   // 상하 8
         .padding(.leading, .padding3)    // 좌 8
-        .padding(.trailing, .padding7)   // 우 20
-        .background(barBackground)
+        .padding(.trailing, isCanvas ? .padding3 : .padding7)   // 우 8(canvas) / 20
+        .background(barBackgroundColor)
         .toolbar(.hidden, for: .navigationBar)
         .background(SwipeBackGestureRestorer())
         // 바의 위치를 상위로 알린다 → `.ygAlert` 가 선언 순서와 무관하게 바 아래에서 알림을 내리는 데 사용.
@@ -77,45 +88,30 @@ public struct YGTopBar: View {
     @ViewBuilder
     private var content: some View {
         switch status {
-        case .empty(let date), .default(let date):
-            dateLabel(date)
+        case .empty, .default:
+            dateView
         case .back:
             EmptyView()
-        case .detail(let title):
+        case .detail(let title), .canvas(let title, _):
             Text(title)
                 .suit(.body01Regular)
                 .foregroundStyle(.gray800)
-                .padding(.leading, .gap2)
+                .lineLimit(1)
         }
     }
 
-    /// 그룹 목록의 오늘 날짜. 예: `December 31 (Wed)`.
-    private func dateLabel(_ date: Date) -> some View {
-        HStack(spacing: .gap3) {
-            Text(date.formatted(.dateTime.locale(Self.dateLocale).month(.wide).day()))
-                .foregroundStyle(.gray800)
-            Text("(\(date.formatted(.dateTime.locale(Self.dateLocale).weekday(.abbreviated))))")
-                .foregroundStyle(.gray300)
-        }
-        .suit(.body01Regular)
-    }
-
-    /// 목록 화면은 배경 이미지 위에 얹히므로 바를 반투명 흰색으로 깔아 글자를 띄운다.
-    /// 상태바 영역까지 함께 덮어 위쪽이 끊기지 않게 한다 — 높이를 박지 않고 기기별 안전영역만큼 늘어난다.
-    /// 상세·뒤로가기 화면은 단색 배경이라 그대로 둔다.
     @ViewBuilder
-    private var barBackground: some View {
-        if showsBackground, hasTranslucentBackground {
-            Color.white75.ignoresSafeArea(edges: .top)
-        } else {
-            Color.clear
-        }
-    }
-
-    private var hasTranslucentBackground: Bool {
+    private var trailing: some View {
         switch status {
-        case .empty, .default: true
-        case .back, .detail: false
+        case .default:
+            if let onNewGroupTap {
+                YGChip("그룹 추가하기", icon: .icPlus, placement: .leading, action: onNewGroupTap)
+            }
+        case .canvas(_, let members):
+            memberChips(members)
+            YGIconButton(.icHamburger, size: .small, action: onTrailingTap ?? {})
+        case .empty, .back, .detail:
+            EmptyView()
         }
     }
 
@@ -126,12 +122,50 @@ public struct YGTopBar: View {
     private var leadingIcon: Image {
         switch status {
         case .empty, .default: .icHamburger
-        case .back, .detail: .icCaretLeft
+        case .back, .detail, .canvas: .icCaretLeft
         }
     }
 
-    private var isDefault: Bool {
-        if case .default = status { return true }
+    /// `December 31 (Wed)` — 날짜는 gray800, 요일은 gray300.
+    private var dateView: some View {
+        let now = Date.now
+        let locale = Locale(identifier: "en_US")
+
+        return HStack(spacing: .gap3) {
+            Text(now.formatted(.dateTime.month(.wide).day().locale(locale)))
+                .suit(.body01Regular)
+                .foregroundStyle(.gray800)
+            Text("(\(now.formatted(.dateTime.weekday(.abbreviated).locale(locale))))")
+                .suit(.body01Regular)
+                .foregroundStyle(.gray300)
+        }
+    }
+
+    /// 멤버 네임태그 칩 목록. 12 겹침 — 먼저 그려지는 왼쪽 칩이 아래에 깔린다 (HStack 기본 z-순서).
+    /// 최대 5개 노출, 6개 이상이면 5개 + 초과 인원 `+N` 칩.
+    private func memberChips(_ members: [Member]) -> some View {
+        let visibleMembers = members.prefix(Self.maximumVisibleMemberCount)
+        let overflowCount = members.count - Self.maximumVisibleMemberCount
+
+        return HStack(spacing: -.gap4) {
+            ForEach(Array(visibleMembers.enumerated()), id: \.offset) { _, member in
+                YGNametagChip(nickname: member.nickname, type: member.nametagType, size: .medium)
+            }
+            if overflowCount > 0 {
+                YGNametagChip(overflowCount: overflowCount)
+            }
+        }
+    }
+
+    private var barBackgroundColor: Color {
+        switch status {
+        case .empty, .default: return .white75
+        case .back, .detail, .canvas: return .clear
+        }
+    }
+
+    private var isCanvas: Bool {
+        if case .canvas = status { return true }
         return false
     }
 }
@@ -157,16 +191,23 @@ public extension View {
     ///
     /// - Parameters:
     ///   - status: 바 구성 상태.
-    ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail` 은 뒤로가기.
+    ///   - onLeadingTap: 좌측 버튼 탭. `empty`/`default` 은 사이드메뉴, `back`/`detail`/`canvas` 는 뒤로가기.
     ///     생략하면 뒤로가기(`dismiss`)가 기본 동작.
     ///   - onNewGroupTap: 그룹 추가하기 버튼 탭. `default` 에서만 노출된다.
+    ///   - onTrailingTap: 우측 사이드메뉴 버튼 탭. `canvas` 에서만 노출된다.
     func ygTopBar(
         _ status: YGTopBar.Status,
         onLeadingTap: (() -> Void)? = nil,
-        onNewGroupTap: (() -> Void)? = nil
+        onNewGroupTap: (() -> Void)? = nil,
+        onTrailingTap: (() -> Void)? = nil
     ) -> some View {
         VStack(spacing: 0) {
-            YGTopBar(status, onLeadingTap: onLeadingTap, onNewGroupTap: onNewGroupTap)
+            YGTopBar(
+                status,
+                onLeadingTap: onLeadingTap,
+                onNewGroupTap: onNewGroupTap,
+                onTrailingTap: onTrailingTap
+            )
             self
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -196,11 +237,31 @@ private struct SwipeBackGestureRestorer: UIViewControllerRepresentable {
 }
 
 #Preview {
+    let members: [YGTopBar.Member] = [
+        .init(nickname: "김남수", nametagType: .type5),
+        .init(nickname: "김서연", nametagType: .type4),
+        .init(nickname: "김상우", nametagType: .type3),
+        .init(nickname: "김파르", nametagType: .type2),
+        .init(nickname: "김페야", nametagType: .type12),
+        .init(nickname: "여섯째", nametagType: .type1),
+        .init(nickname: "일곱째", nametagType: .type6)
+    ]
+
     VStack(spacing: .gap5) {
-        YGTopBar(.empty(date: .now), onLeadingTap: {})
-        YGTopBar(.default(date: .now), onLeadingTap: {}, onNewGroupTap: {})
+        YGTopBar(.empty, onLeadingTap: {})
+        YGTopBar(.default, onLeadingTap: {}, onNewGroupTap: {})
         YGTopBar(.back, onLeadingTap: {})
         YGTopBar(.detail(title: "그룹이름"), onLeadingTap: {})
+        YGTopBar(
+            .canvas(title: "그룹이름", members: members),
+            onLeadingTap: {},
+            onTrailingTap: {}
+        )
+        YGTopBar(
+            .canvas(title: "그룹이름", members: Array(members.prefix(3))),
+            onLeadingTap: {},
+            onTrailingTap: {}
+        )
     }
     .frame(maxHeight: .infinity, alignment: .top)
     .background(.gray50)

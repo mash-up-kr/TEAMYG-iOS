@@ -36,12 +36,13 @@ public struct GroupView: View {
     }
 
     public var body: some View {
-        // 레이어 순서는 G-002 시안 그대로: 콘텐츠 → 상단 바 → 딤 → (딤 위) 상단 바 → 드롭다운.
+        // 딤은 상단 바 **아래** 층에 둔다 — 바를 한 번만 그리면 되고, 조작부가 딤에 묻히지 않는다.
         // 상단 바는 `ygTopBar`(VStack 쌓기) 대신 오버레이로 띄운다 — 그래야 파르페가 반투명 바 밑으로 지나간다.
         // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타날 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
-            topBar()
+            addGroupMenuDim
+            topBar
             tooltip
             addGroupMenu
         }
@@ -58,15 +59,17 @@ public struct GroupView: View {
     }
 
     /// 화면 위에 떠 있는 상단 바. 콘텐츠가 이 바 밑으로 스크롤된다.
-    /// - Parameter showsBackground: 딤 위에 겹쳐 얹는 사본은 배경 없이 조작부만 그린다.
-    private func topBar(showsBackground: Bool = true) -> some View {
+    ///
+    /// 바 뒤 안전영역(상태바 자리)까지 같은 톤으로 채우는 건 이 화면의 몫이다 —
+    /// `YGTopBar` 는 60pt 짜리 바만 그리고 기기별 안전영역은 모른다.
+    private var topBar: some View {
         YGTopBar(
-            .default(date: .now),
-            showsBackground: showsBackground,
+            .default,
             // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
             onLeadingTap: {},
             onNewGroupTap: { store.send(.addGroupTapped) }
         )
+        .background(Color.white75.ignoresSafeArea(edges: .top))
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
@@ -146,20 +149,21 @@ public struct GroupView: View {
 
     // MARK: - 그룹 추가하기 드롭다운 (G-002)
 
-    /// 딤·상단 바 사본·드롭다운을 따로 얹는다 — 셋의 등장 방식이 달라서 한 덩어리로 묶지 않는다.
+    /// 본문을 덮는 딤. 상단 바보다 아래 층이라 바의 조작부는 밝게 남는다.
     @ViewBuilder
-    private var addGroupMenu: some View {
+    private var addGroupMenuDim: some View {
         if store.state.isAddGroupMenuPresented {
             Color.black25
                 .ignoresSafeArea()
                 .onTapGesture { store.send(.addGroupMenuDismissed) }
                 .transition(.opacity)
+        }
+    }
 
-            // 딤 위에 상단 바를 다시 그려 조작부만 밝게 남긴다(G-002).
-            // 배경은 딤 아래 진짜 바가 이미 깔았으므로 사본은 내용만 그린다.
-            topBar(showsBackground: false)
-                .transition(.opacity)
-
+    /// 칩 아래 펼쳐지는 드롭다운. 딤·바보다 위 층.
+    @ViewBuilder
+    private var addGroupMenu: some View {
+        if store.state.isAddGroupMenuPresented {
             AddGroupMenu {
                 // ponytail: 그룹 만들기 화면 미구현 — 화면 생기면 연결.
                 store.send(.addGroupMenuDismissed)

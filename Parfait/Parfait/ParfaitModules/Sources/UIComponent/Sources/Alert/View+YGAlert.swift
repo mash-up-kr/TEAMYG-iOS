@@ -18,7 +18,7 @@ public extension View {
     ///
     /// ```swift
     /// ScrollView { ... }
-    ///     .ygTopBar(.default(date: .now), onLeadingTap: { ... })
+    ///     .ygTopBar(.default, onLeadingTap: { ... })
     ///     .ygAlert(isPresented: $isPresented) {
     ///         YGAlert(title: "제로", subtitle: "메모지를 남겼어요")
     ///     }
