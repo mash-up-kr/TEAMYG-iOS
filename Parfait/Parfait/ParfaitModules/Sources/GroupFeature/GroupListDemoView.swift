@@ -1,13 +1,12 @@
 //
 //  GroupListDemoView.swift
-//  Parfait
+//  GroupFeature
 //
 //  Created by 신상우 on 8/1/26.
 //
 
 #if DEBUG
 import GroupDomain
-import GroupFeature
 import SwiftUI
 import UIComponent
 
@@ -15,8 +14,8 @@ import UIComponent
 ///
 /// 패널 값이 바뀌면 화면을 다시 만들지 않고 `GroupStore` 에 새로고침만 시킨다 —
 /// 뷰를 새로 만들면 로딩 단계를 거치며 화면이 한 번 비어 깜빡이기 때문이다.
-struct GroupListDemoView: View {
-    let dependencies: AppDependencies
+public struct GroupListDemoView: View {
+    private let makeInviteCodeStore: () -> InviteCodeStore
 
     /// 패널이 직접 쓰는 값. 저장소가 읽어 가는 사본은 `demoState` 안에 따로 둔다.
     @State private var knobs = DemoKnobs()
@@ -29,8 +28,8 @@ struct GroupListDemoView: View {
     @State private var demoState: DemoGroupState
 
     @MainActor
-    init(dependencies: AppDependencies) {
-        self.dependencies = dependencies
+    public init(makeInviteCodeStore: @escaping () -> InviteCodeStore) {
+        self.makeInviteCodeStore = makeInviteCodeStore
         let demoState = DemoGroupState()
         _demoState = State(initialValue: demoState)
         _store = State(
@@ -42,11 +41,11 @@ struct GroupListDemoView: View {
         )
     }
 
-    var body: some View {
+    public var body: some View {
         GroupView(
             store: store,
-            makeInviteCodeStore: dependencies.makeInviteCodeStore,
-            // 앱 조립본(`dependencies`)을 쓰면 생성이 실제 스텁 저장소로 가서 데모 목록에 안 남는다.
+            makeInviteCodeStore: makeInviteCodeStore,
+            // 앱 조립본을 쓰면 생성이 실제 스텁 저장소로 가서 데모 목록에 안 남는다.
             // 목록과 같은 데모 저장소를 물려야 만든 그룹이 돌아온 목록에 보인다.
             makeCreateGroupStore: {
                 CreateGroupStore(
@@ -159,7 +158,7 @@ struct GroupListDemoView: View {
     private static let maximumDemoGroupCount = 12
 }
 
-/// 앱 타깃은 기본 격리가 MainActor라, 저장소가 백그라운드에서 읽는 이 값은 명시적으로 풀어 둔다.
+/// 저장소가 어느 스레드에서든 읽는 값이라 MainActor 에 묶이지 않게 명시해 둔다.
 private nonisolated struct DemoKnobs: Hashable {
     var groupCount = 5
     var bumpsActivityOnRefresh = false
@@ -176,18 +175,18 @@ private nonisolated final class DemoGroupState: @unchecked Sendable {
     /// 다음 새로고침에서 최신으로 끌어올릴 그룹.
     private var nextBumpedIndex = 0
     /// 이 화면에서 직접 만든 그룹. 패널로 만든 목록 앞에 붙어, 만들자마자 목록에 늘어난 게 보인다.
-    private var createdGroups: [YGGroup] = []
+    private var createdGroups: [ParfaitGroup] = []
 
     var knobs: DemoKnobs {
         get { lock.withLock { storedKnobs } }
         set { lock.withLock { storedKnobs = newValue } }
     }
 
-    func append(_ group: YGGroup) {
+    func append(_ group: ParfaitGroup) {
         lock.withLock { createdGroups.append(group) }
     }
 
-    func makeCreatedGroups() -> [YGGroup] {
+    func makeCreatedGroups() -> [ParfaitGroup] {
         lock.withLock { createdGroups }
     }
 
@@ -219,7 +218,7 @@ private nonisolated final class DemoGroupState: @unchecked Sendable {
     }
 }
 
-/// 저장소가 `YGGroup` 으로 옮기기 전의 데모 데이터 한 줄.
+/// 저장소가 `ParfaitGroup` 으로 옮기기 전의 데모 데이터 한 줄.
 private nonisolated struct DemoGroupSeed {
     let index: Int
     let lastActivityAt: Date
@@ -241,9 +240,9 @@ private struct DemoGroupRepository: GroupRepository {
     func join(inviteCode: String) async throws {}
 
     /// 만든 그룹을 데모 상태에 남겨, 목록으로 돌아왔을 때 실제로 늘어난 걸 볼 수 있게 한다.
-    func create(_ draft: GroupDraft) async throws -> YGGroup {
+    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
         let now = Date()
-        let group = YGGroup(
+        let group = ParfaitGroup(
             id: "demo-created-\(draft.name)-\(now.timeIntervalSince1970)",
             name: draft.name,
             thumbnailURL: nil,
@@ -255,14 +254,14 @@ private struct DemoGroupRepository: GroupRepository {
         return group
     }
 
-    func fetchGroups() async throws -> [YGGroup] {
+    func fetchGroups() async throws -> [ParfaitGroup] {
         let knobs = demoState.knobs
         if knobs.isLoadFailing { throw CocoaError(.coderValueNotFound) }
 
         let now = Date()
         let nametagTypes = NametagType.allCases
         let panelGroups = demoState.makeGroups(now: now).map { seed in
-            YGGroup(
+            ParfaitGroup(
                 id: "demo-group-\(seed.index)",
                 name: Self.names[seed.index % Self.names.count],
                 thumbnailURL: knobs.isToppingImageFailing ? Self.failingThumbnailURL : nil,

@@ -133,7 +133,7 @@ public final class CreateGroupStore: MVIStore {
         }
 
         /// 생성이 끝나 화면을 떠나야 하는 시점의 결과. `nil` 이면 아직 머무른다.
-        public var createdGroup: YGGroup? {
+        public var createdGroup: ParfaitGroup? {
             if case .created(let group) = phase { return group }
             return nil
         }
@@ -147,7 +147,7 @@ public final class CreateGroupStore: MVIStore {
     public enum Phase: Equatable {
         case idle
         case loading
-        case created(YGGroup)
+        case created(ParfaitGroup)
         case failed(CreateGroupError)
     }
 
@@ -160,7 +160,7 @@ public final class CreateGroupStore: MVIStore {
         case createConfirmPopupVisibilityChanged(Bool)
         case createConfirmed
         /// `requestCreate(_:)` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.
-        case createSucceeded(YGGroup)
+        case createSucceeded(ParfaitGroup)
         case createFailed(CreateGroupError)
         case failureAcknowledged
         case screenDisappeared

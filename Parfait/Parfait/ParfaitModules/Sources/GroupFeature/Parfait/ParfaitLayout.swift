@@ -24,8 +24,6 @@ struct ParfaitLayout {
 
     static let toppingSize: CGFloat = 160
     static let toppingImageSize: CGFloat = 96
-    /// Img 중심을 토핑 프레임 중심에서 위로 올리는 양.
-    static let toppingImageCenterLift: CGFloat = 11
 
     /// 토핑 x — 템플릿 좌/우 끝에서 각각 4 들어온 자리.
     static let leftColumnX: CGFloat = 29

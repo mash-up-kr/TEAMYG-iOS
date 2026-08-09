@@ -17,17 +17,17 @@ public struct GroupRepositoryImpl: GroupRepository {
         print("초대코드 참여 스텁: length=\(inviteCode.count)")
     }
 
-    // ponytail: 그룹 목록 API 스펙 미정 — 확정 시 URLSession 호출 + DTO→YGGroup 매핑으로 교체.
+    // ponytail: 그룹 목록 API 스펙 미정 — 확정 시 URLSession 호출 + DTO→ParfaitGroup 매핑으로 교체.
     //           지금은 화면을 붙여보기 위한 고정 스텁이다.
-    public func fetchGroups() async throws -> [YGGroup] {
+    public func fetchGroups() async throws -> [ParfaitGroup] {
         Self.stubGroups
     }
 
     // ponytail: 그룹 생성 API 스펙 미정 — 확정 시 URLSession 호출 + 에러 응답→CreateGroupError 매핑 채움.
     //           지금은 방금 만든 것처럼 보이는 그룹을 즉석에서 만들어 돌려준다.
-    public func create(_ draft: GroupDraft) async throws -> YGGroup {
+    public func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
         let now = Date()
-        return YGGroup(
+        return ParfaitGroup(
             id: "stub-created-\(UUID().uuidString)",
             name: draft.name,
             thumbnailURL: nil,
@@ -37,12 +37,12 @@ public struct GroupRepositoryImpl: GroupRepository {
         )
     }
 
-    private static let stubGroups: [YGGroup] = {
+    private static let stubGroups: [ParfaitGroup] = {
         let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
         let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
         let now = Date()
         return names.indices.map { index in
-            YGGroup(
+            ParfaitGroup(
                 id: "stub-group-\(index)",
                 name: names[index],
                 thumbnailURL: nil,

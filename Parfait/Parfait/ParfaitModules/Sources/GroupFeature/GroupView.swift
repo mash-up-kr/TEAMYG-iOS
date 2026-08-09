@@ -42,17 +42,13 @@ public struct GroupView: View {
     }
 
     public var body: some View {
-        // 툴팁·드롭다운은 상단 바를 가리키는 오버레이라 스크롤 밖 이 자리에 둔다.
-        // 컨테이너가 화면 내내 살아 있어야 나타날 때도 애니메이션이 걸린다.
+        // 레이어 순서는 G-002 시안 그대로: 콘텐츠 → 상단 바 → 딤 → 칩 사본 → 드롭다운.
+        // 딤이 바까지 덮어야 바 배경이 시안처럼 어두워지고, 바 영역 탭으로도 메뉴가 닫힌다.
+        // 상단 바는 `ygTopBar`(VStack 쌓기) 대신 오버레이로 띄운다 — 그래야 파르페가 반투명 바 밑으로 지나간다.
+        // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타날 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
-                .ygTopBar(
-                    .default,
-                    // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
-                    onLeadingTap: {},
-                    onNewGroupTap: { store.send(.addGroupTapped) }
-                )
-
+            topBar
             tooltip
             addGroupMenu
         }
@@ -73,13 +69,30 @@ public struct GroupView: View {
         .onDisappear { store.send(.screenDisappeared) }
     }
 
-    /// 화면 전체를 덮는 배경. 비율을 유지한 채 채우고 넘치는 부분은 잘라낸다.
+    /// 화면 전체를 덮는 배경.
+    ///
+    /// 원본 크기 그대로 그리고 넘치는 부분은 잘라낸다 — 늘리면 격자 칸까지 커져서
+    /// 기기마다 격자가 달라진다. 그래서 `resizable()` 을 쓰지 않는다.
+    /// 에셋은 가장 큰 기기를 덮고도 남는 크기여야 한다.
     private var background: some View {
         Image.groupListBG
-            .resizable()
-            .scaledToFill()
             .ignoresSafeArea()
             .clipped()
+    }
+
+    /// 화면 위에 떠 있는 상단 바. 콘텐츠가 이 바 밑으로 스크롤된다.
+    ///
+    /// 바 뒤 안전영역(상태바 자리)까지 같은 톤으로 채우는 건 이 화면의 몫이다 —
+    /// `YGTopBar` 는 60pt 짜리 바만 그리고 기기별 안전영역은 모른다.
+    private var topBar: some View {
+        YGTopBar(
+            .default,
+            // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
+            onLeadingTap: {},
+            onNewGroupTap: { store.send(.addGroupTapped) }
+        )
+        .background(Color.white75.ignoresSafeArea(edges: .top))
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder
@@ -97,12 +110,11 @@ public struct GroupView: View {
 
     // MARK: - 목록
 
-    private func parfaitScroll(groups: [YGGroup]) -> some View {
+    private func parfaitScroll(groups: [ParfaitGroup]) -> some View {
         scaledScroll { scale in
             ParfaitSceneView(groups: groups, scale: scale) { _ in
                 // ponytail: 캔버스(C-001) 화면이 붙으면 해당 그룹으로 이동.
             }
-            dateHeader
         }
         // 툴팁은 바깥 아무 데나 눌러 닫는다 — 툴팁 자신은 위에 떠 있어 이 제스처를 가린다.
         .simultaneousGesture(
@@ -118,7 +130,6 @@ public struct GroupView: View {
     private var tooltip: some View {
         if store.state.isTooltipVisible {
             GroupTooltipView()
-                .padding(.horizontal, Self.horizontalInset)
                 .padding(.top, Self.topBarHeight)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 // 가리키는 칩 쪽을 붙잡고 펼쳐지도록 우상단을 기준으로.
@@ -131,7 +142,6 @@ public struct GroupView: View {
     private var loadFailure: some View {
         scaledScroll { scale in
             EmptyParfaitCupView(scale: scale)
-            dateHeader
             Text("앗, 파르페를 불러오지 못했어요.\n아래로 당겨 다시 시도해 주세요.")
                 .suit(.title03SemiBold)
                 .foregroundStyle(.gray500)
@@ -144,6 +154,8 @@ public struct GroupView: View {
     // MARK: - 공통
 
     /// 375pt 디자인 좌표를 화면 폭에 맞춰 확대해 그리는 스크롤 컨테이너.
+    /// 스크롤 자체는 화면 최상단부터 깔리고, 콘텐츠만 상단 바 높이만큼 내려 시작한다
+    /// → 처음엔 바 아래에 놓이고 스크롤하면 반투명 바 밑으로 지나간다.
     private func scaledScroll(@ViewBuilder _ scene: @escaping (CGFloat) -> some View) -> some View {
         GeometryReader { proxy in
             ScrollView {
@@ -152,28 +164,26 @@ public struct GroupView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .contentMargins(.top, Self.topBarHeight, for: .scrollContent)
             .refreshable { await store.refresh() }
         }
     }
 
-    private var dateHeader: some View {
-        GroupDateHeader(date: .now)
-            .padding(.leading, Self.horizontalInset)
-    }
-
     // MARK: - 그룹 추가하기 드롭다운 (G-002)
 
-    /// 딤·칩·드롭다운을 따로 얹는다 — 셋의 등장 방식이 달라서 한 덩어리로 묶지 않는다.
+    /// 딤·칩 사본·드롭다운. 셋의 등장 방식이 달라 한 덩어리로 묶지 않는다.
     @ViewBuilder
     private var addGroupMenu: some View {
         if store.state.isAddGroupMenuPresented {
+            // 상단 바까지 덮는다 — 시안에서 바 배경도 함께 어두워진다(배경 250 → 193).
             Color.black25
                 .ignoresSafeArea()
                 .onTapGesture { store.send(.addGroupMenuDismissed) }
                 .transition(.opacity)
 
-            // 딤 위에 칩을 다시 그려 누른 버튼만 밝게 남긴다. 아래 진짜 칩과 겹치므로 크기는 그대로 두고 밝기만.
-            YGChip("새 그룹", icon: .icPlus, placement: .leading) {
+            // 딤 위에 칩만 다시 그려 누른 버튼을 밝게 남긴다 — 시안도 칩만 250 으로 남는다.
+            // 바 전체를 다시 그리면 배경(white75)까지 겹쳐 딤이 그 구간만 옅어진다.
+            YGChip("그룹 추가하기", icon: .icPlus, placement: .leading) {
                 store.send(.addGroupMenuDismissed)
             }
             .frame(height: Self.addGroupChipHeight)
@@ -193,7 +203,7 @@ public struct GroupView: View {
 // MARK: - Preview
 
 @MainActor
-private func previewGroupView(_ groups: [YGGroup]?) -> some View {
+private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
     NavigationStack {
         GroupView(
             store: GroupStore(fetchGroupsUseCase: PreviewFetchGroupsUseCase(groups: groups)),
@@ -208,26 +218,26 @@ private func previewGroupView(_ groups: [YGGroup]?) -> some View {
 }
 
 #Preview("목록 5건") { previewGroupView(.previewSample) }
-#Preview("3건") { previewGroupView(Array([YGGroup].previewSample.prefix(3))) }
+#Preview("3건") { previewGroupView(Array([ParfaitGroup].previewSample.prefix(3))) }
 #Preview("0건 — 툴팁") { previewGroupView([]) }
 #Preview("조회 실패") { previewGroupView(nil) }
 
 /// 프리뷰 전용 스텁. `groups` 가 nil 이면 조회 실패를 흉내낸다.
 private struct PreviewFetchGroupsUseCase: FetchGroupsUseCase {
-    let groups: [YGGroup]?
+    let groups: [ParfaitGroup]?
 
-    func fetchGroups() async throws -> [YGGroup] {
+    func fetchGroups() async throws -> [ParfaitGroup] {
         guard let groups else { throw CocoaError(.coderValueNotFound) }
         return groups
     }
 }
 
-private extension [YGGroup] {
-    static var previewSample: [YGGroup] {
+private extension [ParfaitGroup] {
+    static var previewSample: [ParfaitGroup] {
         let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
         let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
         return names.indices.map { index in
-            YGGroup(
+            ParfaitGroup(
                 id: "group-\(index)",
                 name: names[index],
                 thumbnailURL: nil,

@@ -42,7 +42,7 @@ struct RootView: View {
                 case .group:
                     #if DEBUG
                     // 개발 중에는 그룹 수·실패 상태를 바꿔볼 수 있는 데모 래퍼로 들어간다.
-                    GroupListDemoView(dependencies: diContainer)
+                    GroupListDemoView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
                     #else
                     GroupView(
                         store: diContainer.makeGroupStore(),

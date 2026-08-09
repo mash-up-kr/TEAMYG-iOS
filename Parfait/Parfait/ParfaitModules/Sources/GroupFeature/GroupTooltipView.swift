@@ -16,6 +16,9 @@ struct GroupTooltipView: View {
     private static let pointerInsetFromTrailing: CGFloat = 54.35
     private static let pointerSize = CGSize(width: 17.1, height: 16)
     private static let bodyHeight: CGFloat = 73
+    /// 좌우 여백이 다르다 — 시안 기준 좌 31 / 우 20 (375 폭에서 말풍선 324).
+    private static let leadingInset: CGFloat = 31
+    private static let trailingInset: CGFloat = 20
 
     var body: some View {
         message
@@ -30,10 +33,10 @@ struct GroupTooltipView: View {
                 .fill(.whiteFixed)
                 .stroke(.melon500, lineWidth: 1.25)
             }
+            .padding(.leading, Self.leadingInset)
+            .padding(.trailing, Self.trailingInset)
     }
 
-    // ponytail: UIComponent 에 Text 단위 타이포 API 가 없어 강조 구간만 폰트를 직접 지정한다.
-    //           `Typography` 를 Text 에 적용할 수 있게 되면 이 하드코딩을 걷어낼 것.
     private var message: some View {
         VStack(spacing: 0) {
             line {
@@ -57,7 +60,7 @@ struct GroupTooltipView: View {
 
     private func emphasis(_ text: String) -> some View {
         Text(text)
-            .font(.custom("SUIT-Bold", fixedSize: 14))
+            .suit(.body02Bold)
             .foregroundStyle(.melon500)
     }
 }
@@ -87,7 +90,6 @@ private struct TooltipBubbleShape: Shape {
 
 #Preview {
     GroupTooltipView()
-        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(.whiteFixed)
 }

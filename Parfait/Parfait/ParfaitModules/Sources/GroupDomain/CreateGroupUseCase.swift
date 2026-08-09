@@ -10,7 +10,7 @@ import Common
 /// 새 그룹을 만드는 비즈니스 규칙. 이름 규칙 검증도 여기서 한 번 더 거친다 —
 /// UI 가 막아주긴 하지만 규칙의 최종 판단은 Domain 이 갖는다.
 public protocol CreateGroupUseCase: Sendable {
-    func create(_ draft: GroupDraft) async throws -> YGGroup
+    func create(_ draft: GroupDraft) async throws -> ParfaitGroup
 }
 
 public struct CreateGroupUseCaseImpl: CreateGroupUseCase {
@@ -20,7 +20,7 @@ public struct CreateGroupUseCaseImpl: CreateGroupUseCase {
         self.groupRepository = groupRepository
     }
 
-    public func create(_ draft: GroupDraft) async throws -> YGGroup {
+    public func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
         if let violation = GroupNamePolicy.validate(draft.name) {
             throw CreateGroupError.invalidName(violation)
         }

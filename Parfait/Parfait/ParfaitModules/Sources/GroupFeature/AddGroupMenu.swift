@@ -23,7 +23,7 @@ struct AddGroupMenu: View {
             menuLink(.inviteCode, icon: .icEnter, title: "그룹 들어가기")
         }
         .frame(width: 136)
-        .background(.cherry50, in: .rect(cornerRadius: Radius.medium1))
+        .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))
     }
 
     private func menuLink(_ route: GroupRoute, icon: Image, title: String) -> some View {
