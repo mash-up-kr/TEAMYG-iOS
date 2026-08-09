@@ -14,10 +14,10 @@ import UIComponent
 /// `ParfaitLayout` 이 375pt 디자인 좌표로 계산한 자리를 화면 폭에 맞춰 확대해 그린다.
 /// 체리는 맨 위, 접시는 맨 아래 고정이고 그 사이 크림만 그룹 수만큼 늘어난다.
 struct ParfaitSceneView: View {
-    let groups: [YGGroup]
+    let groups: [ParfaitGroup]
     /// 화면 폭 / 디자인 폭.
     let scale: CGFloat
-    let onToppingTap: (YGGroup) -> Void
+    let onToppingTap: (ParfaitGroup) -> Void
 
     @Environment(\.isParfaitLayoutAnimationEnabled) private var isLayoutAnimationEnabled
 

@@ -109,7 +109,7 @@ public final class GroupStore: MVIStore {
         public var isTooltipDismissed = false
         public var isAddGroupMenuPresented = false
 
-        public var groups: [YGGroup] {
+        public var groups: [ParfaitGroup] {
             if case .loaded(let groups) = phase { return groups }
             return []
         }
@@ -126,7 +126,7 @@ public final class GroupStore: MVIStore {
     public enum Phase: Equatable {
         case idle
         case loading
-        case loaded([YGGroup])
+        case loaded([ParfaitGroup])
         case failed
     }
 
@@ -134,7 +134,7 @@ public final class GroupStore: MVIStore {
         case screenAppeared
         case refreshRequested
         /// `loadGroups()` 결과 — View 가 아니라 Store 내부에서만 보낸다.
-        case groupsLoaded([YGGroup])
+        case groupsLoaded([ParfaitGroup])
         case loadFailed
         /// 툴팁·드롭다운 바깥 영역 탭.
         case backgroundTapped

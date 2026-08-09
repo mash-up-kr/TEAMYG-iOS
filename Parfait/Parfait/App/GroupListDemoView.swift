@@ -197,7 +197,7 @@ private nonisolated final class DemoGroupState: @unchecked Sendable {
     }
 }
 
-/// 저장소가 `YGGroup` 으로 옮기기 전의 데모 데이터 한 줄.
+/// 저장소가 `ParfaitGroup` 으로 옮기기 전의 데모 데이터 한 줄.
 private nonisolated struct DemoGroupSeed {
     let index: Int
     let lastActivityAt: Date
@@ -218,14 +218,14 @@ private struct DemoGroupRepository: GroupRepository {
 
     func join(inviteCode: String) async throws {}
 
-    func fetchGroups() async throws -> [YGGroup] {
+    func fetchGroups() async throws -> [ParfaitGroup] {
         let knobs = demoState.knobs
         if knobs.isLoadFailing { throw CocoaError(.coderValueNotFound) }
 
         let now = Date()
         let nametagTypes = NametagType.allCases
         return demoState.makeGroups(now: now).map { seed in
-            YGGroup(
+            ParfaitGroup(
                 id: "demo-group-\(seed.index)",
                 name: Self.names[seed.index % Self.names.count],
                 thumbnailURL: knobs.isToppingImageFailing ? Self.failingThumbnailURL : nil,
