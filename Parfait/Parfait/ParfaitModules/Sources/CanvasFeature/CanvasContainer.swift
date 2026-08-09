@@ -206,6 +206,8 @@ private struct CanvasPlacedImage: View {
     }
 }
 
+/// 실제 토핑 테두리는 누끼의 알파 실루엣을 따라 바깥으로 자라는 외곽선이다.
+/// 아래 사각 테두리는 캔버스 기본 화면을 먼저 완성하기 위한 자리표시자이며, 토핑 편집 작업에서 교체한다.
 private struct CanvasImageBorderModifier: ViewModifier {
     let border: CanvasStore.CanvasImageBorder?
 

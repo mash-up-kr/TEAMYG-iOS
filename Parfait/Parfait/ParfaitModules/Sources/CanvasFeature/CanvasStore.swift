@@ -56,7 +56,7 @@ public final class CanvasStore: MVIStore {
              .calendarDateSelected:
             handleCalendarIntent(intent)
 
-        case .memberListTapped, .moreMenuTapped:
+        case .moreMenuTapped:
             // 후속 화면 정책 확정 전까지 외형과 Intent 경계만 제공한다.
             break
         }
@@ -191,10 +191,6 @@ public extension CanvasStore {
         public var weekdayText: String {
             calendar.weekdayText
         }
-
-        public var overflowMemberCount: Int {
-            max(0, members.count - 5)
-        }
     }
 
     struct Member: Equatable, Identifiable, Sendable {
@@ -204,6 +200,15 @@ public extension CanvasStore {
         public init(id: Int, nickname: String) {
             self.id = id
             self.nickname = nickname
+        }
+
+        /// 네임태그 타입은 원래 서버가 계정 생성 시 1회 배정하는 고정 값이라 화면마다 같아야 한다.
+        /// 캔버스 API 가 아직 이 값을 주지 않아 멤버 ID 로 임시 계산한다 — 그룹 목록과 색이 어긋난다.
+        /// API 연결 시 제거할 것.
+        public var nametagType: YGNametagChip.NametagType {
+            let typeCount = YGNametagChip.NametagType.allCases.count
+            let rawValue = Int(id.magnitude % UInt(typeCount)) + 1
+            return YGNametagChip.NametagType(rawValue: rawValue) ?? .type1
         }
 
         public static let defaultMembers = [
@@ -302,7 +307,6 @@ public extension CanvasStore {
         case calendarMonthSelected(Int)
         case calendarYearSelected(Int)
         case calendarDateSelected(CalendarDate)
-        case memberListTapped
         case moreMenuTapped
     }
 }

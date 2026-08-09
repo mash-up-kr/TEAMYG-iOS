@@ -22,13 +22,10 @@ public struct CanvasView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                CanvasTopBar(
-                    groupName: store.state.groupName,
-                    members: store.state.members,
-                    overflowMemberCount: store.state.overflowMemberCount,
-                    onBackTap: { dismiss() },
-                    onMemberListTap: { store.send(.memberListTapped) },
-                    onMoreMenuTap: { store.send(.moreMenuTapped) }
+                YGTopBar(
+                    .canvas(title: store.state.groupName, members: topBarMembers),
+                    onLeadingTap: { dismiss() },
+                    onTrailingTap: { store.send(.moreMenuTapped) }
                 )
 
                 CanvasContainer(
@@ -42,6 +39,12 @@ public struct CanvasView: View {
         }
         .onDisappear {
             store.send(.screenDisappeared)
+        }
+    }
+
+    private var topBarMembers: [YGTopBar.Member] {
+        store.state.members.map {
+            YGTopBar.Member(nickname: $0.nickname, nametagType: $0.nametagType)
         }
     }
 }
