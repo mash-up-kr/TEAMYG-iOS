@@ -273,5 +273,16 @@ private struct DemoGroupRepository: GroupRepository {
         // 정렬은 UseCase 가 맡으므로 여기서는 합치기만 한다.
         return demoState.makeCreatedGroups() + panelGroups
     }
+
+    // 사이드메뉴(S-101)는 이 데모의 관심사가 아니라 최소 스텁만 둔다.
+    func fetchDetail(groupID: String) async throws -> GroupDetail {
+        GroupDetail(id: groupID, name: Self.names[0], inviteCode: "DEMO12", memberLimit: 12, members: [])
+    }
+
+    func changeMyNickname(groupID: String, nickname: String) async throws {}
+
+    func leave(groupID: String) async throws {}
+
+    func report(groupID: String) async throws {}
 }
 #endif

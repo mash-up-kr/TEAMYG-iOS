@@ -40,6 +40,18 @@ struct AppDependencies {
         )
     }
 
+    func makeGroupSideMenuStore(groupID: String, groupName: String) -> GroupSideMenuStore {
+        let groupRepository = GroupRepositoryImpl()
+        return GroupSideMenuStore(
+            groupID: groupID,
+            groupName: groupName,
+            fetchGroupDetailUseCase: FetchGroupDetailUseCaseImpl(groupRepository: groupRepository),
+            changeGroupNicknameUseCase: ChangeGroupNicknameUseCaseImpl(groupRepository: groupRepository),
+            leaveGroupUseCase: LeaveGroupUseCaseImpl(groupRepository: groupRepository),
+            reportGroupUseCase: ReportGroupUseCaseImpl(groupRepository: groupRepository)
+        )
+    }
+
     func makeTermsStore() -> TermsStore {
         TermsStore()
     }
