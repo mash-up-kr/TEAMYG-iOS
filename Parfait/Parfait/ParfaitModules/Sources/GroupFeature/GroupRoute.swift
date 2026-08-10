@@ -10,4 +10,5 @@
 /// (하이브리드 라우팅 규칙: docs/architecture.md)
 public enum GroupRoute: Hashable {
     case inviteCode
+    case createGroup
 }

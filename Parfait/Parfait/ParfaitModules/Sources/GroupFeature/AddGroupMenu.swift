@@ -10,35 +10,24 @@ import UIComponent
 
 /// "그룹 추가하기" 칩을 눌렀을 때 그 아래 펼쳐지는 드롭다운 (G-002).
 struct AddGroupMenu: View {
-    let onCreateGroup: () -> Void
-
     var body: some View {
+        // 두 화면 모두 그룹 피처 안쪽 라우트라 값 기반 링크로 바로 건다.
         VStack(spacing: 0) {
-            AddGroupMenuRow(icon: .icNewgroup, title: "그룹 만들기", action: onCreateGroup)
+            menuLink(.createGroup, icon: .icNewgroup, title: "그룹 만들기")
 
             Rectangle()
                 .fill(.black5)
                 .frame(height: 1)
                 .padding(.horizontal, .padding6)
 
-            // 초대코드 화면은 그룹 피처 안쪽 라우트라 값 기반 링크로 바로 건다.
-            NavigationLink(value: GroupRoute.inviteCode) {
-                AddGroupMenuRowLabel(icon: .icEnter, title: "그룹 들어가기")
-            }
-            .buttonStyle(.plain)
+            menuLink(.inviteCode, icon: .icEnter, title: "그룹 들어가기")
         }
         .frame(width: 136)
         .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))
     }
-}
 
-private struct AddGroupMenuRow: View {
-    let icon: Image
-    let title: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
+    private func menuLink(_ route: GroupRoute, icon: Image, title: String) -> some View {
+        NavigationLink(value: route) {
             AddGroupMenuRowLabel(icon: icon, title: title)
         }
         .buttonStyle(.plain)
@@ -71,7 +60,7 @@ private struct AddGroupMenuRowLabel: View {
 
 #Preview {
     NavigationStack {
-        AddGroupMenu(onCreateGroup: {})
+        AddGroupMenu()
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             .padding(.trailing, 20)
             .background(.black25)
