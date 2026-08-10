@@ -4,8 +4,20 @@ import UIKit
 
 public extension Image {
     static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
+    static let groupListBG = Image("GroupListBG", bundle: .module)
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
+    static let parfaitCherry = Image("Parfait-Cherry", bundle: .module)
+    static let parfaitCreamBody = Image("Parfait-Cream-Body", bundle: .module)
+    static let parfaitCreamTop = Image("Parfait-Cream-Top", bundle: .module)
+    static let parfaitCup = Image("Parfait-Cup", bundle: .module)
+    static let templateError = Image("Template-Error", bundle: .module)
+    static let template01 = Image("Template01", bundle: .module)
+    static let template02 = Image("Template02", bundle: .module)
+    static let template03 = Image("Template03", bundle: .module)
+    static let template04 = Image("Template04", bundle: .module)
+    static let template05 = Image("Template05", bundle: .module)
+    static let template06 = Image("Template06", bundle: .module)
     static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
     static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
     static let icCamera = Image("Ic_Camera", bundle: .module)
@@ -32,8 +44,20 @@ public extension Image {
 
 public extension UIImage {
     static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
+    static var groupListBG: UIImage { UIImage(resource: ImageResource(name: "GroupListBG", bundle: .module)) }
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
+    static var parfaitCherry: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cherry", bundle: .module)) }
+    static var parfaitCreamBody: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Body", bundle: .module)) }
+    static var parfaitCreamTop: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Top", bundle: .module)) }
+    static var parfaitCup: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cup", bundle: .module)) }
+    static var templateError: UIImage { UIImage(resource: ImageResource(name: "Template-Error", bundle: .module)) }
+    static var template01: UIImage { UIImage(resource: ImageResource(name: "Template01", bundle: .module)) }
+    static var template02: UIImage { UIImage(resource: ImageResource(name: "Template02", bundle: .module)) }
+    static var template03: UIImage { UIImage(resource: ImageResource(name: "Template03", bundle: .module)) }
+    static var template04: UIImage { UIImage(resource: ImageResource(name: "Template04", bundle: .module)) }
+    static var template05: UIImage { UIImage(resource: ImageResource(name: "Template05", bundle: .module)) }
+    static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
     static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
     static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
     static var icCamera: UIImage { UIImage(resource: ImageResource(name: "Ic_Camera", bundle: .module)) }

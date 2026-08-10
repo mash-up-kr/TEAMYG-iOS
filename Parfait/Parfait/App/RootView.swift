@@ -26,7 +26,7 @@ struct RootView: View {
             List {
                 NavigationLink("로그인 (LoginFeature)", value: DevModuleEntry.login)
                 NavigationLink("약관 동의 (LoginFeature)", value: AppRoute.terms)
-                NavigationLink("초대코드 입력 (GroupFeature)", value: AppRoute.group)
+                NavigationLink("그룹 목록 (GroupFeature)", value: AppRoute.group)
                 NavigationLink("캔버스 (CanvasFeature)", value: AppRoute.canvas)
                 NavigationLink("앨범 (CanvasFeature)", value: DevModuleEntry.album)
                 NavigationLink("설정 (SettingFeature)", value: DevModuleEntry.setting)
@@ -41,7 +41,16 @@ struct RootView: View {
             }
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
-                case .group:  GroupView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
+                case .group:
+                    #if DEBUG
+                    // 개발 중에는 그룹 수·실패 상태를 바꿔볼 수 있는 데모 래퍼로 들어간다.
+                    GroupListDemoView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
+                    #else
+                    GroupView(
+                        store: diContainer.makeGroupStore(),
+                        makeInviteCodeStore: diContainer.makeInviteCodeStore
+                    )
+                    #endif
                 case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())
                 case .canvas: CanvasView()
                 }

@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/15/26.
 //
 
+import Foundation
 import GroupDomain
 
 public struct GroupRepositoryImpl: GroupRepository {
@@ -15,4 +16,26 @@ public struct GroupRepositoryImpl: GroupRepository {
         // ponytail: 서버 API 스펙 미정 — 확정 시 URLSession 호출 + 에러 응답→JoinGroupError 매핑 채움.
         print("초대코드 참여 스텁: length=\(inviteCode.count)")
     }
+
+    // ponytail: 그룹 목록 API 스펙 미정 — 확정 시 URLSession 호출 + DTO→ParfaitGroup 매핑으로 교체.
+    //           지금은 화면을 붙여보기 위한 고정 스텁이다.
+    public func fetchGroups() async throws -> [ParfaitGroup] {
+        Self.stubGroups
+    }
+
+    private static let stubGroups: [ParfaitGroup] = {
+        let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
+        let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
+        let now = Date()
+        return names.indices.map { index in
+            ParfaitGroup(
+                id: "stub-group-\(index)",
+                name: names[index],
+                thumbnailURL: nil,
+                lastActivityAt: now.addingTimeInterval(-180 * Double(index + 1)),
+                createdAt: now.addingTimeInterval(-86_400 * Double(index + 1)),
+                lastActorNametagType: nametagTypes[index]
+            )
+        }
+    }()
 }
