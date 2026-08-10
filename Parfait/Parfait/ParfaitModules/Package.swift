@@ -15,7 +15,7 @@ let designSystemResources: [Resource] = [
 // (이름, 의존, 리소스)
 let modules: [(name: String, dependencies: [String], resources: [Resource])] = [
     ("Common", [], []), // 순수 코드. 의존성 0. (외부 패키지 금지)
-    ("Core", ["Common"], []), // 외부 SDK 기반 공유 구현(네트워크·캐싱). Domain 금지.
+    ("Core", ["Common", "Alamofire"], []), // 외부 SDK 기반 공유 구현(네트워크·캐싱). Domain 금지.
     ("UIComponent", ["Common"], designSystemResources), // 공용 UI/디자인 시스템 + MVI 베이스. Domain 금지.
     ("Routing", [], []), // 네비게이션 계약(AppRoute·Router). 페이로드 추가 시 deps 에 도메인.
 
@@ -41,6 +41,7 @@ let externalProducts: [String: String] = [
     "KakaoSDKAuth": "kakao-ios-sdk",
     "KakaoSDKCommon": "kakao-ios-sdk",
     "KakaoSDKUser": "kakao-ios-sdk",
+    "Alamofire": "Alamofire",
 ]
 
 let package = Package(
@@ -48,7 +49,8 @@ let package = Package(
     platforms: [.iOS(.v26)],
     products: modules.map { .library(name: $0.name, targets: [$0.name]) },
     dependencies: [
-        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.28.0")
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.28.0"),
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.12.0")
     ],
     targets: modules.map { module in
         .target(
