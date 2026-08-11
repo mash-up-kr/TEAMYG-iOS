@@ -8,6 +8,7 @@
 import AuthDomain
 import AuthenticationServices
 import Common
+import CryptoKit
 import SwiftUI
 import UIComponent
 
@@ -64,9 +65,12 @@ public final class LoginStore: MVIStore {
             // 스코프는 최초 승인 때만 반영됨. 이메일은 .email 스코프 덕에 identityToken 클레임으로
             // 서버에 전달되고, 이름은 현재 서버 수신 스펙이 없어 보내지 않는다.
             request.requestedScopes = [.fullName, .email]
-            // 서버가 identityToken 의 nonce claim 과 함께 보낸 nonce 를 대조해 재생 공격을 막는다
+            // 서버가 identityToken 의 nonce claim 과 함께 보낸 nonce 를 대조해 재생 공격을 막는다.
+            // 애플에는 SHA256 해시를 보내고(identityToken 의 nonce claim 에 해시가 실림), 서버에는 원본을 보낸다.
             let nonce = UUID().uuidString
-            request.nonce = nonce
+            request.nonce = SHA256.hash(data: Data(nonce.utf8))
+                .map { String(format: "%02x", $0) }
+                .joined()
 
             let result = try await authorizationController.performRequest(request)
             guard case .appleID(let appleIDCredential) = result else { return }
