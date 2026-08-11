@@ -7,6 +7,9 @@
 
 import AuthData
 import AuthDomain
+import CanvasData
+import CanvasDomain
+import CanvasFeature
 import Foundation
 import GroupData
 import GroupDomain
@@ -46,5 +49,12 @@ struct AppDependencies {
 
     func makeSettingStore() -> SettingStore {
         SettingStore(state: .init(nickname: "닉네임", loginProvider: "소셜로그인", appVersion: "1.0v"))
+    }
+
+    func makeAlbumPickerStore(isLimited: Bool) -> AlbumPickerStore {
+        AlbumPickerStore(
+            isLimited: isLimited,
+            recentUploadsRepository: RecentUploadsRepositoryImpl()
+        )
     }
 }
