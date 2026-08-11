@@ -8,10 +8,10 @@
 /// 소셜 로그인 비즈니스 규칙: credential 획득 → 서버 교환까지 성공해야 로그인 완료.
 public protocol SocialLoginUseCase: Sendable {
     /// 카카오: SDK 로그인 → 서버 교환까지 통째로 처리.
-    func loginWithKakao() async throws
+    func loginWithKakao() async throws -> SocialLoginResult
 
-    /// 애플 등 UI 에서 credential 을 얻는 프로바이더: 교환부터 처리.
-    func login(with credential: SocialLoginCredential) async throws
+    /// 애플: UI(AuthorizationController)에서 얻은 credential 로 서버 교환을 처리.
+    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult
 }
 
 public struct SocialLoginUseCaseImpl: SocialLoginUseCase {
@@ -21,12 +21,11 @@ public struct SocialLoginUseCaseImpl: SocialLoginUseCase {
         self.authRepository = authRepository
     }
 
-    public func loginWithKakao() async throws {
-        let credential = try await authRepository.loginWithKakao()
-        try await authRepository.exchange(credential)
+    public func loginWithKakao() async throws -> SocialLoginResult {
+        try await authRepository.loginWithKakao()
     }
 
-    public func login(with credential: SocialLoginCredential) async throws {
-        try await authRepository.exchange(credential)
+    public func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
+        try await authRepository.loginWithApple(credential)
     }
 }
