@@ -32,10 +32,6 @@ public struct GroupSideMenuView: View {
     /// 입력 묶음(닉네임 / 그룹원 / 초대 코드 / 나가기·신고) 사이 간격.
     private static let sectionGap: CGFloat = .gap8
     private static let horizontalInset: CGFloat = 20
-    /// 그룹원 한 줄 높이 — Figma `User-Chip` 40.
-    private static let memberRowHeight: CGFloat = 40
-    /// 시안(S-101)의 목록 영역은 5줄 높이로 고정 — 넘치는 그룹원은 목록 안에서 스크롤한다.
-    private static let memberListVisibleRowLimit = 5
 
     /// - Parameter onExit: 나가기/신고 완료 시 결과를 넘긴다. G-001 복귀와 확인 토스트는 호출부가 결정한다.
     public init(
@@ -113,15 +109,20 @@ public struct GroupSideMenuView: View {
         }
     }
 
+    /// 그룹원 수에 따라 페이지 전체가 늘어나므로 화면 통째로 스크롤한다.
+    /// 내용이 화면보다 짧으면 스크롤(바운스)도 걸리지 않는다.
     private func loadedContent(_ detail: GroupDetail) -> some View {
-        VStack(alignment: .leading, spacing: Self.sectionGap) {
-            nicknameField
-            memberList(detail)
-            YGInviteCard(code: detail.inviteCode, status: inviteCardStatus(detail))
-            dangerZone
+        ScrollView {
+            VStack(alignment: .leading, spacing: Self.sectionGap) {
+                nicknameField
+                memberList(detail)
+                YGInviteCard(code: detail.inviteCode, status: inviteCardStatus(detail))
+                dangerZone
+            }
+            .padding(.horizontal, Self.horizontalInset)
+            .padding(.top, Self.topInset)
         }
-        .padding(.horizontal, Self.horizontalInset)
-        .padding(.top, Self.topInset)
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     // MARK: - 닉네임 (S-102)
@@ -153,36 +154,24 @@ public struct GroupSideMenuView: View {
 
     // MARK: - 그룹원
 
+    /// 전원을 다 그린다. 넘치는 인원은 페이지 스크롤이 감당한다.
     private func memberList(_ detail: GroupDetail) -> some View {
         VStack(alignment: .leading, spacing: .gap4) {
             Text("그룹원 (\(detail.members.count))")
                 .suit(.body02Regular)
                 .foregroundStyle(.gray400)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: .gap4) {
-                    ForEach(detail.members) { member in
-                        YGUserChip(
-                            nickname: member.isMe ? "\(member.nickname) (나)" : member.nickname,
-                            type: member.nametagType.chipType,
-                            isSelf: member.isMe
-                        )
-                    }
+            VStack(alignment: .leading, spacing: .gap4) {
+                ForEach(detail.members) { member in
+                    YGUserChip(
+                        nickname: member.isMe ? "\(member.nickname) (나)" : member.nickname,
+                        type: member.nametagType.chipType,
+                        isSelf: member.isMe
+                    )
                 }
-                .padding(.top, .padding3)
             }
-            .frame(height: memberListHeight(rowCount: detail.members.count))
-            .scrollBounceBehavior(.basedOnSize)
+            .padding(.top, .padding3)
         }
-    }
-
-    /// 목록 높이. 시안은 5줄(256)로 고정이라 그 이상은 내부 스크롤, 미만이면 내용만큼만 차지한다.
-    private func memberListHeight(rowCount: Int) -> CGFloat {
-        let rows = CGFloat(rowCount)
-        let naturalHeight: CGFloat = .padding3 + rows * Self.memberRowHeight + max(0, rows - 1) * .gap4
-        let visibleLimit = CGFloat(Self.memberListVisibleRowLimit)
-        let maxHeight: CGFloat = .padding3 + visibleLimit * Self.memberRowHeight + (visibleLimit - 1) * .gap4
-        return min(naturalHeight, maxHeight)
     }
 
     // MARK: - 초대 코드
