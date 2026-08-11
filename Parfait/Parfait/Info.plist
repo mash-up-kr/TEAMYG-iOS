@@ -20,6 +20,8 @@
 	<!-- 일부허용 시 매 실행마다 뜨는 시스템 얼럿 억제 — 재선택 진입점은 앨범 화면의 "사진 재선택" 버튼 -->
 	<key>PHPhotoLibraryPreventsAutomaticLimitedAccessAlert</key>
 	<true/>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>
