@@ -89,3 +89,10 @@ CLAUDE.local.md
 
 # 자산 코드젠 변경감지 해시(머신별 산출물)
 Parfait/Parfait/ParfaitModules/scripts/.assets.hash
+
+### fastlane
+# App Store Connect API 개인키 — 절대 커밋 금지 (팀 공유는 보안 채널로)
+fastlane/AuthKey_*.p8
+fastlane/*.p8
+fastlane/report.xml
+fastlane/README.md
