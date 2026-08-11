@@ -6,6 +6,7 @@
 //
 
 import AuthDomain
+import Common
 import Core
 import Foundation
 import KakaoSDKAuth
@@ -49,6 +50,7 @@ public struct AuthRepositoryImpl: AuthRepository {
                 UserApi.shared.loginWithKakaoAccount(nonce: nonce, completion: completion)
             }
         }
+        YGLogger.log("카카오 SDK 로그인 성공 — 수신 값\nidToken: \(idToken)\nnonce: \(nonce)")
         let response: SocialLoginResponseDTO = try await networkClient.request(
             KakaoLoginEndpoint(idToken: idToken, nonce: nonce)
         )

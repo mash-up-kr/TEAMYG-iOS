@@ -7,6 +7,7 @@
 
 import AuthDomain
 import AuthenticationServices
+import Common
 import SwiftUI
 import UIComponent
 
@@ -48,12 +49,12 @@ public final class LoginStore: MVIStore {
     private func performKakaoLogin() async {
         do {
             let result = try await socialLoginUseCase.loginWithKakao()
-            print("카카오 로그인 완료: 서버 교환 응답 수신")
+            YGLogger.log("카카오 로그인 완료: \(result)")
             handle(result)
         } catch SocialLoginError.cancelled {
             // 사용자가 로그인 창을 닫음 — 정상 흐름
         } catch {
-            print("카카오 로그인 실패: \(error)")
+            YGLogger.error("카카오 로그인 실패: \(error)")
         }
     }
 
@@ -75,9 +76,19 @@ public final class LoginStore: MVIStore {
                 let authorizationCodeData = appleIDCredential.authorizationCode,
                 let authorizationCode = String(data: authorizationCodeData, encoding: .utf8)
             else {
-                print("Apple 로그인 실패: identityToken 또는 authorizationCode 없음")
+                YGLogger.error("Apple 로그인 실패: identityToken 또는 authorizationCode 없음")
                 return
             }
+            YGLogger.log(
+                """
+                Apple 로그인 성공 — 수신 값
+                identityToken: \(identityToken)
+                authorizationCode: \(authorizationCode)
+                nonce: \(nonce)
+                email: \(appleIDCredential.email ?? "-")
+                fullName: \(appleIDCredential.fullName?.formatted() ?? "-")
+                """
+            )
 
             let credential = AppleLoginCredential(
                 identityToken: identityToken,
@@ -85,12 +96,12 @@ public final class LoginStore: MVIStore {
                 authorizationCode: authorizationCode
             )
             let loginResult = try await socialLoginUseCase.loginWithApple(credential)
-            print("Apple 로그인 완료: 서버 교환 응답 수신")
+            YGLogger.log("Apple 로그인 완료: \(loginResult)")
             handle(loginResult)
         } catch let error as ASAuthorizationError where error.code == .canceled {
             // 사용자가 로그인 시트를 닫음 — 정상 흐름
         } catch {
-            print("Apple 로그인 실패: \(error)")
+            YGLogger.error("Apple 로그인 실패: \(error)")
         }
     }
 
