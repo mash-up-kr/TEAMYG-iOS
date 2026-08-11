@@ -44,9 +44,13 @@ public final class TokenInterceptor: RequestInterceptor {
             do {
                 try await tokenManager.refresh()
                 completion(.retry)
-            } catch {
+            } catch NetworkError.server, NetworkError.unauthorized {
+                // 서버가 리프레시 토큰 자체를 거절 → 재로그인 외에 방법이 없다
                 await tokenManager.clear()
                 completion(.doNotRetryWithError(NetworkError.unauthorized))
+            } catch {
+                // 오프라인·타임아웃 등 일시적 실패 — 토큰은 남기고 이번 요청만 실패시킨다
+                completion(.doNotRetryWithError(error))
             }
         }
     }
