@@ -6,13 +6,13 @@
 //
 
 import Alamofire
+import Common
 import Foundation
-import OSLog
 
 /// 요청/응답 로그 (DEBUG 전용).
+/// `#if DEBUG` 은 `YGLogger` 에도 걸려 있지만, 릴리즈에서 `prettyPrinted` 비용까지 없애려고 여기서도 감싼다.
 public final class NetworkLogger: EventMonitor {
     public let queue = DispatchQueue(label: "com.teamyg.parfait.network-logger")
-    private let logger = Logger(subsystem: "com.teamyg.parfait", category: "Network")
 
     public init() {}
 
@@ -22,7 +22,7 @@ public final class NetworkLogger: EventMonitor {
         let method = urlRequest.httpMethod ?? "?"
         let url = urlRequest.url?.absoluteString ?? "unknown"
         let body = prettyPrinted(urlRequest.httpBody)
-        logger.debug("➡️ \(method, privacy: .public) \(url, privacy: .public)\nbody: \(body, privacy: .public)")
+        YGLogger.log("➡️ \(method) \(url)\nbody: \(body)", category: .network)
         #endif
     }
 
@@ -36,10 +36,12 @@ public final class NetworkLogger: EventMonitor {
         let body = prettyPrinted(response.data)
         switch response.result {
         case .success:
-            logger.debug("✅ [\(statusCode, privacy: .public)] \(url, privacy: .public)\n\(body, privacy: .public)")
+            YGLogger.log("✅ [\(statusCode)] \(url)\n\(body)", category: .network)
         case .failure(let error):
-            let message = "❌ [\(statusCode)] \(url) — \(error.localizedDescription)\n\(body)"
-            logger.error("\(message, privacy: .public)")
+            YGLogger.error(
+                "❌ [\(statusCode)] \(url) — \(error.localizedDescription)\n\(body)",
+                category: .network
+            )
         }
         #endif
     }
