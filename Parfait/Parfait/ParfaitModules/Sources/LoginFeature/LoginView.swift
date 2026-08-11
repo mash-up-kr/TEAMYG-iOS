@@ -95,6 +95,7 @@ public struct LoginView: View {
         VStack(spacing: 12) {
             socialLoginButton(
                 title: "카카오 로그인",
+                icon: .icSocialKakao,
                 titleColor: .blackFixed,
                 // 카카오 브랜드 컬러 — 디자인 팔레트 외 고정값이라 인라인
                 background: Color(hex: "FEE500")
@@ -103,6 +104,7 @@ public struct LoginView: View {
             }
             socialLoginButton(
                 title: "Apple 로그인",
+                icon: .icSocialApple,
                 titleColor: .whiteFixed,
                 background: .blackFixed
             ) {
@@ -111,8 +113,10 @@ public struct LoginView: View {
         }
     }
 
+    // 디자인: 아이콘 왼쪽 12pt 고정, 타이틀은 버튼 전체 기준 중앙 정렬 (radius 0)
     private func socialLoginButton(
         title: String,
+        icon: Image,
         titleColor: Color,
         background: Color,
         action: @escaping () -> Void
@@ -120,10 +124,16 @@ public struct LoginView: View {
         Button(action: action) {
             Text(title)
                 .suit(.body01SemiBold)
-                .foregroundStyle(titleColor)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
-                .background(background, in: .capsule)
+                .overlay(alignment: .leading) {
+                    icon
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .padding(.leading, 12)
+                }
+                .foregroundStyle(titleColor)
+                .background(background)
         }
     }
 }
