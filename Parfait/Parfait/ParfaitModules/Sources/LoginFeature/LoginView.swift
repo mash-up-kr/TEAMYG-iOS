@@ -137,7 +137,9 @@ public struct LoginView: View {
 
 /// 프리뷰 전용 스텁 — SDK·서버 호출 없이 즉시 성공.
 private struct PreviewSocialLoginUseCase: SocialLoginUseCase {
-    func loginWithKakao() async throws {}
+    func loginWithKakao() async throws -> SocialLoginResult { .signedIn }
 
-    func login(with credential: SocialLoginCredential) async throws {}
+    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
+        .signedIn
+    }
 }
