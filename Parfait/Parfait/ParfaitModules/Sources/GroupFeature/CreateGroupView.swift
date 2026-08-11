@@ -9,7 +9,6 @@ import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
-import UIKit
 
 /// 그룹 만들기 화면 (A-005). 그룹명·그룹 속 내 닉네임·그룹 인원을 받아 새 그룹을 만든다.
 /// 세 값 모두 나중에 바꿀 수 없어, 확인 버튼과 생성 사이에 되돌릴 수 없음을 알리는 팝업을 한 번 더 둔다.
@@ -161,14 +160,6 @@ public struct CreateGroupView: View {
         }
     }
 
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-    }
 }
 
 // MARK: - 문구

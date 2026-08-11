@@ -200,14 +200,6 @@ public struct GroupSideMenuView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-    }
 }
 
 // MARK: - Preview
