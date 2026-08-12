@@ -13,7 +13,6 @@ import UIComponent
 public struct TermsView: View {
     private let router: Router
     @State private var store: TermsStore
-    @Environment(\.openURL) private var openURL
 
     public init(router: Router, store: TermsStore) {
         self.router = router
@@ -64,6 +63,9 @@ public struct TermsView: View {
             }
         }
         .onDisappear { store.send(.screenDisappeared) }
+        .navigationDestination(for: Policy.self) { policy in
+            YGWebView(title: policy.title, url: policy.url)
+        }
     }
 
     // MARK: - 로드 상태별 콘텐츠
@@ -158,9 +160,7 @@ public struct TermsView: View {
 
             Spacer()
 
-            Button {
-                openURL(policy.url)
-            } label: {
+            NavigationLink(value: policy) {
                 Image.icCaretRight
                     .renderingMode(.template)
                     .resizable()
