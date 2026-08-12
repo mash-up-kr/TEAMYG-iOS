@@ -200,9 +200,16 @@ public extension CanvasStore {
             day = components.day ?? 1
         }
 
-        public static var today: CalendarDate {
-            CalendarDate(date: .now)
+        public init(canvasDayContaining date: Date) {
+            let shiftedDate = Self.gregorian.date(byAdding: .hour, value: -Self.dayResetHour, to: date)
+            self.init(date: shiftedDate ?? date)
         }
+
+        public static var today: CalendarDate {
+            CalendarDate(canvasDayContaining: .now)
+        }
+
+        static let dayResetHour = 3
 
         public static func < (lhs: CalendarDate, rhs: CalendarDate) -> Bool {
             (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)

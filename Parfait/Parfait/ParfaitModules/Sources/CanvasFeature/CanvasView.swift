@@ -40,6 +40,33 @@ public struct CanvasView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        .navigationDestination(item: toppingAddSourceBinding) { source in
+            switch source {
+            case .camera(let canvasDate):
+                ToppingAddFlowView(
+                    store: ToppingAddStore(
+                        state: .init(
+                            entryPoint: .camera,
+                            canvasDate: canvasDate
+                        ),
+                        dependencies: .live(
+                            onFlowClosed: { store.send(.toppingAddFlowDismissed) }
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    private var toppingAddSourceBinding: Binding<CanvasStore.ToppingAddSource?> {
+        Binding(
+            get: { store.state.toppingAddSource },
+            set: { source in
+                if source == nil {
+                    store.send(.toppingAddFlowDismissed)
+                }
+            }
+        )
     }
 
     private var topBarMembers: [YGTopBar.Member] {

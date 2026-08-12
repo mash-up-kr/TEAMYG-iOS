@@ -43,9 +43,19 @@ public final class CanvasStore: MVIStore {
             state.calendar.close()
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
 
-        case .cameraOptionTapped, .galleryOptionTapped:
-            // 이미지 획득·편집 정책 확정 후 각 시스템 피커를 연결한다.
+        case .cameraOptionTapped:
+            state.calendar.close()
+            state.menuState = .collapsed
+            state.toppingAddSource = .camera(
+                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
+            )
+
+        case .galleryOptionTapped:
+            // C-102 커스텀 갤러리 구현 시 동일한 토핑 추가 흐름에 연결한다.
             break
+
+        case .toppingAddFlowDismissed:
+            state.toppingAddSource = nil
 
         case .calendarTapped,
              .calendarDimTapped,
@@ -148,15 +158,18 @@ public extension CanvasStore {
         public let loadCanvas: @Sendable (CalendarDate) async -> CanvasLoadResult
         public let loadRecordedDates: @Sendable (Int) async -> Set<CalendarDate>
         public let loadRecordedYears: @Sendable () async -> Set<Int>
+        public let now: @Sendable () -> Date
 
         public init(
             loadCanvas: @escaping @Sendable (CalendarDate) async -> CanvasLoadResult,
             loadRecordedDates: @escaping @Sendable (Int) async -> Set<CalendarDate>,
-            loadRecordedYears: @escaping @Sendable () async -> Set<Int>
+            loadRecordedYears: @escaping @Sendable () async -> Set<Int>,
+            now: @escaping @Sendable () -> Date = { .now }
         ) {
             self.loadCanvas = loadCanvas
             self.loadRecordedDates = loadRecordedDates
             self.loadRecordedYears = loadRecordedYears
+            self.now = now
         }
     }
 
@@ -167,6 +180,7 @@ public extension CanvasStore {
         public var canvasContent: CanvasContent?
         public var menuState: MenuState
         public var calendar: CalendarState
+        public var toppingAddSource: ToppingAddSource?
 
         public init(
             groupName: String = "그룹이름",
@@ -174,7 +188,8 @@ public extension CanvasStore {
             contentState: ContentState? = nil,
             canvasContent: CanvasContent? = nil,
             menuState: MenuState = .collapsed,
-            calendar: CalendarState = CalendarState()
+            calendar: CalendarState = CalendarState(),
+            toppingAddSource: ToppingAddSource? = nil
         ) {
             self.groupName = groupName
             self.members = members
@@ -182,6 +197,7 @@ public extension CanvasStore {
             self.canvasContent = canvasContent
             self.menuState = menuState
             self.calendar = calendar
+            self.toppingAddSource = toppingAddSource
         }
 
         public var dateText: String {
@@ -293,6 +309,12 @@ public extension CanvasStore {
         case sourceOptions
     }
 
+    enum ToppingAddSource: Hashable, Identifiable, Sendable {
+        case camera(canvasDate: CalendarDate)
+
+        public var id: Self { self }
+    }
+
     enum Intent {
         case screenAppeared
         case screenDisappeared
@@ -300,6 +322,7 @@ public extension CanvasStore {
         case toppingAddTapped
         case cameraOptionTapped
         case galleryOptionTapped
+        case toppingAddFlowDismissed
         case calendarTapped
         case calendarDimTapped
         case calendarMonthTapped

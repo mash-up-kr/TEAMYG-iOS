@@ -1,0 +1,116 @@
+//
+//  ToppingAddFlowView.swift
+//  CanvasFeature
+//
+//  Created by 박서연 on 8/9/26.
+//
+
+import SwiftUI
+import UIComponent
+
+struct ToppingAddFlowView: View {
+    @State private var store: ToppingAddStore
+    @Environment(\.scenePhase) private var scenePhase
+
+    init(store: ToppingAddStore) {
+        _store = State(initialValue: store)
+    }
+
+    var body: some View {
+        Group {
+            switch store.state.screen {
+            case .camera:
+                ToppingCameraView(
+                    dateText: store.state.canvasDateText,
+                    weekdayText: store.state.canvasWeekdayText,
+                    flashMode: store.state.flashMode,
+                    isFlashControlEnabled: store.state.isFlashControlEnabled,
+                    isShutterEnabled: store.state.isShutterEnabled,
+                    isSwitchingCamera: store.state.isSwitchingCamera,
+                    showsToast: store.state.showsToast,
+                    previewSource: store.previewSource,
+                    send: { store.send($0) }
+                )
+
+            case .cameraConfirmation:
+                ToppingCameraConfirmationView(
+                    photoData: store.state.capturedPhotoData,
+                    onCloseTap: { store.send(.flowCloseTapped) },
+                    onRetakeTap: { store.send(.retakeTapped) },
+                    onNextTap: { store.send(.photoConfirmed) }
+                )
+
+            case .cameraPermissionError:
+                ToppingErrorView(
+                    title: "카메라 권한이 없어요",
+                    message: "설정에서 카메라 권한을 허용해 주세요",
+                    actionTitle: "설정으로 이동",
+                    onActionTap: { store.send(.settingsTapped) },
+                    onCloseTap: { store.send(.flowCloseTapped) }
+                )
+
+            case .cameraUnavailable:
+                ToppingErrorView(
+                    title: "카메라를 사용할 수 없어요",
+                    message: "잠시 후 다시 시도해 주세요",
+                    actionTitle: "다시 시도",
+                    onActionTap: { store.send(.cameraRetryTapped) },
+                    onCloseTap: { store.send(.flowCloseTapped) }
+                )
+
+            case .analysisLoading:
+                ToppingAnalysisLoadingView(
+                    onCloseTap: { store.send(.flowCloseTapped) }
+                )
+
+            case .gallery, .galleryConfirmation:
+                Color.whiteFixed
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .task {
+            store.send(.screenAppeared)
+        }
+        .onDisappear {
+            store.send(.screenDisappeared)
+        }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            switch newScenePhase {
+            case .active:
+                store.send(.sceneBecameActive)
+            case .inactive, .background:
+                store.send(.sceneBecameInactive)
+            @unknown default:
+                store.send(.sceneBecameInactive)
+            }
+        }
+    }
+}
+
+private struct ToppingAnalysisLoadingView: View {
+    let onCloseTap: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.whiteFixed
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.gray900)
+
+                Text("사진을 편집하고 있어요")
+                    .suit(.title03SemiBold)
+                    .foregroundStyle(.gray900)
+
+                Text("잠시만 기다려주세요 ⋯")
+                    .suit(.body02Regular)
+                    .foregroundStyle(.gray500)
+            }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            ToppingFloatingBar(trailingAction: onCloseTap)
+        }
+    }
+}
