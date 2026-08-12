@@ -31,11 +31,14 @@ public struct LoginView: View {
                 .padding(.bottom, 2)
         }
         .task {
-            // 로그인 성공 이벤트 → 약관 동의 화면으로 이동.
+            // 로그인 결과 이벤트 → 화면 전환.
             for await event in store.events {
                 switch event {
-                case .authenticated:
-                    router.push(.terms)
+                case .signedIn:
+                    // ponytail: 기존 회원 랜딩 = 그룹 대문. 홈 화면이 따로 확정되면 교체.
+                    router.push(.group)
+                case .signupRequired(let registrationToken):
+                    router.push(.terms(registrationToken: registrationToken))
                 }
             }
         }

@@ -34,19 +34,35 @@ public struct TermsView: View {
             Spacer()
 
             YGButton("확인", variant: .large) {
-                proceedToNext()
+                store.send(.confirmTapped)
             }
             .disabled(!store.state.canProceed)
             .padding(.bottom, 2)
         }
         .padding(.horizontal, 20)
         .ygTopBar(.back)
-        .task { store.send(.screenAppeared) }
+        .ygAlert(
+            isPresented: Binding(
+                get: { store.state.signupPhase == .failed },
+                set: { isPresented in
+                    if !isPresented { store.send(.signupFailureAcknowledged) }
+                }
+            )
+        ) {
+            YGAlert(title: "회원가입에 실패했어요", subtitle: "잠시 후 다시 시도해 주세요")
+        }
+        .task {
+            store.send(.screenAppeared)
+            // 회원가입 완료 이벤트 → 다음 화면으로 이동.
+            for await event in store.events {
+                switch event {
+                case .signupCompleted:
+                    // ponytail: 가입 완료 랜딩 = 그룹 대문. 온보딩 다음 단계(닉네임 등) 확정 시 교체.
+                    router.push(.group)
+                }
+            }
+        }
         .onDisappear { store.send(.screenDisappeared) }
-    }
-
-    /// 다음 화면으로 이동. 목적지 미정 — 확정되면 채운다.
-    private func proceedToNext() {
     }
 
     // MARK: - 로드 상태별 콘텐츠
@@ -159,8 +175,17 @@ public struct TermsView: View {
 #Preview {
     TermsView(
         router: .preview,
-        store: TermsStore(policiesUseCase: PreviewPoliciesUseCase())
+        store: TermsStore(
+            registrationToken: "preview-token",
+            policiesUseCase: PreviewPoliciesUseCase(),
+            signupUseCase: PreviewSignupUseCase()
+        )
     )
+}
+
+/// 프리뷰 전용 스텁 — 서버 호출 없이 즉시 성공.
+private struct PreviewSignupUseCase: SignupUseCase {
+    func signup(registrationToken: String, agreements: [TermsAgreement]) async throws {}
 }
 
 /// 프리뷰 전용 스텁 — 서버 호출 없이 즉시 성공.

@@ -25,7 +25,8 @@ struct RootView: View {
         NavigationStack(path: $router.path) {
             List {
                 NavigationLink("로그인 (LoginFeature)", value: DevModuleEntry.login)
-                NavigationLink("약관 동의 (LoginFeature)", value: AppRoute.terms)
+                // 개발용 직행이라 가입 토큰이 없다 — 확인(회원가입 완료)은 서버에서 거부된다.
+                NavigationLink("약관 동의 (LoginFeature)", value: AppRoute.terms(registrationToken: ""))
                 NavigationLink("그룹 목록 (GroupFeature)", value: AppRoute.group)
                 NavigationLink("캔버스 (CanvasFeature)", value: AppRoute.canvas)
                 NavigationLink("앨범 (CanvasFeature)", value: DevModuleEntry.album)
@@ -52,7 +53,11 @@ struct RootView: View {
                         makeCreateGroupStore: diContainer.makeCreateGroupStore
                     )
                     #endif
-                case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())
+                case .terms(let registrationToken):
+                    TermsView(
+                        router: router,
+                        store: diContainer.makeTermsStore(registrationToken: registrationToken)
+                    )
                 case .canvas: CanvasView()
                 }
             }

@@ -61,9 +61,12 @@ struct AppDependencies {
         )
     }
 
-    func makeTermsStore() -> TermsStore {
-        TermsStore(
-            policiesUseCase: PoliciesUseCaseImpl(authRepository: makeAuthRepository())
+    func makeTermsStore(registrationToken: String) -> TermsStore {
+        let authRepository = makeAuthRepository()
+        return TermsStore(
+            registrationToken: registrationToken,
+            policiesUseCase: PoliciesUseCaseImpl(authRepository: authRepository),
+            signupUseCase: SignupUseCaseImpl(authRepository: authRepository)
         )
     }
 

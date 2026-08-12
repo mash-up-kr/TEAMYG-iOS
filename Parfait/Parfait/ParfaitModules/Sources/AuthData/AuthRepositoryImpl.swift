@@ -85,7 +85,7 @@ public struct AuthRepositoryImpl: AuthRepository {
 private extension AuthRepositoryImpl {
     /// 로그인 응답 공통 처리 — 기존 회원이면 토큰 저장, 신규 회원이면 가입 토큰 반환.
     func finishLogin(with response: SocialLoginResponseDTO) async throws -> SocialLoginResult {
-        if response.newUser {
+        if response.isNewUser {
             guard let registrationToken = response.registrationToken else {
                 throw SocialLoginError.invalidServerResponse
             }

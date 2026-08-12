@@ -13,5 +13,5 @@ struct SocialLoginResponseDTO: Decodable, Sendable {
     let refreshToken: String?
     /// 신규 회원일 때만 내려온다 — 회원가입 완료 요청에 쓴다.
     let registrationToken: String?
-    let newUser: Bool
+    let isNewUser: Bool
 }

@@ -104,10 +104,10 @@ public final class LoginStore: MVIStore {
 
     private func handle(_ result: SocialLoginResult) {
         switch result {
-        case .signedIn, .signupRequired:
-            // ponytail: 기존회원(.signedIn)은 메인으로 보내고 registrationToken 은 약관 화면에 넘겨야 함 —
-            //           Routing 페이로드 설계(공용 모듈이라 팀 컨펌 필요) 후 분기. 지금은 둘 다 약관 화면으로.
-            eventContinuation.yield(.authenticated)
+        case .signedIn:
+            eventContinuation.yield(.signedIn)
+        case .signupRequired(let registrationToken):
+            eventContinuation.yield(.signupRequired(registrationToken: registrationToken))
         }
     }
 
@@ -123,7 +123,9 @@ public final class LoginStore: MVIStore {
 
     /// 뷰가 소비하는 일회성 이벤트.
     enum Event: Sendable {
-        /// 로그인 성공 — 약관 동의 화면으로 이동.
-        case authenticated
+        /// 기존 회원 로그인 완료(토큰 저장까지 끝) — 메인으로 이동.
+        case signedIn
+        /// 신규 회원 — 가입 토큰을 들고 약관 동의 화면으로 이동.
+        case signupRequired(registrationToken: String)
     }
 }
