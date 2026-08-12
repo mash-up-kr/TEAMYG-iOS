@@ -11,24 +11,16 @@ import Core
 struct AppleLoginEndpoint: Endpoint {
     let identityToken: String
     let nonce: String
-    let authorizationCode: String
 
     var path: String { "/api/v1/auth/apple" }
     var method: HTTPMethod { .post }
     var task: RequestTask {
-        .body(
-            Body(
-                identityToken: identityToken,
-                nonce: nonce,
-                authorizationCode: authorizationCode
-            )
-        )
+        .body(Body(identityToken: identityToken, nonce: nonce))
     }
     var requiresAuth: Bool { false }
 
     struct Body: Encodable, Sendable {
         let identityToken: String
         let nonce: String
-        let authorizationCode: String
     }
 }

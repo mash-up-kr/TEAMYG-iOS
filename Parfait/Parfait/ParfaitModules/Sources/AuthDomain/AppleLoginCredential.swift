@@ -12,12 +12,9 @@ public struct AppleLoginCredential: Equatable, Sendable {
     public let identityToken: String
     /// 토큰 재생 공격 방지 값 — 로그인 요청에 넣은 것과 같은 문자열을 서버가 검증한다.
     public let nonce: String
-    /// 서버가 애플 검증에 사용.
-    public let authorizationCode: String
 
-    public init(identityToken: String, nonce: String, authorizationCode: String) {
+    public init(identityToken: String, nonce: String) {
         self.identityToken = identityToken
         self.nonce = nonce
-        self.authorizationCode = authorizationCode
     }
 }

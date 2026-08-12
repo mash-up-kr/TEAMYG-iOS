@@ -59,11 +59,7 @@ public struct AuthRepositoryImpl: AuthRepository {
 
     public func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
         let response: SocialLoginResponseDTO = try await networkClient.request(
-            AppleLoginEndpoint(
-                identityToken: credential.identityToken,
-                nonce: credential.nonce,
-                authorizationCode: credential.authorizationCode
-            )
+            AppleLoginEndpoint(identityToken: credential.identityToken, nonce: credential.nonce)
         )
         return try await finishLogin(with: response)
     }

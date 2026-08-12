@@ -76,29 +76,22 @@ public final class LoginStore: MVIStore {
             guard case .appleID(let appleIDCredential) = result else { return }
             guard
                 let identityTokenData = appleIDCredential.identityToken,
-                let identityToken = String(data: identityTokenData, encoding: .utf8),
-                let authorizationCodeData = appleIDCredential.authorizationCode,
-                let authorizationCode = String(data: authorizationCodeData, encoding: .utf8)
+                let identityToken = String(data: identityTokenData, encoding: .utf8)
             else {
-                YGLogger.error("Apple 로그인 실패: identityToken 또는 authorizationCode 없음")
+                YGLogger.error("Apple 로그인 실패: identityToken 없음")
                 return
             }
             YGLogger.log(
                 """
                 Apple 로그인 성공 — 수신 값
                 identityToken: \(identityToken)
-                authorizationCode: \(authorizationCode)
                 nonce: \(nonce)
                 email: \(appleIDCredential.email ?? "-")
                 fullName: \(appleIDCredential.fullName?.formatted() ?? "-")
                 """
             )
 
-            let credential = AppleLoginCredential(
-                identityToken: identityToken,
-                nonce: nonce,
-                authorizationCode: authorizationCode
-            )
+            let credential = AppleLoginCredential(identityToken: identityToken, nonce: nonce)
             let loginResult = try await socialLoginUseCase.loginWithApple(credential)
             YGLogger.log("Apple 로그인 완료: \(loginResult)")
             handle(loginResult)
