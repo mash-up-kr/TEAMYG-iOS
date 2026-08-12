@@ -16,4 +16,7 @@ public protocol AuthRepository: Sendable {
     /// 약관 동의를 보내 회원가입을 완료하고 토큰을 저장한다.
     /// - Parameter registrationToken: 로그인이 `.signupRequired` 로 돌려준 토큰.
     func signup(registrationToken: String, agreements: [TermsAgreement]) async throws
+
+    /// 서버 약관 목록을 조회한다 (`/api/v1/policies`).
+    func fetchPolicies() async throws -> [Policy]
 }

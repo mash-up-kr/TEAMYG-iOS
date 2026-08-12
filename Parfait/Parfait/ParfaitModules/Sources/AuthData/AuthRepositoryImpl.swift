@@ -73,6 +73,13 @@ public struct AuthRepositoryImpl: AuthRepository {
             refreshToken: response.refreshToken
         )
     }
+
+    public func fetchPolicies() async throws -> [Policy] {
+        let response: PolicyResponseDTO = try await networkClient.request(PoliciesEndpoint())
+        return response.policies.map {
+            Policy(id: $0.termsId, title: $0.title, url: $0.url, isRequired: $0.required)
+        }
+    }
 }
 
 private extension AuthRepositoryImpl {

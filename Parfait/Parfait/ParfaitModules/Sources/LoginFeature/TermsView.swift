@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/14/26.
 //
 
+import AuthDomain
 import Routing
 import SwiftUI
 import UIComponent
@@ -12,6 +13,7 @@ import UIComponent
 public struct TermsView: View {
     private let router: Router
     @State private var store: TermsStore
+    @Environment(\.openURL) private var openURL
 
     public init(router: Router, store: TermsStore) {
         self.router = router
@@ -20,22 +22,14 @@ public struct TermsView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            
+
             Spacer().frame(height: 40)
-            
+
             Text("서비스 이용 약관에\n동의해 주세요")
                 .suit(.title01Bold)
                 .foregroundStyle(.gray900)
 
-            allAgreementButton
-                .padding(.top, 40)
-
-            VStack(spacing: 0) {
-                ForEach(TermsItem.allCases, id: \.self) { item in
-                    termRow(item)
-                }
-            }
-            .padding(.top, 12)
+            content
 
             Spacer()
 
@@ -47,10 +41,54 @@ public struct TermsView: View {
         }
         .padding(.horizontal, 20)
         .ygTopBar(.back)
+        .task { store.send(.screenAppeared) }
+        .onDisappear { store.send(.screenDisappeared) }
     }
 
     /// 다음 화면으로 이동. 목적지 미정 — 확정되면 채운다.
     private func proceedToNext() {
+    }
+
+    // MARK: - 로드 상태별 콘텐츠
+
+    @ViewBuilder
+    private var content: some View {
+        switch store.state.phase {
+        case .idle, .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.top, 80)
+        case .failed:
+            loadFailure
+        case .loaded(let policies):
+            allAgreementButton
+                .padding(.top, 40)
+
+            VStack(spacing: 0) {
+                ForEach(policies) { policy in
+                    termRow(policy)
+                }
+            }
+            .padding(.top, 12)
+        }
+    }
+
+    private var loadFailure: some View {
+        VStack(spacing: 16) {
+            Text("약관을 불러오지 못했어요.")
+                .suit(.body02Regular)
+                .foregroundStyle(.gray500)
+            Button {
+                store.send(.retryTapped)
+            } label: {
+                Text("다시 시도")
+                    .suit(.body01Bold)
+                    .foregroundStyle(.gray900)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 80)
     }
 
     // MARK: - 모두 동의하기
@@ -80,13 +118,13 @@ public struct TermsView: View {
 
     // MARK: - 개별 약관
 
-    private func termRow(_ item: TermsItem) -> some View {
-        let isAgreed = store.state.agreed.contains(item)
+    private func termRow(_ policy: Policy) -> some View {
+        let isAgreed = store.state.isAgreed(policy)
         let itemColor: Color = isAgreed ? .gray800 : .gray500
 
         return HStack(spacing: 4) {
             Button {
-                store.send(.itemTapped(item))
+                store.send(.itemTapped(policy))
             } label: {
                 HStack(spacing: 4) {
                     Image.icCheck
@@ -94,7 +132,7 @@ public struct TermsView: View {
                         .resizable()
                         .frame(width: 18, height: 18)
                         .foregroundStyle(itemColor)
-                    Text(item.prefixedTitle)
+                    Text("(\(policy.isRequired ? "필수" : "선택")) \(policy.title)")
                         .suit(.body02Regular)
                         .foregroundStyle(itemColor)
                 }
@@ -104,7 +142,7 @@ public struct TermsView: View {
             Spacer()
 
             Button {
-                // ponytail: 약관 원문 보기 — 원문 화면/URL 확정되면 연결.
+                openURL(policy.url)
             } label: {
                 Image.icCaretRight
                     .renderingMode(.template)
@@ -119,5 +157,28 @@ public struct TermsView: View {
 }
 
 #Preview {
-    TermsView(router: .preview, store: TermsStore())
+    TermsView(
+        router: .preview,
+        store: TermsStore(policiesUseCase: PreviewPoliciesUseCase())
+    )
+}
+
+/// 프리뷰 전용 스텁 — 서버 호출 없이 즉시 성공.
+private struct PreviewPoliciesUseCase: PoliciesUseCase {
+    func fetchPolicies() async throws -> [Policy] {
+        [
+            Policy(
+                id: 1,
+                title: "서비스 이용약관",
+                url: URL(string: "https://example.com")!,
+                isRequired: true
+            ),
+            Policy(
+                id: 2,
+                title: "개인정보 처리방침",
+                url: URL(string: "https://example.com")!,
+                isRequired: true
+            )
+        ]
+    }
 }

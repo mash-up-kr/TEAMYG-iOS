@@ -62,7 +62,9 @@ struct AppDependencies {
     }
 
     func makeTermsStore() -> TermsStore {
-        TermsStore()
+        TermsStore(
+            policiesUseCase: PoliciesUseCaseImpl(authRepository: makeAuthRepository())
+        )
     }
 
     func makeSettingStore() -> SettingStore {
