@@ -45,6 +45,18 @@ struct AppDependencies {
         await tokenManager.sessionExpirations
     }
 
+    #if DEBUG
+    /// 개발용 토큰 로그인 — 고정 액세스 토큰(개발 서버 계정)을 저장해 로그인 없이 그룹 화면부터 쓴다.
+    /// 리프레시 토큰은 없으므로 액세스 토큰이 거절되면 세션 만료 → 로그인으로 돌아간다.
+    func storeDevelopmentToken() async {
+        await tokenManager.update(
+            // swiftlint:disable:next line_length
+            accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwidHlwZSI6IkFDQ0VTUyIsImlhdCI6MTc4NTY0MjAwMCwiZXhwIjoxODE3MTc4MDAwfQ.6PYljdcqu8YBYD9_HEU5smRbgZZWFhEnIyTTQ955Ni0",
+            refreshToken: ""
+        )
+    }
+    #endif
+
     private func makeAuthRepository() -> AuthRepositoryImpl {
         AuthRepositoryImpl(networkClient: networkClient, tokenManager: tokenManager)
     }

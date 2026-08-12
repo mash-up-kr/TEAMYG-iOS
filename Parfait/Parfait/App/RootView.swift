@@ -12,8 +12,8 @@ import SettingFeature
 /// 저장된 토큰이 있으면 자동로그인으로 바로 그룹 화면에서 시작한다.
 /// 로그인/회원가입 완료가 `replaceStack(with:)` 으로 스택을 재시작하면
 /// 그 목적지가 새 루트가 된다(뒤로가기 불가).
-/// DEBUG 에서는 모듈별로 바로 들어가는 개발용 메뉴(`DevMenuView`)가 시작 화면
-/// — 자동로그인은 건너뛴다(메뉴 진입을 막지 않기 위해).
+/// DEBUG 는 시작 화면만 다르다(`DevMenuView` — 실제 로그인 / 개발용 토큰 선택).
+/// 자동로그인을 포함한 이후 로직은 RELEASE 와 동일하다.
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
@@ -38,19 +38,25 @@ struct RootView: View {
         if let rootRoute = router.rootRoute {
             destination(for: rootRoute)
         } else {
-            #if DEBUG
-            DevMenuView(router: router, diContainer: diContainer)
-            #else
-            destination(for: .login)
+            startScreen
                 .task {
-                    // 자동로그인: 저장된 토큰이 있으면 로그인 화면을 건너뛴다.
+                    // 자동로그인: 저장된 토큰이 있으면 시작 화면을 건너뛴다.
                     // 세션 만료로 돌아온 로그인(rootRoute == .login)에는 붙지 않는다 — 최초 진입 전용.
                     if await diContainer.hasStoredAccessToken() {
                         router.replaceStack(with: .group)
                     }
                 }
-            #endif
         }
+    }
+
+    /// 최초 진입 시작 화면 — DEBUG/RELEASE 는 이 화면만 다르고 이후 로직은 같다.
+    @ViewBuilder
+    private var startScreen: some View {
+        #if DEBUG
+        DevMenuView(router: router, diContainer: diContainer)
+        #else
+        destination(for: .login)
+        #endif
     }
 
     /// 피처 간 이동 목적지(AppRoute) → 화면 조립. 실제 플로우: 로그인 → 약관 동의 → 그룹.
