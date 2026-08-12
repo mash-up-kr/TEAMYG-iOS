@@ -57,8 +57,9 @@ public struct TermsView: View {
             for await event in store.events {
                 switch event {
                 case .signupCompleted:
-                    // ponytail: 가입 완료 랜딩 = 그룹 대문. 온보딩 다음 단계(닉네임 등) 확정 시 교체.
-                    router.push(.group)
+                    // 가입 완료 = 로그인 플로우 종료 — 스택을 새로 시작해 뒤로가기를 막는다.
+                    // ponytail: 랜딩 = 그룹 대문. 온보딩 다음 단계(닉네임 등) 확정 시 교체.
+                    router.replaceStack(with: .group)
                 }
             }
         }

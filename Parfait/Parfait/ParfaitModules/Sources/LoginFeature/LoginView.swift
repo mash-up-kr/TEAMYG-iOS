@@ -35,8 +35,9 @@ public struct LoginView: View {
             for await event in store.events {
                 switch event {
                 case .signedIn:
+                    // 로그인 완료 — 스택을 새로 시작해 뒤로가기로 로그인 화면에 못 돌아가게 한다.
                     // ponytail: 기존 회원 랜딩 = 그룹 대문. 홈 화면이 따로 확정되면 교체.
-                    router.push(.group)
+                    router.replaceStack(with: .group)
                 case .signupRequired(let registrationToken):
                     router.push(.terms(registrationToken: registrationToken))
                 }
@@ -71,10 +72,11 @@ public struct LoginView: View {
                 title: "오늘 찍은 사진을 친구들과 함께 캔버스에 붙여요"
             )
             .tag(1)
-            // ponytail: 3페이지 이미지·문구 미정 — 확정되면 onboardingPage 로 교체
-            Text("파르페와 함께 시작해보세요")
-                .suit(.body01SemiBold)
-                .tag(2)
+            onboardingPage(
+                image: .imageOnboarding3,
+                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요"
+            )
+            .tag(2)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .aspectRatio(306.0 / 480.0, contentMode: .fit)

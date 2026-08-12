@@ -8,59 +8,53 @@ import GroupFeature
 import CanvasFeature
 import SettingFeature
 
-/// 앱 루트 뷰. 라우팅(enum Route + NavigationStack)은 화면이 늘면 여기서 소유.
-/// ponytail: 지금은 개발용 모듈 진입 리스트가 루트 — 실제 앱 플로우 확정 시 LoginView 루트로 복원.
+/// 앱 루트 뷰 — 실제 플로우만 조립한다. 시작 화면은 로그인이고,
+/// 로그인/회원가입 완료가 `replaceStack(with:)` 으로 스택을 재시작하면
+/// 그 목적지가 새 루트가 된다(뒤로가기 불가).
+/// DEBUG 에서는 모듈별로 바로 들어가는 개발용 메뉴(`DevMenuView`)가 시작 화면.
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
 
-    /// 개발용 모듈 진입 목적지 — AppRoute 에 아직 없는 화면만 (있는 화면은 AppRoute value 로 직접 push).
-    /// 뷰 기반 `NavigationLink { 뷰 }` 는 value 기반 push 와 섞이면 피처 내부 라우트 화면이
-    /// 스택 아래로 끼어들어 전환이 깨지므로 리스트는 전부 value 기반으로 유지할 것.
-    private enum DevModuleEntry: Hashable {
-        case login, setting, album
-    }
-
     var body: some View {
         NavigationStack(path: $router.path) {
-            List {
-                NavigationLink("로그인 (LoginFeature)", value: DevModuleEntry.login)
-                // 개발용 직행이라 가입 토큰이 없다 — 확인(회원가입 완료)은 서버에서 거부된다.
-                NavigationLink("약관 동의 (LoginFeature)", value: AppRoute.terms(registrationToken: ""))
-                NavigationLink("그룹 목록 (GroupFeature)", value: AppRoute.group)
-                NavigationLink("캔버스 (CanvasFeature)", value: AppRoute.canvas)
-                NavigationLink("앨범 (CanvasFeature)", value: DevModuleEntry.album)
-                NavigationLink("설정 (SettingFeature)", value: DevModuleEntry.setting)
-            }
-            .navigationTitle("모듈 진입")
-            .navigationDestination(for: DevModuleEntry.self) { entry in
-                switch entry {
-                case .login:   LoginView(router: router, store: diContainer.makeLoginStore())
-                case .setting: SettingView(store: diContainer.makeSettingStore())
-                case .album:   AlbumView(makeAlbumPickerStore: diContainer.makeAlbumPickerStore)
+            root
+                .navigationDestination(for: AppRoute.self) { route in
+                    destination(for: route)
                 }
-            }
-            .navigationDestination(for: AppRoute.self) { route in
-                switch route {
-                case .group:
-                    #if DEBUG
-                    // 개발 중에는 그룹 수·실패 상태를 바꿔볼 수 있는 데모 래퍼로 들어간다.
-                    GroupListDemoView(makeInviteCodeStore: diContainer.makeInviteCodeStore)
-                    #else
-                    GroupView(
-                        store: diContainer.makeGroupStore(),
-                        makeInviteCodeStore: diContainer.makeInviteCodeStore,
-                        makeCreateGroupStore: diContainer.makeCreateGroupStore
-                    )
-                    #endif
-                case .terms(let registrationToken):
-                    TermsView(
-                        router: router,
-                        store: diContainer.makeTermsStore(registrationToken: registrationToken)
-                    )
-                case .canvas: CanvasView()
-                }
-            }
+        }
+    }
+
+    @ViewBuilder
+    private var root: some View {
+        if let rootRoute = router.rootRoute {
+            destination(for: rootRoute)
+        } else {
+            #if DEBUG
+            DevMenuView(router: router, diContainer: diContainer)
+            #else
+            LoginView(router: router, store: diContainer.makeLoginStore())
+            #endif
+        }
+    }
+
+    /// 피처 간 이동 목적지(AppRoute) → 화면 조립. 실제 플로우: 로그인 → 약관 동의 → 그룹.
+    @ViewBuilder
+    private func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .terms(let registrationToken):
+            TermsView(
+                router: router,
+                store: diContainer.makeTermsStore(registrationToken: registrationToken)
+            )
+        case .group:
+            GroupView(
+                store: diContainer.makeGroupStore(),
+                makeInviteCodeStore: diContainer.makeInviteCodeStore,
+                makeCreateGroupStore: diContainer.makeCreateGroupStore
+            )
+        case .canvas:
+            CanvasView()
         }
     }
 }
