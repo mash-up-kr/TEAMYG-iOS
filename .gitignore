@@ -27,6 +27,9 @@ Secrets.xcconfig
 # superpowers 스킬 산출물 (개인 로컬용 설계/계획 문서)
 docs/superpowers/
 
+# 개인 작업 로그 (로컬 전용)
+docs/worklog/
+
 # Xcode build artifacts
 build/
 DerivedData/

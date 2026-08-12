@@ -18,7 +18,7 @@ struct RootView: View {
     /// 뷰 기반 `NavigationLink { 뷰 }` 는 value 기반 push 와 섞이면 피처 내부 라우트 화면이
     /// 스택 아래로 끼어들어 전환이 깨지므로 리스트는 전부 value 기반으로 유지할 것.
     private enum DevModuleEntry: Hashable {
-        case login, setting
+        case login, setting, album
     }
 
     var body: some View {
@@ -28,6 +28,7 @@ struct RootView: View {
                 NavigationLink("약관 동의 (LoginFeature)", value: AppRoute.terms)
                 NavigationLink("그룹 목록 (GroupFeature)", value: AppRoute.group)
                 NavigationLink("캔버스 (CanvasFeature)", value: AppRoute.canvas)
+                NavigationLink("앨범 (CanvasFeature)", value: DevModuleEntry.album)
                 NavigationLink("설정 (SettingFeature)", value: DevModuleEntry.setting)
             }
             .navigationTitle("모듈 진입")
@@ -35,6 +36,7 @@ struct RootView: View {
                 switch entry {
                 case .login:   LoginView(router: router, store: diContainer.makeLoginStore())
                 case .setting: SettingView(store: diContainer.makeSettingStore())
+                case .album:   AlbumView(makeAlbumPickerStore: diContainer.makeAlbumPickerStore)
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
@@ -46,7 +48,8 @@ struct RootView: View {
                     #else
                     GroupView(
                         store: diContainer.makeGroupStore(),
-                        makeInviteCodeStore: diContainer.makeInviteCodeStore
+                        makeInviteCodeStore: diContainer.makeInviteCodeStore,
+                        makeCreateGroupStore: diContainer.makeCreateGroupStore
                     )
                     #endif
                 case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())

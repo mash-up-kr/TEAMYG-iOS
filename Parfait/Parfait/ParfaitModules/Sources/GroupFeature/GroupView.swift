@@ -13,6 +13,7 @@ import UIComponent
 public struct GroupView: View {
     @State private var store: GroupStore
     private let makeInviteCodeStore: () -> InviteCodeStore
+    private let makeCreateGroupStore: () -> CreateGroupStore
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
     private static let topBarHeight: CGFloat = 60
@@ -30,9 +31,14 @@ public struct GroupView: View {
     private static let loadFailureMessageY: CGFloat = 136
     private static let overlayAnimation = Animation.snappy(duration: 0.24)
 
-    public init(store: GroupStore, makeInviteCodeStore: @escaping () -> InviteCodeStore) {
+    public init(
+        store: GroupStore,
+        makeInviteCodeStore: @escaping () -> InviteCodeStore,
+        makeCreateGroupStore: @escaping () -> CreateGroupStore
+    ) {
         _store = State(initialValue: store)
         self.makeInviteCodeStore = makeInviteCodeStore
+        self.makeCreateGroupStore = makeCreateGroupStore
     }
 
     public var body: some View {
@@ -51,7 +57,12 @@ public struct GroupView: View {
         .background(background)
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
-            case .inviteCode: InviteCodeView(store: makeInviteCodeStore())
+            case .inviteCode:
+                InviteCodeView(store: makeInviteCodeStore())
+            case .createGroup:
+                CreateGroupView(store: makeCreateGroupStore()) { _ in
+                    // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.
+                }
             }
         }
         .task { store.send(.screenAppeared) }
@@ -180,14 +191,11 @@ public struct GroupView: View {
             .padding(.trailing, Self.horizontalInset)
             .transition(.opacity)
 
-            AddGroupMenu {
-                // ponytail: 그룹 만들기 화면 미구현 — 화면 생기면 연결.
-                store.send(.addGroupMenuDismissed)
-            }
-            .padding(.top, Self.addGroupMenuTopInset)
-            .padding(.trailing, Self.horizontalInset)
-            // 누른 칩에서 아래로 펼쳐지도록 위쪽을 붙잡는다.
-            .transition(.scale(scale: 0.9, anchor: .top).combined(with: .opacity))
+            AddGroupMenu()
+                .padding(.top, Self.addGroupMenuTopInset)
+                .padding(.trailing, Self.horizontalInset)
+                // 누른 칩에서 아래로 펼쳐지도록 위쪽을 붙잡는다.
+                .transition(.scale(scale: 0.9, anchor: .top).combined(with: .opacity))
         }
     }
 }
@@ -201,6 +209,9 @@ private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
             store: GroupStore(fetchGroupsUseCase: PreviewFetchGroupsUseCase(groups: groups)),
             makeInviteCodeStore: {
                 InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: nil))
+            },
+            makeCreateGroupStore: {
+                CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
             }
         )
     }

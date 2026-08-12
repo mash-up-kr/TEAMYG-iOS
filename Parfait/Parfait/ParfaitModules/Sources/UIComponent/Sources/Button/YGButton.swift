@@ -21,35 +21,40 @@ public struct YGButton: View {
 
     private let title: String
     private let variant: Variant
+    private let fillsWidth: Bool
     private let action: () -> Void
 
+    /// - Parameter fillsWidth: `true` 면 medium 계열도 고정폭(136) 대신 가용 폭을 채운다.
     public init(
         _ title: String,
         variant: Variant,
+        fillsWidth: Bool = false,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.variant = variant
+        self.fillsWidth = fillsWidth
         self.action = action
     }
 
     public var body: some View {
         Button(title, action: action)
-            .buttonStyle(YGButtonStyle(variant: variant))
+            .buttonStyle(YGButtonStyle(variant: variant, fillsWidth: variant == .large || fillsWidth))
     }
 }
 
 private struct YGButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     let variant: YGButton.Variant
+    let fillsWidth: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .suit(.body01SemiBold)
             .foregroundStyle(textColor)
             .padding(.horizontal, .padding7)
-            .frame(maxWidth: variant == .large ? .infinity : nil)
-            .frame(width: variant == .large ? nil : 136, height: 48)
+            .frame(maxWidth: fillsWidth ? .infinity : nil)
+            .frame(width: fillsWidth ? nil : 136, height: 48)
             .background(
                 backgroundColor(isPressed: configuration.isPressed),
                 in: .rect

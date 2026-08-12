@@ -23,6 +23,20 @@ public struct GroupRepositoryImpl: GroupRepository {
         Self.stubGroups
     }
 
+    // ponytail: 그룹 생성 API 스펙 미정 — 확정 시 URLSession 호출 + 에러 응답→CreateGroupError 매핑 채움.
+    //           지금은 방금 만든 것처럼 보이는 그룹을 즉석에서 만들어 돌려준다.
+    public func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
+        let now = Date()
+        return ParfaitGroup(
+            id: "stub-created-\(UUID().uuidString)",
+            name: draft.name,
+            thumbnailURL: nil,
+            lastActivityAt: now,
+            createdAt: now,
+            lastActorNametagType: .type1
+        )
+    }
+
     private static let stubGroups: [ParfaitGroup] = {
         let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
         let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]

@@ -42,7 +42,19 @@ public struct GroupListDemoView: View {
     }
 
     public var body: some View {
-        GroupView(store: store, makeInviteCodeStore: makeInviteCodeStore)
+        GroupView(
+            store: store,
+            makeInviteCodeStore: makeInviteCodeStore,
+            // 앱 조립본을 쓰면 생성이 실제 스텁 저장소로 가서 데모 목록에 안 남는다.
+            // 목록과 같은 데모 저장소를 물려야 만든 그룹이 돌아온 목록에 보인다.
+            makeCreateGroupStore: {
+                CreateGroupStore(
+                    createGroupUseCase: CreateGroupUseCaseImpl(
+                        groupRepository: DemoGroupRepository(demoState: demoState)
+                    )
+                )
+            }
+        )
             .parfaitLayoutAnimationEnabled(isLayoutAnimationEnabled)
             .overlay(alignment: .bottomTrailing) { panel }
             .onChange(of: knobs) { _, newKnobs in
@@ -162,10 +174,20 @@ private nonisolated final class DemoGroupState: @unchecked Sendable {
     private var activityDates: [Date] = []
     /// 다음 새로고침에서 최신으로 끌어올릴 그룹.
     private var nextBumpedIndex = 0
+    /// 이 화면에서 직접 만든 그룹. 패널로 만든 목록 앞에 붙어, 만들자마자 목록에 늘어난 게 보인다.
+    private var createdGroups: [ParfaitGroup] = []
 
     var knobs: DemoKnobs {
         get { lock.withLock { storedKnobs } }
         set { lock.withLock { storedKnobs = newValue } }
+    }
+
+    func append(_ group: ParfaitGroup) {
+        lock.withLock { createdGroups.append(group) }
+    }
+
+    func makeCreatedGroups() -> [ParfaitGroup] {
+        lock.withLock { createdGroups }
     }
 
     /// 새로고침 한 번 분량의 그룹 목록.
@@ -217,13 +239,28 @@ private struct DemoGroupRepository: GroupRepository {
 
     func join(inviteCode: String) async throws {}
 
+    /// 만든 그룹을 데모 상태에 남겨, 목록으로 돌아왔을 때 실제로 늘어난 걸 볼 수 있게 한다.
+    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
+        let now = Date()
+        let group = ParfaitGroup(
+            id: "demo-created-\(draft.name)-\(now.timeIntervalSince1970)",
+            name: draft.name,
+            thumbnailURL: nil,
+            lastActivityAt: now,
+            createdAt: now,
+            lastActorNametagType: .type1
+        )
+        demoState.append(group)
+        return group
+    }
+
     func fetchGroups() async throws -> [ParfaitGroup] {
         let knobs = demoState.knobs
         if knobs.isLoadFailing { throw CocoaError(.coderValueNotFound) }
 
         let now = Date()
         let nametagTypes = NametagType.allCases
-        return demoState.makeGroups(now: now).map { seed in
+        let panelGroups = demoState.makeGroups(now: now).map { seed in
             ParfaitGroup(
                 id: "demo-group-\(seed.index)",
                 name: Self.names[seed.index % Self.names.count],
@@ -233,6 +270,8 @@ private struct DemoGroupRepository: GroupRepository {
                 lastActorNametagType: nametagTypes[seed.index % nametagTypes.count]
             )
         }
+        // 정렬은 UseCase 가 맡으므로 여기서는 합치기만 한다.
+        return demoState.makeCreatedGroups() + panelGroups
     }
 }
 #endif
