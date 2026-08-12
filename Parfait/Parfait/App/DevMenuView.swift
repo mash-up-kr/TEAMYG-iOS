@@ -22,7 +22,9 @@ struct DevMenuView: View {
 
     var body: some View {
         List {
-            NavigationLink("실제 로그인", value: AppRoute.login)
+            Button("실제 로그인") {
+                router.replaceStack(with: .login)
+            }
             Button("개발용 토큰 로그인 — 그룹 화면부터 시작") {
                 Task {
                     await diContainer.storeDevelopmentToken()
