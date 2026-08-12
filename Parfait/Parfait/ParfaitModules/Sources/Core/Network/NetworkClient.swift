@@ -79,10 +79,8 @@ private extension NetworkClientImpl {
     }
 
     /// 봉투(`APIResponse`)를 디코딩해 `success` 면 `data` 를 꺼내고, 아니면 서버 에러로 변환한다.
+    /// `data` 가 null 인 성공 응답은 `EmptyDTO` 로 처리한다.
     func unwrap<Response: Decodable & Sendable>(_ data: Data) throws -> Response {
-        if data.isEmpty, let empty = EmptyDTO() as? Response {
-            return empty
-        }
         let envelope: APIResponse<Response>
         do {
             envelope = try decoder.decode(APIResponse<Response>.self, from: data)
@@ -98,6 +96,9 @@ private extension NetworkClientImpl {
         }
         if let payload = envelope.data {
             return payload
+        }
+        if let empty = EmptyDTO() as? Response {
+            return empty
         }
         throw NetworkError.missingData
     }
