@@ -12,8 +12,8 @@ import SettingFeature
 /// 저장된 토큰이 있으면 자동로그인으로 바로 그룹 화면에서 시작한다.
 /// 로그인/회원가입 완료가 `replaceStack(with:)` 으로 스택을 재시작하면
 /// 그 목적지가 새 루트가 된다(뒤로가기 불가).
-/// DEBUG 는 시작 화면만 다르다(`DevMenuView` — 실제 로그인 / 개발용 토큰 선택).
-/// 자동로그인을 포함한 이후 로직은 RELEASE 와 동일하다.
+/// DEBUG 에서는 자동로그인 없이 시작점 선택(`DevMenuView`)이 항상 먼저 뜬다 —
+/// 실제 로그인할지, 개발용 토큰으로 시작할지 매 실행 선택한다.
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
@@ -39,23 +39,25 @@ struct RootView: View {
             destination(for: rootRoute)
         } else {
             startScreen
-                .task {
-                    // 자동로그인: 저장된 토큰이 있으면 시작 화면을 건너뛴다.
-                    // 세션 만료로 돌아온 로그인(rootRoute == .login)에는 붙지 않는다 — 최초 진입 전용.
-                    if await diContainer.hasStoredAccessToken() {
-                        router.replaceStack(with: .group)
-                    }
-                }
         }
     }
 
-    /// 최초 진입 시작 화면 — DEBUG/RELEASE 는 이 화면만 다르고 이후 로직은 같다.
+    /// 최초 진입 시작 화면.
+    /// DEBUG 는 시작점 선택(DevMenu)이 항상 먼저 — 자동로그인이 메뉴를 가리면
+    /// 토큰 삭제(자동로그인 해제)에 접근할 수 없으므로 DEBUG 는 자동로그인을 하지 않는다.
     @ViewBuilder
     private var startScreen: some View {
         #if DEBUG
         DevMenuView(router: router, diContainer: diContainer)
         #else
         destination(for: .login)
+            .task {
+                // 자동로그인: 저장된 토큰이 있으면 로그인 화면을 건너뛴다.
+                // 세션 만료로 돌아온 로그인(rootRoute == .login)에는 붙지 않는다 — 최초 진입 전용.
+                if await diContainer.hasStoredAccessToken() {
+                    router.replaceStack(with: .group)
+                }
+            }
         #endif
     }
 

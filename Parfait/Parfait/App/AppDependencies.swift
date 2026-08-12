@@ -55,6 +55,11 @@ struct AppDependencies {
             refreshToken: ""
         )
     }
+
+    /// 저장된 토큰 삭제 — 다음 실행부터 자동로그인이 되지 않는다 (자동로그인 영구 해제).
+    func clearStoredTokens() async {
+        await tokenManager.clear()
+    }
     #endif
 
     private func makeAuthRepository() -> AuthRepositoryImpl {
