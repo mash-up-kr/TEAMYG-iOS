@@ -59,7 +59,13 @@ let package = Package(
                 }
                 return .target(name: name)
             },
-            resources: module.resources
+            resources: module.resources,
+            // presentLimitedLibraryPicker 는 PhotosUI 의 ObjC 카테고리 — 심볼 참조가 없어
+            // auto-link 가 누락되면 런타임 unrecognized selector 크래시. 명시 링크로 보완.
+            // ponytail: 링크 프레임워크가 늘면 modules 테이블 필드로 승격.
+            linkerSettings: module.name == "CanvasFeature"
+                ? [.linkedFramework("PhotosUI")]
+                : nil
         )
     }
 )
