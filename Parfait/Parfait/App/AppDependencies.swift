@@ -47,6 +47,16 @@ struct AppDependencies {
         TermsStore()
     }
 
+    func makeCanvasStore() -> CanvasStore {
+        CanvasStore(
+            dependencies: .init(
+                loadCanvas: { _ in .empty },
+                loadRecordedDates: { _ in [] },
+                loadRecordedYears: { [] }
+            )
+        )
+    }
+
     func makeSettingStore() -> SettingStore {
         SettingStore(state: .init(nickname: "닉네임", loginProvider: "소셜로그인", appVersion: "1.0v"))
     }

@@ -3,8 +3,8 @@ import SwiftUI
 import UIKit
 
 public extension Image {
-    static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
     static let groupListBG = Image("GroupListBG", bundle: .module)
+    static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
     static let parfaitCherry = Image("Parfait-Cherry", bundle: .module)
@@ -20,6 +20,7 @@ public extension Image {
     static let template06 = Image("Template06", bundle: .module)
     static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
     static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
+    static let icCalendar = Image("Ic_Calendar", bundle: .module)
     static let icCamera = Image("Ic_Camera", bundle: .module)
     static let icCaretBottom = Image("Ic_Caret_Bottom", bundle: .module)
     static let icCaretLeft = Image("Ic_Caret_Left", bundle: .module)
@@ -43,8 +44,8 @@ public extension Image {
 }
 
 public extension UIImage {
-    static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
     static var groupListBG: UIImage { UIImage(resource: ImageResource(name: "GroupListBG", bundle: .module)) }
+    static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
     static var parfaitCherry: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cherry", bundle: .module)) }
@@ -60,6 +61,7 @@ public extension UIImage {
     static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
     static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
     static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
+    static var icCalendar: UIImage { UIImage(resource: ImageResource(name: "Ic_Calendar", bundle: .module)) }
     static var icCamera: UIImage { UIImage(resource: ImageResource(name: "Ic_Camera", bundle: .module)) }
     static var icCaretBottom: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Bottom", bundle: .module)) }
     static var icCaretLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Left", bundle: .module)) }
