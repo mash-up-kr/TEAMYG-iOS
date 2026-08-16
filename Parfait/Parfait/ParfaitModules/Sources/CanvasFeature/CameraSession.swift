@@ -45,7 +45,7 @@ actor CameraSession {
     private let captureSession = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private var videoInput: AVCaptureDeviceInput?
-    private var cameraPosition: ToppingAddStore.CameraPosition = .back
+    private var cameraPosition: CameraPosition = .back
     private var photoCaptureDelegate: CameraPhotoCaptureDelegate?
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     private var rotationObservers: [NSKeyValueObservation] = []
@@ -55,7 +55,7 @@ actor CameraSession {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
     }
 
-    func authorizationStatus() -> ToppingAddStore.CameraAuthorization {
+    func authorizationStatus() -> CameraAuthorization {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: .authorized
         case .notDetermined: .notDetermined
@@ -89,8 +89,8 @@ actor CameraSession {
         captureSession.stopRunning()
     }
 
-    func switchCamera() -> ToppingAddStore.CameraPosition? {
-        let nextPosition: ToppingAddStore.CameraPosition = cameraPosition == .back ? .front : .back
+    func switchCamera() -> CameraPosition? {
+        let nextPosition: CameraPosition = cameraPosition == .back ? .front : .back
         captureSession.beginConfiguration()
         defer { captureSession.commitConfiguration() }
 
@@ -112,7 +112,7 @@ actor CameraSession {
         return nextPosition
     }
 
-    func capturePhoto(_ requestedFlashMode: ToppingAddStore.CameraFlashMode) async -> Data? {
+    func capturePhoto(_ requestedFlashMode: CameraFlashMode) async -> Data? {
         guard photoCaptureDelegate == nil else { return nil }
 
         let settings = AVCapturePhotoSettings()
@@ -130,7 +130,7 @@ actor CameraSession {
         }
     }
 
-    private func configureSession(position: ToppingAddStore.CameraPosition) -> Bool {
+    private func configureSession(position: CameraPosition) -> Bool {
         captureSession.beginConfiguration()
         defer { captureSession.commitConfiguration() }
         captureSession.sessionPreset = .photo
@@ -146,7 +146,7 @@ actor CameraSession {
         return true
     }
 
-    private func makeVideoInput(position: ToppingAddStore.CameraPosition) -> AVCaptureDeviceInput? {
+    private func makeVideoInput(position: CameraPosition) -> AVCaptureDeviceInput? {
         let avPosition: AVCaptureDevice.Position = position == .back ? .back : .front
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: avPosition) else {
             return nil
@@ -233,7 +233,7 @@ private final class CameraPhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureD
     }
 }
 
-extension ToppingAddStore.CameraFlashMode {
+extension CameraFlashMode {
     var avFoundationMode: AVCaptureDevice.FlashMode {
         switch self {
         case .off: .off

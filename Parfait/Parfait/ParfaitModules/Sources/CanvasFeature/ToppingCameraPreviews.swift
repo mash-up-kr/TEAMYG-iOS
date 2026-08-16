@@ -52,7 +52,7 @@ private enum ToppingCameraPreviewFixtures {
 
     @MainActor
     static func cameraView(
-        flashMode: ToppingAddStore.CameraFlashMode = .off,
+        flashMode: CameraFlashMode = .off,
         showsToast: Bool = false
     ) -> some View {
         ToppingCameraView(

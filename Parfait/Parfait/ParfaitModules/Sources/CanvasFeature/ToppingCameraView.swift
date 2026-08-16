@@ -13,7 +13,7 @@ import UIComponent
 struct ToppingCameraView: View {
     let dateText: String
     let weekdayText: String
-    let flashMode: ToppingAddStore.CameraFlashMode
+    let flashMode: CameraFlashMode
     let isFlashControlEnabled: Bool
     let isShutterEnabled: Bool
     let isSwitchingCamera: Bool
@@ -194,7 +194,7 @@ private struct ToppingDateBadge: View {
 }
 
 private struct CameraControlBar: View {
-    let flashMode: ToppingAddStore.CameraFlashMode
+    let flashMode: CameraFlashMode
     let isFlashControlEnabled: Bool
     let isShutterEnabled: Bool
     let isSwitchingCamera: Bool

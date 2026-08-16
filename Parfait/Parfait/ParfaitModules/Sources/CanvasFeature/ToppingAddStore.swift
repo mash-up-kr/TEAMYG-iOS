@@ -325,27 +325,6 @@ extension ToppingAddStore {
         case unavailable
     }
 
-    enum CameraAuthorization: Sendable {
-        case authorized
-        case notDetermined
-        case denied
-        case restricted
-    }
-
-    enum CameraFlashMode: Equatable, Sendable {
-        case off
-        case enabled
-
-        var toggled: Self {
-            self == .off ? .enabled : .off
-        }
-    }
-
-    enum CameraPosition: Equatable, Sendable {
-        case front
-        case back
-    }
-
     public struct Dependencies: Sendable {
         let previewSource: (any CameraPreviewSource)?
         let authorizationStatus: @Sendable () async -> CameraAuthorization
