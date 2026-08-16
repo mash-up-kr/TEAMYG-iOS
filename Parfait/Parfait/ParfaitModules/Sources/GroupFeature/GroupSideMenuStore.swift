@@ -55,9 +55,9 @@ public final class GroupSideMenuStore: MVIStore {
         case .exitConfirmed(let exitAction):
             setExitPopupVisibility(exitAction, isPresented: false)
             beginExit(exitAction)
-        case .exitFinished(let outcome):
+        case .exitFinished(let exitAction):
             // 실패(nil)는 화면에 머무른다 — 안내 디자인 미정(API 도 미정)이라 다시 시도만 열어 둔다.
-            state.exitOutcome = outcome
+            state.completedExit = exitAction
         case .screenDisappeared:
             cancelAllTasks()
         }
@@ -143,33 +143,38 @@ public final class GroupSideMenuStore: MVIStore {
         switch exitAction {
         case .leave: state.isLeavePopupPresented = isPresented
         case .report: state.isReportPopupPresented = isPresented
+        case .discardNicknameEdit: state.isDiscardPopupPresented = isPresented
         }
     }
 
     /// 나가기/신고 요청을 시작한다. 진행 중이면 중복 실행하지 않는다.
     private func beginExit(_ exitAction: ExitAction) {
+        // 닉네임 수정 취소는 서버 요청이 없다 — 팝업 확인 즉시 화면을 떠난다.
+        if exitAction == .discardNicknameEdit {
+            state.completedExit = exitAction
+            return
+        }
         guard exitTask == nil else { return }
         let groupID = state.groupID
-        let outcome: ExitOutcome = switch exitAction {
-        case .leave: .left(groupName: state.groupName)
-        case .report: .reported
-        }
         exitTask = Task {
-            await requestExit(groupID: groupID, outcome: outcome)
+            await requestExit(groupID: groupID, exitAction: exitAction)
             exitTask = nil
         }
     }
 
-    private func requestExit(groupID: String, outcome: ExitOutcome) async {
+    private func requestExit(groupID: String, exitAction: ExitAction) async {
         do {
-            switch outcome {
-            case .left:
+            switch exitAction {
+            case .leave:
                 try await leaveGroupUseCase.leave(groupID: groupID)
-            case .reported:
+            case .report:
                 // 정책상 신고 접수 = 자동 탈퇴까지 — 별도 leave 호출 없이 한 요청으로 끝난다.
                 try await reportGroupUseCase.report(groupID: groupID)
+            case .discardNicknameEdit:
+                // 서버 요청이 없어 `beginExit` 가 여기까지 오기 전에 끝낸다.
+                break
             }
-            send(.exitFinished(outcome))
+            send(.exitFinished(exitAction))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
@@ -197,8 +202,9 @@ public final class GroupSideMenuStore: MVIStore {
         public var isSavingNickname = false
         public var isLeavePopupPresented = false
         public var isReportPopupPresented = false
-        /// 나가기/신고가 끝나 화면을 떠나야 하는 시점의 결과. `nil` 이면 아직 머무른다.
-        public var exitOutcome: ExitOutcome?
+        public var isDiscardPopupPresented = false
+        /// 나가기/신고/뒤로가기가 끝나 화면을 떠나야 하는 시점의 액션. `nil` 이면 아직 머무른다.
+        public var completedExit: ExitAction?
 
         public init(groupID: String, groupName: String) {
             self.groupID = groupID
@@ -208,6 +214,12 @@ public final class GroupSideMenuStore: MVIStore {
         public var detail: GroupDetail? {
             if case .loaded(let detail) = phase { return detail }
             return nil
+        }
+
+        /// 저장하지 않은 닉네임 수정이 있는지 — 뒤로가기(<) 시 수정 취소 팝업(S-102)의 노출 조건.
+        public var hasUnsavedNicknameEdit: Bool {
+            guard let detail else { return false }
+            return nickname != (detail.myNickname ?? "")
         }
 
         /// 닉네임 필드 아래 빨간 안내 문구. 빈 입력은 "아직 안 씀"이라 엔터로 제출했을 때만 에러다.
@@ -231,22 +243,21 @@ public final class GroupSideMenuStore: MVIStore {
         case failed
     }
 
-    /// 사이드메뉴를 떠나게 하는 두 액션. 확인 팝업과 확정 요청이 같은 축을 공유한다.
+    /// 사이드메뉴를 떠나게 하는 액션. 확인 팝업 · 확정 요청 · 완료 결과가 모두 이 한 축을 공유한다.
     public enum ExitAction: Equatable {
+        /// 그룹 나가기 — 서버 요청 후 G-001 로 복귀한다.
         case leave
+        /// 그룹 신고 — 접수되면 서버가 탈퇴까지 처리하고 G-001 로 복귀한다.
         case report
-    }
+        /// 뒤로가기(<) — 저장하지 않은 닉네임 수정을 버리고 이전 화면으로 돌아간다(S-102).
+        case discardNicknameEdit
 
-    /// 사이드메뉴를 떠나는 두 결과. 호출부(G-001 복귀 지점)가 띄울 확인 토스트 문구까지 들고 있다.
-    public enum ExitOutcome: Equatable {
-        case left(groupName: String)
-        case reported
-
-        /// G-001 로 돌아간 화면 위에 2초간 노출할 확인 토스트 문구.
-        public var toastMessage: String {
+        /// 화면을 떠난 뒤 2초간 노출할 확인 토스트 문구. 토스트가 없는 액션은 nil.
+        public func completionToastMessage(groupName: String) -> String? {
             switch self {
-            case .left(let groupName): "\(groupName)에서 나왔어요"
-            case .reported: "신고가 접수되어 운영 정책에 따라 처리됩니다."
+            case .leave: "\(groupName)에서 나왔어요"
+            case .report: "신고가 접수되어 운영 정책에 따라 처리됩니다."
+            case .discardNicknameEdit: nil
             }
         }
     }
@@ -260,11 +271,11 @@ public final class GroupSideMenuStore: MVIStore {
         case nicknameSubmitted
         /// `requestNicknameChange` 완료 결과 — Store 내부에서만 보낸다. `nil` 이면 변경 실패.
         case nicknameChangeFinished(savedNickname: String?)
-        /// 나가기/신고 확인 팝업의 표시 여부 — 액션 아이템 탭(true)과 그만두기·닫힘(false)이 모두 여기로 온다.
+        /// 나가기/신고/수정 취소 확인 팝업의 표시 여부 — 진입 탭(true)과 그만두기·닫힘(false)이 모두 여기로 온다.
         case exitPopupVisibilityChanged(ExitAction, Bool)
         case exitConfirmed(ExitAction)
         /// `requestExit` 완료 결과 — Store 내부에서만 보낸다. `nil` 이면 요청 실패.
-        case exitFinished(ExitOutcome?)
+        case exitFinished(ExitAction?)
         case screenDisappeared
     }
 }

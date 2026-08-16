@@ -18,7 +18,9 @@ import UIKit
 /// 키보드가 올라와 있을 때만 노출되고, 유효성 검사를 통과하지 못하면 비활성화된다.
 public struct GroupSideMenuView: View {
     @State private var store: GroupSideMenuStore
-    private let onExit: (GroupSideMenuStore.ExitOutcome) -> Void
+    private let onExit: (GroupSideMenuStore.ExitAction) -> Void
+
+    @Environment(\.dismiss) private var dismiss
 
     /// 타이핑이 직접 닿는 입력 사본. 로컬로 받는 이유는 `CreateGroupView.nameInput` 주석 참고
     /// (최대 길이에서 Store 값이 안 변해 화면과 어긋나는 문제 + docs/mvi.md 고빈도 입력 지침).
@@ -33,10 +35,11 @@ public struct GroupSideMenuView: View {
     private static let sectionGap: CGFloat = .gap8
     private static let horizontalInset: CGFloat = 20
 
-    /// - Parameter onExit: 나가기/신고 완료 시 결과를 넘긴다. G-001 복귀와 확인 토스트는 호출부가 결정한다.
+    /// - Parameter onExit: 나가기/신고/수정 취소 완료 시 액션을 넘긴다. 화면 이동과 확인 토스트는 호출부가 결정한다.
+    ///   토스트 문구는 `ExitAction.completionToastMessage(groupName:)` 로 얻는다.
     public init(
         store: GroupSideMenuStore,
-        onExit: @escaping (GroupSideMenuStore.ExitOutcome) -> Void = { _ in }
+        onExit: @escaping (GroupSideMenuStore.ExitAction) -> Void = { _ in }
     ) {
         _store = State(initialValue: store)
         _nicknameInput = State(initialValue: store.state.nickname)
@@ -55,7 +58,7 @@ public struct GroupSideMenuView: View {
                     nicknameConfirmButton
                 }
             }
-            .ygTopBar(.detail(title: store.state.groupName))
+            .ygTopBar(.detail(title: store.state.groupName), onLeadingTap: handleBackTap)
             .ygPopup(
                 isPresented: store.binding(\.isLeavePopupPresented) { .exitPopupVisibilityChanged(.leave, $0) },
                 title: "그룹에서 나갈까요?",
@@ -72,15 +75,25 @@ public struct GroupSideMenuView: View {
                 primaryTitle: "그만두기",
                 secondaryAction: { store.send(.exitConfirmed(.report)) }
             )
+            .ygPopup(
+                isPresented: store.binding(\.isDiscardPopupPresented) {
+                    .exitPopupVisibilityChanged(.discardNicknameEdit, $0)
+                },
+                title: "닉네임 수정을 취소할까요?",
+                description: "수정 사항이 저장되지 않으며\n기존 닉네임이 그대로 적용돼요",
+                secondaryTitle: "취소하기",
+                primaryTitle: "그만두기",
+                secondaryAction: { store.send(.exitConfirmed(.discardNicknameEdit)) }
+            )
             // 서버가 준 내 닉네임(비동기 도착)을 입력 사본에 맞춘다. 타이핑 반향은 값이 같아 걸러진다.
             .onChange(of: store.state.nickname) { _, nickname in
                 if nicknameInput != nickname {
                     nicknameInput = nickname
                 }
             }
-            .onChange(of: store.state.exitOutcome) { _, exitOutcome in
-                guard let exitOutcome else { return }
-                onExit(exitOutcome)
+            .onChange(of: store.state.completedExit) { _, completedExit in
+                guard let completedExit else { return }
+                onExit(completedExit)
             }
             .onReceive(
                 NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)
@@ -190,6 +203,17 @@ public struct GroupSideMenuView: View {
         }
     }
 
+    // MARK: - 뒤로가기 (S-102 수정 취소)
+
+    /// 저장하지 않은 닉네임 수정이 있으면 바로 떠나지 않고 취소 확인 팝업을 먼저 띄운다.
+    private func handleBackTap() {
+        if store.state.hasUnsavedNicknameEdit {
+            store.send(.exitPopupVisibilityChanged(.discardNicknameEdit, true))
+        } else {
+            dismiss()
+        }
+    }
+
     // MARK: - 조회 실패
 
     /// 상세 조회 실패 안내. 전용 시안이 없어 G-001 실패 문구 톤을 따른다.
@@ -242,6 +266,16 @@ private func previewSideMenuStore(
         GroupSideMenuView(store: previewSideMenuStore { store in
             store.send(.detailLoadFinished(.previewSample))
             store.send(.exitPopupVisibilityChanged(.report, true))
+        })
+    }
+}
+
+#Preview("닉네임 수정 취소 팝업 (S-102)") {
+    NavigationStack {
+        GroupSideMenuView(store: previewSideMenuStore { store in
+            store.send(.detailLoadFinished(.previewSample))
+            store.send(.nicknameChanged("수정중인닉네임"))
+            store.send(.exitPopupVisibilityChanged(.discardNicknameEdit, true))
         })
     }
 }

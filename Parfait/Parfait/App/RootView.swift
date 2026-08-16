@@ -46,9 +46,11 @@ struct RootView: View {
                     //           나가기/신고 후 G-001 이동도 그때 이 콜백과 같은 방식으로 잇는다.
                     GroupSideMenuView(
                         store: diContainer.makeGroupSideMenuStore(groupID: "stub-group-0", groupName: "그룹이름")
-                    ) { exitOutcome in
+                    ) { exitAction in
                         router.pop()
-                        toasts.append(YGToastItem(kind: .success, message: exitOutcome.toastMessage))
+                        if let toastMessage = exitAction.completionToastMessage(groupName: "그룹이름") {
+                            toasts.append(YGToastItem(kind: .success, message: toastMessage))
+                        }
                     }
                 }
             }
