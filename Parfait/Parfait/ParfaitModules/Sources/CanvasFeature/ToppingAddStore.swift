@@ -10,8 +10,8 @@ import Observation
 import UIComponent
 
 @Observable @MainActor
-final class ToppingAddStore: MVIStore {
-    private(set) var state: State
+public final class ToppingAddStore: MVIStore {
+    public private(set) var state: State
     private let dependencies: Dependencies
     private var cameraSetupTask: Task<Void, Never>?
     private var cameraSwitchTask: Task<Void, Never>?
@@ -25,7 +25,19 @@ final class ToppingAddStore: MVIStore {
         self.dependencies = dependencies
     }
 
-    func send(_ intent: Intent) {
+    /// Composition Root(App) 가 조립할 때 쓰는 진입점. `State` 는 모듈 내부 타입으로 남긴다.
+    public convenience init(
+        entryPoint: PhotoSelectionEntryPoint,
+        canvasDate: CanvasStore.CalendarDate,
+        dependencies: Dependencies
+    ) {
+        self.init(
+            state: State(entryPoint: entryPoint, canvasDate: canvasDate),
+            dependencies: dependencies
+        )
+    }
+
+    public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared, .screenDisappeared,
              .sceneBecameActive, .sceneBecameInactive:
@@ -192,13 +204,13 @@ final class ToppingAddStore: MVIStore {
         state.isCapturing = false
     }
 
-    var previewSource: any CameraPreviewSource {
+    var previewSource: (any CameraPreviewSource)? {
         dependencies.previewSource
     }
 }
 
 extension ToppingAddStore {
-    struct State: Equatable, Sendable {
+    public struct State: Equatable, Sendable {
         let entryPoint: PhotoSelectionEntryPoint
         let canvasDate: CanvasStore.CalendarDate
         var screen: Screen
@@ -251,7 +263,7 @@ extension ToppingAddStore {
         }
     }
 
-    enum Intent {
+    public enum Intent {
         case screenAppeared
         case screenDisappeared
         case flowCloseTapped
@@ -268,7 +280,7 @@ extension ToppingAddStore {
         case sceneBecameInactive
     }
 
-    enum PhotoSelectionEntryPoint: Equatable, Sendable {
+    public enum PhotoSelectionEntryPoint: Equatable, Sendable {
         case camera
         case gallery
 
@@ -334,8 +346,8 @@ extension ToppingAddStore {
         case back
     }
 
-    struct Dependencies: Sendable {
-        let previewSource: any CameraPreviewSource
+    public struct Dependencies: Sendable {
+        let previewSource: (any CameraPreviewSource)?
         let authorizationStatus: @Sendable () async -> CameraAuthorization
         let requestAuthorization: @Sendable () async -> Bool
         let startCamera: @Sendable () async -> Bool

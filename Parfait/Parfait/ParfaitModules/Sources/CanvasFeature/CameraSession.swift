@@ -244,7 +244,7 @@ extension ToppingAddStore.CameraFlashMode {
 
 extension ToppingAddStore.Dependencies {
     @MainActor
-    static func live(
+    public static func live(
         onFlowClosed: @escaping @MainActor @Sendable () async -> Void
     ) -> Self {
         let cameraSession = CameraSession()

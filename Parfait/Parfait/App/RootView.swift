@@ -53,7 +53,11 @@ struct RootView: View {
                     )
                     #endif
                 case .terms:  TermsView(router: router, store: diContainer.makeTermsStore())
-                case .canvas: CanvasView(store: diContainer.makeCanvasStore())
+                case .canvas:
+                    CanvasView(
+                        store: diContainer.makeCanvasStore(),
+                        makeToppingAddStore: diContainer.makeToppingAddStore
+                    )
                 }
             }
         }
