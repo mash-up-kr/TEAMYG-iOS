@@ -185,7 +185,9 @@ private struct ToppingDateBadge: View {
         .suit(.body01Regular)
         .padding(.horizontal, 16)
         .frame(height: 44)
-        .background(.whiteFixed)
+        // `ignoresSafeAreaEdges` 기본값이 `.all` 이라, 생략하면 흰 배경이 상단 세이프 에어리어까지 번져
+        // dim 처리된 영역을 덮는다.
+        .background(.whiteFixed, ignoresSafeAreaEdges: [])
         .overlay {
             Rectangle()
                 .strokeBorder(Color.gray500, lineWidth: 1)
