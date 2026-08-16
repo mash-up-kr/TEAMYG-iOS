@@ -1,0 +1,8 @@
+# 인증서·프로파일 저장소 (암호화되어 커밋됨)
+git_url("https://github.com/namsoo5/parfait_certificate")
+storage_mode("git")
+
+type("development")
+app_identifier(["com.teamyg.parfait"])
+
+# 복호화 암호는 커밋하지 않는다 — 각자 MATCH_PASSWORD 환경변수로.

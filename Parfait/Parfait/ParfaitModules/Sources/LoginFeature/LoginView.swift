@@ -31,11 +31,15 @@ public struct LoginView: View {
                 .padding(.bottom, 2)
         }
         .task {
-            // 로그인 성공 이벤트 → 약관 동의 화면으로 이동.
+            // 로그인 결과 이벤트 → 화면 전환.
             for await event in store.events {
                 switch event {
-                case .authenticated:
-                    router.push(.terms)
+                case .signedIn:
+                    // 로그인 완료 — 스택을 새로 시작해 뒤로가기로 로그인 화면에 못 돌아가게 한다.
+                    // ponytail: 기존 회원 랜딩 = 그룹 대문. 홈 화면이 따로 확정되면 교체.
+                    router.replaceStack(with: .group)
+                case .signupRequired(let registrationToken):
+                    router.push(.terms(registrationToken: registrationToken))
                 }
             }
         }
@@ -68,10 +72,11 @@ public struct LoginView: View {
                 title: "오늘 찍은 사진을 친구들과 함께 캔버스에 붙여요"
             )
             .tag(1)
-            // ponytail: 3페이지 이미지·문구 미정 — 확정되면 onboardingPage 로 교체
-            Text("파르페와 함께 시작해보세요")
-                .suit(.body01SemiBold)
-                .tag(2)
+            onboardingPage(
+                image: .imageOnboarding3,
+                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요"
+            )
+            .tag(2)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .aspectRatio(306.0 / 480.0, contentMode: .fit)
@@ -95,6 +100,7 @@ public struct LoginView: View {
         VStack(spacing: 12) {
             socialLoginButton(
                 title: "카카오 로그인",
+                icon: .icSocialKakao,
                 titleColor: .blackFixed,
                 // 카카오 브랜드 컬러 — 디자인 팔레트 외 고정값이라 인라인
                 background: Color(hex: "FEE500")
@@ -103,6 +109,7 @@ public struct LoginView: View {
             }
             socialLoginButton(
                 title: "Apple 로그인",
+                icon: .icSocialApple,
                 titleColor: .whiteFixed,
                 background: .blackFixed
             ) {
@@ -111,8 +118,10 @@ public struct LoginView: View {
         }
     }
 
+    // 디자인: 아이콘 왼쪽 12pt 고정, 타이틀은 버튼 전체 기준 중앙 정렬 (radius 0)
     private func socialLoginButton(
         title: String,
+        icon: Image,
         titleColor: Color,
         background: Color,
         action: @escaping () -> Void
@@ -120,10 +129,16 @@ public struct LoginView: View {
         Button(action: action) {
             Text(title)
                 .suit(.body01SemiBold)
-                .foregroundStyle(titleColor)
                 .frame(maxWidth: .infinity)
                 .frame(height: 48)
-                .background(background, in: .capsule)
+                .overlay(alignment: .leading) {
+                    icon
+                        .resizable()
+                        .frame(width: 32, height: 32)
+                        .padding(.leading, 12)
+                }
+                .foregroundStyle(titleColor)
+                .background(background)
         }
     }
 }
@@ -137,7 +152,9 @@ public struct LoginView: View {
 
 /// 프리뷰 전용 스텁 — SDK·서버 호출 없이 즉시 성공.
 private struct PreviewSocialLoginUseCase: SocialLoginUseCase {
-    func loginWithKakao() async throws {}
+    func loginWithKakao() async throws -> SocialLoginResult { .signedIn }
 
-    func login(with credential: SocialLoginCredential) async throws {}
+    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
+        .signedIn
+    }
 }
