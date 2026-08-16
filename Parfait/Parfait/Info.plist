@@ -20,6 +20,14 @@
 	<!-- 일부허용 시 매 실행마다 뜨는 시스템 얼럿 억제 — 재선택 진입점은 앨범 화면의 "사진 재선택" 버튼 -->
 	<key>PHPhotoLibraryPreventsAutomaticLimitedAccessAlert</key>
 	<true/>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+	<!-- 개발 서버 HTTP 통신 허용 — 배포 전 도메인 예외 방식으로 좁힐 것 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>kakaokompassauth</string>

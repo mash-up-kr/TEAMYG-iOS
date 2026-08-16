@@ -6,10 +6,17 @@
 //
 
 public protocol AuthRepository: Sendable {
-    /// 카카오 SDK 로그인 → 서버로 보낼 credential 획득.
-    func loginWithKakao() async throws -> SocialLoginCredential
+    /// 카카오: SDK 로그인 → 서버 교환까지 처리.
+    /// 기존 회원이면 토큰 저장까지 마치고 `.signedIn`, 신규 회원이면 `.signupRequired` 를 돌려준다.
+    func loginWithKakao() async throws -> SocialLoginResult
 
-    /// credential 을 서버로 보내 로그인을 완료한다.
-    /// 응답 스펙 미정 — 반환 타입은 백엔드 스펙 확정 시 추가.
-    func exchange(_ credential: SocialLoginCredential) async throws
+    /// 애플: UI 에서 얻은 credential 을 서버로 보내 로그인을 완료한다. 결과 규칙은 카카오와 같다.
+    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult
+
+    /// 약관 동의를 보내 회원가입을 완료하고 토큰을 저장한다.
+    /// - Parameter registrationToken: 로그인이 `.signupRequired` 로 돌려준 토큰.
+    func signup(registrationToken: String, agreements: [TermsAgreement]) async throws
+
+    /// 서버 약관 목록을 조회한다 (`/api/v1/policies`).
+    func fetchPolicies() async throws -> [Policy]
 }

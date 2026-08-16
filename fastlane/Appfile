@@ -1,0 +1,2 @@
+# 앱 식별자. 팀 정보는 App Store Connect API 키가 팀에 묶여 있어 생략.
+app_identifier("com.teamyg.parfait")
