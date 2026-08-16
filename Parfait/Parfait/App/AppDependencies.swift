@@ -66,6 +66,10 @@ struct AppDependencies {
         AuthRepositoryImpl(networkClient: networkClient, tokenManager: tokenManager)
     }
 
+    private func makeGroupRepository() -> GroupRepositoryImpl {
+        GroupRepositoryImpl(networkClient: networkClient)
+    }
+
     func makeLoginStore() -> LoginStore {
         LoginStore(
             socialLoginUseCase: SocialLoginUseCaseImpl(authRepository: makeAuthRepository())
@@ -74,19 +78,19 @@ struct AppDependencies {
 
     func makeGroupStore() -> GroupStore {
         GroupStore(
-            fetchGroupsUseCase: FetchGroupsUseCaseImpl(groupRepository: GroupRepositoryImpl())
+            fetchGroupsUseCase: FetchGroupsUseCaseImpl(groupRepository: makeGroupRepository())
         )
     }
 
     func makeInviteCodeStore() -> InviteCodeStore {
         InviteCodeStore(
-            joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
+            joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: makeGroupRepository())
         )
     }
 
     func makeCreateGroupStore() -> CreateGroupStore {
         CreateGroupStore(
-            createGroupUseCase: CreateGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
+            createGroupUseCase: CreateGroupUseCaseImpl(groupRepository: makeGroupRepository())
         )
     }
 
