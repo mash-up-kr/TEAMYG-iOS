@@ -45,8 +45,9 @@ public final class TokenInterceptor: RequestInterceptor {
                 try await tokenManager.refresh()
                 completion(.retry)
             } catch NetworkError.server, NetworkError.unauthorized {
-                // 서버가 리프레시 토큰 자체를 거절 → 재로그인 외에 방법이 없다
-                await tokenManager.clear()
+                // 서버가 리프레시 토큰 자체를 거절 → 재로그인 외에 방법이 없다.
+                // 토큰을 지우고 세션 만료 이벤트를 보내 App 이 로그인 화면으로 되돌리게 한다.
+                await tokenManager.expireSession()
                 completion(.doNotRetryWithError(NetworkError.unauthorized))
             } catch {
                 // 오프라인·타임아웃 등 일시적 실패 — 토큰은 남기고 이번 요청만 실패시킨다

@@ -7,6 +7,8 @@
 
 import AuthDomain
 import AuthenticationServices
+import Common
+import CryptoKit
 import SwiftUI
 import UIComponent
 
@@ -47,21 +49,28 @@ public final class LoginStore: MVIStore {
 
     private func performKakaoLogin() async {
         do {
-            try await socialLoginUseCase.loginWithKakao()
-            print("카카오 로그인 완료: 서버 교환 응답 수신")
-            eventContinuation.yield(.authenticated)
+            let result = try await socialLoginUseCase.loginWithKakao()
+            YGLogger.log("카카오 로그인 완료: \(result)")
+            handle(result)
         } catch SocialLoginError.cancelled {
             // 사용자가 로그인 창을 닫음 — 정상 흐름
         } catch {
-            print("카카오 로그인 실패: \(error)")
+            YGLogger.error("카카오 로그인 실패: \(error)")
         }
     }
 
     private func performAppleLogin(using authorizationController: AuthorizationController) async {
         do {
             let request = ASAuthorizationAppleIDProvider().createRequest()
-            // 이름·이메일은 최초 승인 때만 내려옴 — 지금 안 받으면 재승인 전까지 못 받음
+            // 스코프는 최초 승인 때만 반영됨. 이메일은 .email 스코프 덕에 identityToken 클레임으로
+            // 서버에 전달되고, 이름은 현재 서버 수신 스펙이 없어 보내지 않는다.
             request.requestedScopes = [.fullName, .email]
+            // 서버가 identityToken 의 nonce claim 과 함께 보낸 nonce 를 대조해 재생 공격을 막는다.
+            // 애플에는 SHA256 해시를 보내고(identityToken 의 nonce claim 에 해시가 실림), 서버에는 원본을 보낸다.
+            let nonce = UUID().uuidString
+            request.nonce = SHA256.hash(data: Data(nonce.utf8))
+                .map { String(format: "%02x", $0) }
+                .joined()
 
             let result = try await authorizationController.performRequest(request)
             guard case .appleID(let appleIDCredential) = result else { return }
@@ -69,26 +78,36 @@ public final class LoginStore: MVIStore {
                 let identityTokenData = appleIDCredential.identityToken,
                 let identityToken = String(data: identityTokenData, encoding: .utf8)
             else {
-                print("Apple 로그인 실패: identityToken 없음")
+                YGLogger.error("Apple 로그인 실패: identityToken 없음")
                 return
             }
-
-            let credential = SocialLoginCredential(
-                provider: .apple,
-                token: identityToken,
-                authorizationCode: appleIDCredential.authorizationCode
-                    .flatMap { String(data: $0, encoding: .utf8) },
-                email: appleIDCredential.email,
-                name: appleIDCredential.fullName
-                    .map { PersonNameComponentsFormatter.localizedString(from: $0, style: .default) }
+            YGLogger.log(
+                """
+                Apple 로그인 성공 — 수신 값
+                identityToken: \(identityToken)
+                nonce: \(nonce)
+                email: \(appleIDCredential.email ?? "-")
+                fullName: \(appleIDCredential.fullName?.formatted() ?? "-")
+                """
             )
-            try await socialLoginUseCase.login(with: credential)
-            print("Apple 로그인 완료: 서버 교환 응답 수신")
-            eventContinuation.yield(.authenticated)
+
+            let credential = AppleLoginCredential(identityToken: identityToken, nonce: nonce)
+            let loginResult = try await socialLoginUseCase.loginWithApple(credential)
+            YGLogger.log("Apple 로그인 완료: \(loginResult)")
+            handle(loginResult)
         } catch let error as ASAuthorizationError where error.code == .canceled {
             // 사용자가 로그인 시트를 닫음 — 정상 흐름
         } catch {
-            print("Apple 로그인 실패: \(error)")
+            YGLogger.error("Apple 로그인 실패: \(error)")
+        }
+    }
+
+    private func handle(_ result: SocialLoginResult) {
+        switch result {
+        case .signedIn:
+            eventContinuation.yield(.signedIn)
+        case .signupRequired(let registrationToken):
+            eventContinuation.yield(.signupRequired(registrationToken: registrationToken))
         }
     }
 
@@ -104,7 +123,9 @@ public final class LoginStore: MVIStore {
 
     /// 뷰가 소비하는 일회성 이벤트.
     enum Event: Sendable {
-        /// 로그인 성공 — 약관 동의 화면으로 이동.
-        case authenticated
+        /// 기존 회원 로그인 완료(토큰 저장까지 끝) — 메인으로 이동.
+        case signedIn
+        /// 신규 회원 — 가입 토큰을 들고 약관 동의 화면으로 이동.
+        case signupRequired(registrationToken: String)
     }
 }

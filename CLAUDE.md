@@ -19,6 +19,7 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 |------|------|
 | 린트 | `swiftlint` (레포 루트에서) |
 | 자산(색·이미지) 추가 후 | 빌드하면 런스크립트가 자동 생성 (수동: `./Parfait/Parfait/ParfaitModules/scripts/gen-assets.sh`) → 생성된 `Sources/UIComponent/Sources/{Colors,Image}+.swift` 커밋 (손편집 금지) |
+| 실기기 서명 (인증서·프로파일) | `fastlane certificates` — 자동 서명 안 씀, match 로 관리. 최초 셋업·기기 추가 → [`docs/signing.md`](docs/signing.md) 필독 |
 
 > 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
 

@@ -10,4 +10,6 @@ public enum SocialLoginError: Error, Equatable {
     case cancelled
     /// SDK 가 토큰·에러 둘 다 주지 않은 비정상 응답.
     case tokenMissing
+    /// 서버 응답에 필요한 값(토큰·registrationToken)이 빠진 비정상 응답.
+    case invalidServerResponse
 }
