@@ -14,28 +14,15 @@ import UIComponent
 public final class GroupSideMenuStore: MVIStore {
     public private(set) var state: State
 
-    private let fetchGroupDetailUseCase: any FetchGroupDetailUseCase
-    private let changeGroupNicknameUseCase: any ChangeGroupNicknameUseCase
-    private let leaveGroupUseCase: any LeaveGroupUseCase
-    private let reportGroupUseCase: any ReportGroupUseCase
+    private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var nicknameTask: Task<Void, Never>?
     /// 나가기·신고 공용 — 둘 다 성공하면 화면을 떠나므로 동시에 하나만 돈다.
     @ObservationIgnored private var exitTask: Task<Void, Never>?
 
-    public init(
-        groupID: String,
-        groupName: String,
-        fetchGroupDetailUseCase: any FetchGroupDetailUseCase,
-        changeGroupNicknameUseCase: any ChangeGroupNicknameUseCase,
-        leaveGroupUseCase: any LeaveGroupUseCase,
-        reportGroupUseCase: any ReportGroupUseCase
-    ) {
+    public init(groupID: String, groupName: String, groupUseCase: any GroupUseCase) {
         state = State(groupID: groupID, groupName: groupName)
-        self.fetchGroupDetailUseCase = fetchGroupDetailUseCase
-        self.changeGroupNicknameUseCase = changeGroupNicknameUseCase
-        self.leaveGroupUseCase = leaveGroupUseCase
-        self.reportGroupUseCase = reportGroupUseCase
+        self.groupUseCase = groupUseCase
     }
 
     public func send(_ intent: Intent) {
@@ -76,7 +63,7 @@ public final class GroupSideMenuStore: MVIStore {
 
     private func loadDetail(groupID: String) async {
         do {
-            let detail = try await fetchGroupDetailUseCase.fetchDetail(groupID: groupID)
+            let detail = try await groupUseCase.fetchDetail(groupID: groupID)
             send(.detailLoadFinished(detail))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않는다.
@@ -96,7 +83,9 @@ public final class GroupSideMenuStore: MVIStore {
     }
 
     private func applyNicknameInput(_ nickname: String) {
-        state.nickname = String(nickname.prefix(NicknameValidator.maxLength))
+        // 최대 길이 자르기는 `YGTextField` 가 바인딩에 되써서 맡는다 — 여기서 자르면 잘린 값이
+        // 직전과 같아 바인딩이 안 바뀌고, 화면의 자르기도 발동하지 않아 필드와 상태가 어긋난다.
+        state.nickname = nickname
         // 빈 입력 에러는 "지우고 엔터"의 결과 — 다시 입력을 시작하면 Empty 상태로 되돌린다.
         state.showsEmptyNicknameError = false
     }
@@ -123,7 +112,7 @@ public final class GroupSideMenuStore: MVIStore {
     /// 제출 시점의 닉네임을 파라미터로 받아, 통신 중 입력이 바뀌어도 실제로 보낸 값과 어긋나지 않게 한다.
     private func requestNicknameChange(groupID: String, nickname: String) async {
         do {
-            try await changeGroupNicknameUseCase.changeNickname(groupID: groupID, nickname: nickname)
+            try await groupUseCase.changeNickname(groupID: groupID, nickname: nickname)
             send(.nicknameChangeFinished(savedNickname: nickname))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
@@ -166,10 +155,10 @@ public final class GroupSideMenuStore: MVIStore {
         do {
             switch exitAction {
             case .leave:
-                try await leaveGroupUseCase.leave(groupID: groupID)
+                try await groupUseCase.leave(groupID: groupID)
             case .report:
                 // 정책상 신고 접수 = 자동 탈퇴까지 — 별도 leave 호출 없이 한 요청으로 끝난다.
-                try await reportGroupUseCase.report(groupID: groupID)
+                try await groupUseCase.report(groupID: groupID)
             case .discardNicknameEdit:
                 // 서버 요청이 없어 `beginExit` 가 여기까지 오기 전에 끝낸다.
                 break

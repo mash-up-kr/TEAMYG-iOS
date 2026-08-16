@@ -195,14 +195,14 @@ private extension String {
 
 #Preview("빈 입력") {
     NavigationStack {
-        CreateGroupView(store: CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase()))
+        CreateGroupView(store: CreateGroupStore(groupUseCase: PreviewGroupUseCase()))
     }
 }
 
 #Preview("입력 완료") {
     NavigationStack {
         CreateGroupView(store: {
-            let store = CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
+            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
             store.send(.nameChanged("우와그룹명"))
             store.send(.nicknameChanged("아니야나그런데기니야"))
             store.send(.memberCountTapped(9))
@@ -214,31 +214,12 @@ private extension String {
 #Preview("생성 확인 팝업") {
     NavigationStack {
         CreateGroupView(store: {
-            let store = CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
+            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
             store.send(.nameChanged("그룹이름최대열글자"))
             store.send(.nicknameChanged("아니야나그런데기니야"))
             store.send(.memberCountTapped(9))
             store.send(.confirmTapped)
             return store
         }())
-    }
-}
-
-/// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인 (`createError == nil` 이면 성공).
-struct PreviewCreateGroupUseCase: CreateGroupUseCase {
-    var createError: CreateGroupError?
-
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
-        if let createError {
-            throw createError
-        }
-        return ParfaitGroup(
-            id: "preview-created",
-            name: draft.name,
-            thumbnailURL: nil,
-            lastActivityAt: .now,
-            createdAt: .now,
-            lastActorNametagType: .type1
-        )
     }
 }

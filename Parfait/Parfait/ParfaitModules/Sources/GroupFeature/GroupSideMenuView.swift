@@ -22,9 +22,6 @@ public struct GroupSideMenuView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    /// 타이핑이 직접 닿는 입력 사본. 로컬로 받는 이유는 `CreateGroupView.nameInput` 주석 참고
-    /// (최대 길이에서 Store 값이 안 변해 화면과 어긋나는 문제 + docs/mvi.md 고빈도 입력 지침).
-    @State private var nicknameInput: String
     /// 키보드 위 확인 버튼의 노출 조건. 포커스는 `YGTextField` 내부에 있어 밖에서 못 읽으므로
     /// 키보드 노티피케이션으로 판단한다.
     @State private var isKeyboardVisible = false
@@ -42,7 +39,6 @@ public struct GroupSideMenuView: View {
         onExit: @escaping (GroupSideMenuStore.ExitAction) -> Void = { _ in }
     ) {
         _store = State(initialValue: store)
-        _nicknameInput = State(initialValue: store.state.nickname)
         self.onExit = onExit
     }
 
@@ -85,12 +81,6 @@ public struct GroupSideMenuView: View {
                 primaryTitle: "그만두기",
                 secondaryAction: { store.send(.exitConfirmed(.discardNicknameEdit)) }
             )
-            // 서버가 준 내 닉네임(비동기 도착)을 입력 사본에 맞춘다. 타이핑 반향은 값이 같아 걸러진다.
-            .onChange(of: store.state.nickname) { _, nickname in
-                if nicknameInput != nickname {
-                    nicknameInput = nickname
-                }
-            }
             .onChange(of: store.state.completedExit) { _, completedExit in
                 guard let completedExit else { return }
                 onExit(completedExit)
@@ -140,17 +130,15 @@ public struct GroupSideMenuView: View {
 
     // MARK: - 닉네임 (S-102)
 
+    /// 자르기는 `maxLength` 를 받은 `YGTextField` 가 바인딩에 되써서 처리한다 — Store 는 받은 값을 자르지 않는다.
     private var nicknameField: some View {
         YGTitledTextField(
             title: "그룹 속 내 닉네임",
-            text: $nicknameInput,
+            text: store.binding(\.nickname, GroupSideMenuStore.Intent.nicknameChanged),
             placeholder: "닉네임을 입력해 주세요",
             maxLength: NicknameValidator.maxLength,
             errorMessage: store.state.displayedNicknameErrorMessage
         )
-        .onChange(of: nicknameInput) { _, _ in
-            store.send(.nicknameChanged(nicknameInput))
-        }
         .onSubmit { store.send(.nicknameSubmitted) }
     }
 
@@ -233,14 +221,10 @@ private func previewSideMenuStore(
     detail: GroupDetail? = .previewSample,
     configure: (GroupSideMenuStore) -> Void = { _ in }
 ) -> GroupSideMenuStore {
-    let stub = PreviewGroupSideMenuStub(detail: detail)
     let store = GroupSideMenuStore(
         groupID: "preview-group",
         groupName: "그룹이름",
-        fetchGroupDetailUseCase: stub,
-        changeGroupNicknameUseCase: stub,
-        leaveGroupUseCase: stub,
-        reportGroupUseCase: stub
+        groupUseCase: PreviewGroupUseCase(detail: detail)
     )
     configure(store)
     return store
@@ -284,21 +268,6 @@ private func previewSideMenuStore(
     NavigationStack {
         GroupSideMenuView(store: previewSideMenuStore(detail: nil))
     }
-}
-
-/// 프리뷰 전용 스텁. `detail` 이 nil 이면 조회 실패를 흉내낸다.
-private struct PreviewGroupSideMenuStub: FetchGroupDetailUseCase, ChangeGroupNicknameUseCase,
-                                         LeaveGroupUseCase, ReportGroupUseCase {
-    let detail: GroupDetail?
-
-    func fetchDetail(groupID: String) async throws -> GroupDetail {
-        guard let detail else { throw CocoaError(.coderValueNotFound) }
-        return detail
-    }
-
-    func changeNickname(groupID: String, nickname: String) async throws {}
-    func leave(groupID: String) async throws {}
-    func report(groupID: String) async throws {}
 }
 
 private extension GroupDetail {

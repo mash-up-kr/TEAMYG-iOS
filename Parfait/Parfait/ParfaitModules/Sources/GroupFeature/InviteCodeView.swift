@@ -135,24 +135,12 @@ public struct InviteCodeView: View {
 
 #Preview("성공") {
     InviteCodeView(
-        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: nil))
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase())
     )
 }
 
 #Preview("실패 - 최대 인원") {
     InviteCodeView(
-        store: InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: .groupFull))
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull))
     )
-}
-
-/// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인 (`joinError == nil` 이면 성공).
-/// GroupView 프리뷰도 함께 사용하므로 internal.
-struct PreviewJoinGroupUseCase: JoinGroupUseCase {
-    let joinError: JoinGroupError?
-
-    func join(inviteCode: String) async throws {
-        if let joinError {
-            throw joinError
-        }
-    }
 }

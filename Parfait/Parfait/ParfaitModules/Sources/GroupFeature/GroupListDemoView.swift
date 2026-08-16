@@ -34,7 +34,7 @@ public struct GroupListDemoView: View {
         _demoState = State(initialValue: demoState)
         _store = State(
             initialValue: GroupStore(
-                fetchGroupsUseCase: FetchGroupsUseCaseImpl(
+                groupUseCase: GroupUseCaseImpl(
                     groupRepository: DemoGroupRepository(demoState: demoState)
                 )
             )
@@ -49,7 +49,7 @@ public struct GroupListDemoView: View {
             // 목록과 같은 데모 저장소를 물려야 만든 그룹이 돌아온 목록에 보인다.
             makeCreateGroupStore: {
                 CreateGroupStore(
-                    createGroupUseCase: CreateGroupUseCaseImpl(
+                    groupUseCase: GroupUseCaseImpl(
                         groupRepository: DemoGroupRepository(demoState: demoState)
                     )
                 )

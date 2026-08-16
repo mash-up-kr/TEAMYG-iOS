@@ -15,11 +15,11 @@ public final class InviteCodeStore: MVIStore {
 
     public private(set) var state = State()
 
-    private let joinGroupUseCase: any JoinGroupUseCase
+    private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var joinTask: Task<Void, Never>?
 
-    public init(joinGroupUseCase: any JoinGroupUseCase) {
-        self.joinGroupUseCase = joinGroupUseCase
+    public init(groupUseCase: any GroupUseCase) {
+        self.groupUseCase = groupUseCase
     }
 
     public func send(_ intent: Intent) {
@@ -90,7 +90,7 @@ public final class InviteCodeStore: MVIStore {
     /// 제출 시점의 코드를 파라미터로 받아, 통신 중 사용자가 입력을 바꿔도 실제로 보낸 코드와 어긋나지 않게 한다.
     private func requestJoin(inviteCode: String) async {
         do {
-            try await joinGroupUseCase.join(inviteCode: inviteCode)
+            try await groupUseCase.join(inviteCode: inviteCode)
             send(.joinSucceeded)
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
