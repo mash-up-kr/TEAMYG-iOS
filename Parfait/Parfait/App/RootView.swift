@@ -79,7 +79,7 @@ struct RootView: View {
                 makeCreateGroupStore: diContainer.makeCreateGroupStore
             )
         case .canvas:
-            CanvasView()
+            CanvasView(store: diContainer.makeCanvasStore())
         }
     }
 }

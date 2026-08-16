@@ -4,28 +4,6 @@ import UIKit
 
 public extension Image {
     static let groupListBG = Image("GroupListBG", bundle: .module)
-    static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
-    static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
-    static let icCamera = Image("Ic_Camera", bundle: .module)
-    static let icCaretBottom = Image("Ic_Caret_Bottom", bundle: .module)
-    static let icCaretLeft = Image("Ic_Caret_Left", bundle: .module)
-    static let icCaretRight = Image("Ic_Caret_Right", bundle: .module)
-    static let icCaretTop = Image("Ic_Caret_Top", bundle: .module)
-    static let icCheckRound = Image("Ic_Check_Round", bundle: .module)
-    static let icCheck = Image("Ic_Check", bundle: .module)
-    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
-    static let icClose = Image("Ic_Close", bundle: .module)
-    static let icCopy = Image("Ic_Copy", bundle: .module)
-    static let icEnter = Image("Ic_Enter", bundle: .module)
-    static let icGallery = Image("Ic_Gallery", bundle: .module)
-    static let icHamburger = Image("Ic_Hamburger", bundle: .module)
-    static let icLightning = Image("Ic_Lightning", bundle: .module)
-    static let icNewgroup = Image("Ic_Newgroup", bundle: .module)
-    static let icPlus = Image("Ic_Plus", bundle: .module)
-    static let icReverse = Image("Ic_Reverse", bundle: .module)
-    static let icSocialApple = Image("Ic_Social_Apple", bundle: .module)
-    static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
-    static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
     static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
@@ -41,32 +19,33 @@ public extension Image {
     static let template04 = Image("Template04", bundle: .module)
     static let template05 = Image("Template05", bundle: .module)
     static let template06 = Image("Template06", bundle: .module)
+    static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
+    static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
+    static let icCalendar = Image("Ic_Calendar", bundle: .module)
+    static let icCamera = Image("Ic_Camera", bundle: .module)
+    static let icCaretBottom = Image("Ic_Caret_Bottom", bundle: .module)
+    static let icCaretLeft = Image("Ic_Caret_Left", bundle: .module)
+    static let icCaretRight = Image("Ic_Caret_Right", bundle: .module)
+    static let icCaretTop = Image("Ic_Caret_Top", bundle: .module)
+    static let icCheck = Image("Ic_Check", bundle: .module)
+    static let icCheckRound = Image("Ic_Check_Round", bundle: .module)
+    static let icClose = Image("Ic_Close", bundle: .module)
+    static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
+    static let icCopy = Image("Ic_Copy", bundle: .module)
+    static let icEnter = Image("Ic_Enter", bundle: .module)
+    static let icGallery = Image("Ic_Gallery", bundle: .module)
+    static let icHamburger = Image("Ic_Hamburger", bundle: .module)
+    static let icLightning = Image("Ic_Lightning", bundle: .module)
+    static let icNewgroup = Image("Ic_Newgroup", bundle: .module)
+    static let icPlus = Image("Ic_Plus", bundle: .module)
+    static let icReverse = Image("Ic_Reverse", bundle: .module)
+    static let icSocialApple = Image("Ic_Social_Apple", bundle: .module)
+    static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
+    static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
 }
 
 public extension UIImage {
     static var groupListBG: UIImage { UIImage(resource: ImageResource(name: "GroupListBG", bundle: .module)) }
-    static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
-    static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
-    static var icCamera: UIImage { UIImage(resource: ImageResource(name: "Ic_Camera", bundle: .module)) }
-    static var icCaretBottom: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Bottom", bundle: .module)) }
-    static var icCaretLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Left", bundle: .module)) }
-    static var icCaretRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Right", bundle: .module)) }
-    static var icCaretTop: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Top", bundle: .module)) }
-    static var icCheckRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Check_Round", bundle: .module)) }
-    static var icCheck: UIImage { UIImage(resource: ImageResource(name: "Ic_Check", bundle: .module)) }
-    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
-    static var icClose: UIImage { UIImage(resource: ImageResource(name: "Ic_Close", bundle: .module)) }
-    static var icCopy: UIImage { UIImage(resource: ImageResource(name: "Ic_Copy", bundle: .module)) }
-    static var icEnter: UIImage { UIImage(resource: ImageResource(name: "Ic_Enter", bundle: .module)) }
-    static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
-    static var icHamburger: UIImage { UIImage(resource: ImageResource(name: "Ic_Hamburger", bundle: .module)) }
-    static var icLightning: UIImage { UIImage(resource: ImageResource(name: "Ic_Lightning", bundle: .module)) }
-    static var icNewgroup: UIImage { UIImage(resource: ImageResource(name: "Ic_Newgroup", bundle: .module)) }
-    static var icPlus: UIImage { UIImage(resource: ImageResource(name: "Ic_Plus", bundle: .module)) }
-    static var icReverse: UIImage { UIImage(resource: ImageResource(name: "Ic_Reverse", bundle: .module)) }
-    static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Apple", bundle: .module)) }
-    static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }
-    static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }
     static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
@@ -82,4 +61,27 @@ public extension UIImage {
     static var template04: UIImage { UIImage(resource: ImageResource(name: "Template04", bundle: .module)) }
     static var template05: UIImage { UIImage(resource: ImageResource(name: "Template05", bundle: .module)) }
     static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
+    static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
+    static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
+    static var icCalendar: UIImage { UIImage(resource: ImageResource(name: "Ic_Calendar", bundle: .module)) }
+    static var icCamera: UIImage { UIImage(resource: ImageResource(name: "Ic_Camera", bundle: .module)) }
+    static var icCaretBottom: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Bottom", bundle: .module)) }
+    static var icCaretLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Left", bundle: .module)) }
+    static var icCaretRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Right", bundle: .module)) }
+    static var icCaretTop: UIImage { UIImage(resource: ImageResource(name: "Ic_Caret_Top", bundle: .module)) }
+    static var icCheck: UIImage { UIImage(resource: ImageResource(name: "Ic_Check", bundle: .module)) }
+    static var icCheckRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Check_Round", bundle: .module)) }
+    static var icClose: UIImage { UIImage(resource: ImageResource(name: "Ic_Close", bundle: .module)) }
+    static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
+    static var icCopy: UIImage { UIImage(resource: ImageResource(name: "Ic_Copy", bundle: .module)) }
+    static var icEnter: UIImage { UIImage(resource: ImageResource(name: "Ic_Enter", bundle: .module)) }
+    static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
+    static var icHamburger: UIImage { UIImage(resource: ImageResource(name: "Ic_Hamburger", bundle: .module)) }
+    static var icLightning: UIImage { UIImage(resource: ImageResource(name: "Ic_Lightning", bundle: .module)) }
+    static var icNewgroup: UIImage { UIImage(resource: ImageResource(name: "Ic_Newgroup", bundle: .module)) }
+    static var icPlus: UIImage { UIImage(resource: ImageResource(name: "Ic_Plus", bundle: .module)) }
+    static var icReverse: UIImage { UIImage(resource: ImageResource(name: "Ic_Reverse", bundle: .module)) }
+    static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Apple", bundle: .module)) }
+    static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }
+    static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }
 }
