@@ -50,6 +50,8 @@ actor CameraSession {
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     private var rotationObservers: [NSKeyValueObservation] = []
     private var isConfigured = false
+    /// 지금까지 처리한 켜기/끄기 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 요청이므로 버린다.
+    private var latestGeneration = 0
 
     init() {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
@@ -69,7 +71,10 @@ actor CameraSession {
         await AVCaptureDevice.requestAccess(for: .video)
     }
 
-    func start() -> Bool {
+    func start(generation: Int) -> Bool {
+        guard generation >= latestGeneration else { return false }
+        latestGeneration = generation
+
         if !isConfigured, !configureSession(position: cameraPosition) {
             return false
         }
@@ -84,7 +89,10 @@ actor CameraSession {
         return true
     }
 
-    func stop() {
+    func stop(generation: Int) {
+        guard generation >= latestGeneration else { return }
+        latestGeneration = generation
+
         guard captureSession.isRunning else { return }
         captureSession.stopRunning()
     }
@@ -253,8 +261,8 @@ extension ToppingAddStore.Dependencies {
             previewSource: cameraSession.previewSource,
             authorizationStatus: { await cameraSession.authorizationStatus() },
             requestAuthorization: { await cameraSession.requestAuthorization() },
-            startCamera: { await cameraSession.start() },
-            stopCamera: { await cameraSession.stop() },
+            startCamera: { generation in await cameraSession.start(generation: generation) },
+            stopCamera: { generation in await cameraSession.stop(generation: generation) },
             switchCamera: { await cameraSession.switchCamera() },
             capturePhoto: { await cameraSession.capturePhoto($0) },
             openSettings: {

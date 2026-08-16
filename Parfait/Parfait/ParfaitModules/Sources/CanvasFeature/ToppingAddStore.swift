@@ -16,6 +16,8 @@ public final class ToppingAddStore: MVIStore {
     private var cameraSetupTask: Task<Void, Never>?
     private var cameraSwitchTask: Task<Void, Never>?
     private var photoCaptureTask: Task<Void, Never>?
+    /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
+    private var cameraGeneration = 0
 
     init(
         state: State,
@@ -40,7 +42,7 @@ public final class ToppingAddStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared, .screenDisappeared,
-             .sceneBecameActive, .sceneBecameInactive:
+             .sceneBecameActive, .sceneEnteredBackground:
             handleLifecycleIntent(intent)
         case .flashTapped, .cameraPositionTapped, .shutterTapped:
             handleCameraControlIntent(intent)
@@ -55,7 +57,7 @@ public final class ToppingAddStore: MVIStore {
         case .screenAppeared:
             guard state.screen.needsRunningCamera else { return }
             prepareCamera()
-        case .screenDisappeared, .sceneBecameInactive:
+        case .screenDisappeared, .sceneEnteredBackground:
             suspendCamera()
         case .sceneBecameActive:
             guard state.screen.needsRunningCamera else { return }
@@ -123,14 +125,16 @@ public final class ToppingAddStore: MVIStore {
 
     private func closeFlow() {
         cancelCameraTasks()
+        let generation = nextCameraGeneration()
         Task { [dependencies] in
-            await dependencies.stopCamera()
+            await dependencies.stopCamera(generation)
             await dependencies.onFlowClosed()
         }
     }
 
     private func prepareCamera() {
         cameraSetupTask?.cancel()
+        let generation = nextCameraGeneration()
         state.cameraPhase = .preparing
 
         cameraSetupTask = Task { [weak self, dependencies] in
@@ -146,15 +150,15 @@ public final class ToppingAddStore: MVIStore {
                 isAuthorized = false
             }
 
-            guard !Task.isCancelled, let self else { return }
+            guard !Task.isCancelled, let self, generation == cameraGeneration else { return }
             guard isAuthorized else {
                 state.cameraPhase = .permissionDenied
                 state.screen = .cameraPermissionError
                 return
             }
 
-            let didStart = await dependencies.startCamera()
-            guard !Task.isCancelled else { return }
+            let didStart = await dependencies.startCamera(generation)
+            guard !Task.isCancelled, generation == cameraGeneration else { return }
 
             if didStart {
                 state.cameraPhase = .running
@@ -181,16 +185,23 @@ public final class ToppingAddStore: MVIStore {
 
             state.capturedPhotoData = photoData
             state.screen = .cameraConfirmation
-            await dependencies.stopCamera()
+            await dependencies.stopCamera(nextCameraGeneration())
         }
     }
 
     private func suspendCamera() {
         cancelCameraTasks()
+        let generation = nextCameraGeneration()
         state.cameraPhase = .idle
         Task { [dependencies] in
-            await dependencies.stopCamera()
+            await dependencies.stopCamera(generation)
         }
+    }
+
+    /// 켜기/끄기 요청에 붙일 새 일련번호. 뒤늦게 도착한 옛 요청은 `CameraSession` 이 무시한다.
+    private func nextCameraGeneration() -> Int {
+        cameraGeneration += 1
+        return cameraGeneration
     }
 
     private func cancelCameraTasks() {
@@ -277,7 +288,7 @@ extension ToppingAddStore {
         case analysisReturnedToPhotoSelection
         case settingsTapped
         case sceneBecameActive
-        case sceneBecameInactive
+        case sceneEnteredBackground
     }
 
     public enum PhotoSelectionEntryPoint: Equatable, Sendable {
@@ -329,8 +340,8 @@ extension ToppingAddStore {
         let previewSource: (any CameraPreviewSource)?
         let authorizationStatus: @Sendable () async -> CameraAuthorization
         let requestAuthorization: @Sendable () async -> Bool
-        let startCamera: @Sendable () async -> Bool
-        let stopCamera: @Sendable () async -> Void
+        let startCamera: @Sendable (_ generation: Int) async -> Bool
+        let stopCamera: @Sendable (_ generation: Int) async -> Void
         let switchCamera: @Sendable () async -> CameraPosition?
         let capturePhoto: @Sendable (CameraFlashMode) async -> Data?
         let openSettings: @MainActor @Sendable () async -> Void
