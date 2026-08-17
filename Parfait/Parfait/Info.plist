@@ -4,6 +4,9 @@
 <dict>
 	<key>KAKAO_NATIVE_APP_KEY</key>
 	<string>$(KAKAO_NATIVE_APP_KEY)</string>
+	<!-- 서버 주소 — Secrets.xcconfig 의 BASE_URL 에서 주입 (Core 의 API.baseURL 이 읽는다) -->
+	<key>BASE_URL</key>
+	<string>$(BASE_URL)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

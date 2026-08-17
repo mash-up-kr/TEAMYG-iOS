@@ -13,8 +13,9 @@ public protocol GroupRepository: Sendable {
     /// 내가 속한 그룹 전체. 정렬은 UseCase 가 맡는다.
     func fetchGroups() async throws -> [ParfaitGroup]
 
-    /// 새 그룹 생성을 서버에 요청하고, 만들어진 그룹을 돌려준다.
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup
+    /// 새 그룹 생성을 서버에 요청한다.
+    /// 생성 직후 화면은 목록으로 돌아가고 목록이 서버에서 다시 받아오므로, 만들어진 그룹은 돌려주지 않는다.
+    func create(_ draft: GroupDraft) async throws
 
     /// 그룹 상세(구성원·초대 코드) — 사이드메뉴(S-101)가 그리는 단위.
     func fetchDetail(groupID: String) async throws -> GroupDetail

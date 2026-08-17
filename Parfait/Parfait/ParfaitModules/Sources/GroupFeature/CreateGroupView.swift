@@ -14,7 +14,7 @@ import UIComponent
 /// 세 값 모두 나중에 바꿀 수 없어, 확인 버튼과 생성 사이에 되돌릴 수 없음을 알리는 팝업을 한 번 더 둔다.
 public struct CreateGroupView: View {
     @State private var store: CreateGroupStore
-    private let onCreated: (ParfaitGroup) -> Void
+    private let onCreated: () -> Void
 
     /// 타이핑이 직접 닿는 입력 사본. 자르기는 `maxLength` 를 받은 `YGTextField` 가 하고,
     /// 여기서는 그 결과를 Store 로 넘기기만 한다.
@@ -35,8 +35,8 @@ public struct CreateGroupView: View {
     private static let sectionGap: CGFloat = 32
     private static let horizontalInset: CGFloat = 20
 
-    /// - Parameter onCreated: 생성 성공 시 만들어진 그룹을 넘긴다. 화면 이동은 호출부가 결정한다.
-    public init(store: CreateGroupStore, onCreated: @escaping (ParfaitGroup) -> Void = { _ in }) {
+    /// - Parameter onCreated: 생성 성공을 알린다. 화면 이동은 호출부가 결정한다.
+    public init(store: CreateGroupStore, onCreated: @escaping () -> Void = {}) {
         _store = State(initialValue: store)
         // 미리 값을 채워 둔 Store(프리뷰·복원)로 들어와도 화면과 어긋나지 않게 초기 사본을 맞춘다.
         _nameInput = State(initialValue: store.state.name)
@@ -88,9 +88,9 @@ public struct CreateGroupView: View {
         ) {
             YGAlert(title: "그룹 만들기 실패", subtitle: createErrorMessage)
         }
-        .onChange(of: store.state.createdGroup) { _, createdGroup in
-            guard let createdGroup else { return }
-            onCreated(createdGroup)
+        .onChange(of: store.state.isCreated) { _, isCreated in
+            guard isCreated else { return }
+            onCreated()
             // ponytail: 캔버스(C-001) 가 붙으면 목록으로 돌아가는 대신 만든 그룹으로 이어져야 한다.
             //           그때까지는 목록으로 되돌려 새 그룹이 늘어난 걸 보여준다.
             dismiss()
