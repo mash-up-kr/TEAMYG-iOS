@@ -23,11 +23,13 @@ let modules: [(name: String, dependencies: [String], resources: [Resource])] = [
     ("AuthDomain", ["Common"], []),
     ("GroupDomain", ["Common"], []),
     ("CanvasDomain", ["Common"], []),
+    ("MemberDomain", ["Common"], []),
 
     // Domain 프로토콜 구현(DTO·매핑·소스).
     ("AuthData", ["AuthDomain", "Core", "Common", "KakaoSDKAuth", "KakaoSDKCommon", "KakaoSDKUser"], []),
     ("GroupData", ["GroupDomain", "Core", "Common"], []),
     ("CanvasData", ["CanvasDomain", "Core", "Common"], []),
+    ("MemberData", ["MemberDomain", "Core", "Common"], []),
 
     // 화면 단위(MVI). 피처끼리 import 금지.
     ("LoginFeature", ["AuthDomain", "Core", "UIComponent", "Routing", "Common"], []),

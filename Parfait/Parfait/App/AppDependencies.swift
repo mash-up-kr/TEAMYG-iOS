@@ -62,14 +62,17 @@ struct AppDependencies {
     }
     #endif
 
-    private func makeAuthRepository() -> AuthRepositoryImpl {
-        AuthRepositoryImpl(networkClient: networkClient, tokenManager: tokenManager)
+    private func makeAuthUseCase() -> AuthUseCaseImpl {
+        AuthUseCaseImpl(
+            authRepository: AuthRepositoryImpl(
+                networkClient: networkClient,
+                tokenManager: tokenManager
+            )
+        )
     }
 
     func makeLoginStore() -> LoginStore {
-        LoginStore(
-            socialLoginUseCase: SocialLoginUseCaseImpl(authRepository: makeAuthRepository())
-        )
+        LoginStore(authUseCase: makeAuthUseCase())
     }
 
     func makeGroupStore() -> GroupStore {
@@ -93,11 +96,9 @@ struct AppDependencies {
     }
 
     func makeTermsStore(registrationToken: String) -> TermsStore {
-        let authRepository = makeAuthRepository()
-        return TermsStore(
+        TermsStore(
             registrationToken: registrationToken,
-            policiesUseCase: PoliciesUseCaseImpl(authRepository: authRepository),
-            signupUseCase: SignupUseCaseImpl(authRepository: authRepository)
+            authUseCase: makeAuthUseCase()
         )
     }
 

@@ -146,15 +146,6 @@ public struct LoginView: View {
 #Preview {
     LoginView(
         router: .preview,
-        store: LoginStore(socialLoginUseCase: PreviewSocialLoginUseCase())
+        store: LoginStore(authUseCase: PreviewAuthUseCase())
     )
-}
-
-/// 프리뷰 전용 스텁 — SDK·서버 호출 없이 즉시 성공.
-private struct PreviewSocialLoginUseCase: SocialLoginUseCase {
-    func loginWithKakao() async throws -> SocialLoginResult { .signedIn }
-
-    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
-        .signedIn
-    }
 }
