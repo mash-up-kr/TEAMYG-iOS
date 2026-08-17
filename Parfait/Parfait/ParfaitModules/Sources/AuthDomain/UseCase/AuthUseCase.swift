@@ -5,7 +5,7 @@
 //  Created by 김남수 on 8/17/26.
 //
 
-/// 인증 유스케이스 — 소셜 로그인·회원가입·약관 조회.
+/// 인증 유스케이스 — 소셜 로그인·회원가입·약관 조회·로그아웃.
 public protocol AuthUseCase: Sendable {
     /// 카카오: SDK 로그인 → 서버 교환까지 통째로 처리.
     func loginWithKakao() async throws -> SocialLoginResult
@@ -18,6 +18,9 @@ public protocol AuthUseCase: Sendable {
 
     /// 약관 목록 조회 — 약관 동의 화면·설정 화면 공용.
     func fetchPolicies() async throws -> [Policy]
+
+    /// 로그아웃 — 성공 시 세션 종료 이벤트가 발행된다.
+    func logout() async throws
 }
 
 public struct AuthUseCaseImpl: AuthUseCase {
@@ -41,5 +44,9 @@ public struct AuthUseCaseImpl: AuthUseCase {
 
     public func fetchPolicies() async throws -> [Policy] {
         try await authRepository.fetchPolicies()
+    }
+
+    public func logout() async throws {
+        try await authRepository.logout()
     }
 }

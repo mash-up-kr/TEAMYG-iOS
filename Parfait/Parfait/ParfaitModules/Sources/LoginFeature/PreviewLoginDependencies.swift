@@ -34,4 +34,6 @@ struct PreviewAuthUseCase: AuthUseCase {
             )
         ]
     }
+
+    func logout() async throws {}
 }

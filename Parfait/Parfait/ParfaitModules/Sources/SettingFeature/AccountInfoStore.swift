@@ -6,6 +6,7 @@
 //
 
 import Common
+import MemberDomain
 import SwiftUI
 import UIComponent
 
@@ -17,10 +18,13 @@ public final class AccountInfoStore: MVIStore {
     let events: AsyncStream<Event>
     @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
 
-    /// 닉네임은 아직 Domain(UseCase) 이 없어 초기 State 로 주입받는다.
-    /// 사용자 정보 UseCase 가 생기면 로드 Intent 로 교체.
-    public init(state: State = State()) {
+    private let memberUseCase: any MemberUseCase
+    /// 진행 중 저장 작업 핸들 — 중복 요청 방지 (mvi.md)
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+
+    public init(state: State = State(), memberUseCase: any MemberUseCase) {
         self.state = state
+        self.memberUseCase = memberUseCase
         (events, eventContinuation) = AsyncStream.makeStream()
     }
 
@@ -29,9 +33,18 @@ public final class AccountInfoStore: MVIStore {
         case .nicknameChanged(let nickname):
             state.nickname = nickname
         case .confirmTapped:
-            guard state.nicknameErrorMessage == nil else { return }
-            // TODO: 닉네임 변경 UseCase 연결 — 서버 성공 시에만 이벤트 발행
-            eventContinuation.yield(.nicknameSaved)
+            guard state.nicknameErrorMessage == nil, saveTask == nil else { return }
+            saveTask = Task {
+                defer { saveTask = nil }
+                do {
+                    let savedNickname = try await memberUseCase.changeNickname(state.nickname)
+                    state.nickname = savedNickname
+                    eventContinuation.yield(.nicknameSaved)
+                } catch {
+                    // 에러 UI 정책 미정 — 로그만 남긴다 (docs/server-connection.md)
+                    print("닉네임 변경 실패: \(error)")
+                }
+            }
         }
     }
 

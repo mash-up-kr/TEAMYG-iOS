@@ -16,6 +16,8 @@ import GroupData
 import GroupDomain
 import GroupFeature
 import LoginFeature
+import MemberData
+import MemberDomain
 import SettingFeature
 
 /// 앱 시작 시 1회 조립하는 의존성 그래프. 싱글톤 아님 — 앱 루트가 소유.
@@ -113,7 +115,24 @@ struct AppDependencies {
     }
 
     func makeSettingStore() -> SettingStore {
-        SettingStore(state: .init(nickname: "닉네임", loginProvider: "소셜로그인", appVersion: "1.0v"))
+        SettingStore(
+            memberUseCase: makeMemberUseCase(),
+            authUseCase: makeAuthUseCase(),
+            state: .init(appVersion: "1.0v")
+        )
+    }
+
+    func makeAccountInfoStore(nickname: String) -> AccountInfoStore {
+        AccountInfoStore(state: .init(nickname: nickname), memberUseCase: makeMemberUseCase())
+    }
+
+    private func makeMemberUseCase() -> MemberUseCaseImpl {
+        MemberUseCaseImpl(
+            memberRepository: MemberRepositoryImpl(
+                networkClient: networkClient,
+                tokenManager: tokenManager
+            )
+        )
     }
 
     func makeAlbumPickerStore(isLimited: Bool) -> AlbumPickerStore {

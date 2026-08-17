@@ -9,6 +9,7 @@
 import SwiftUI
 import Routing
 import GroupFeature
+import SettingFeature
 import UIComponent
 
 /// DEBUG 전용 시작 화면 — 매 실행 여기서 시작점을 고른다:
@@ -27,6 +28,7 @@ struct DevMenuView: View {
     /// 실제 진입점이 아직 없는 화면의 개발용 목적지.
     private enum DevScreenEntry: Hashable {
         case groupSideMenu
+        case setting
     }
 
     var body: some View {
@@ -50,6 +52,8 @@ struct DevMenuView: View {
 
             Section("화면 데모") {
                 NavigationLink("그룹 사이드메뉴 (GroupFeature)", value: DevScreenEntry.groupSideMenu)
+                // 설정 API 는 인증 필요 — 개발용 토큰 로그인을 먼저 한 번 해두고 진입할 것.
+                NavigationLink("설정 (SettingFeature)", value: DevScreenEntry.setting)
             }
         }
         .navigationTitle("시작점")
@@ -66,6 +70,12 @@ struct DevMenuView: View {
                         toasts.append(YGToastItem(kind: .success, message: toastMessage))
                     }
                 }
+            case .setting:
+                // ponytail: 실제 진입점(그룹/캔버스에서 설정 이동) 연결 전 개발용 — 연결되면 이 항목 제거.
+                SettingView(
+                    store: diContainer.makeSettingStore(),
+                    makeAccountInfoStore: diContainer.makeAccountInfoStore
+                )
             }
         }
         .task {

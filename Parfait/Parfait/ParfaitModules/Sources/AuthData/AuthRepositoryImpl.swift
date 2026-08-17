@@ -80,6 +80,14 @@ public struct AuthRepositoryImpl: AuthRepository {
             Policy(id: $0.termsId, title: $0.title, url: $0.url, isRequired: $0.required)
         }
     }
+
+    public func logout() async throws {
+        // 개발용 토큰 로그인은 리프레시 토큰이 없다 — 서버 무효화 없이 로컬 세션만 종료.
+        if let refreshToken = await tokenManager.refreshToken, !refreshToken.isEmpty {
+            let _: EmptyDTO = try await networkClient.request(LogoutEndpoint(refreshToken: refreshToken))
+        }
+        await tokenManager.expireSession()
+    }
 }
 
 private extension AuthRepositoryImpl {
