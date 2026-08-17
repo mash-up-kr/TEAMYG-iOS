@@ -13,13 +13,13 @@ import UIComponent
 public final class GroupStore: MVIStore {
     public private(set) var state = State()
 
-    private let fetchGroupsUseCase: any FetchGroupsUseCase
+    private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
     @ObservationIgnored private var loadGeneration = 0
 
-    public init(fetchGroupsUseCase: any FetchGroupsUseCase) {
-        self.fetchGroupsUseCase = fetchGroupsUseCase
+    public init(groupUseCase: any GroupUseCase) {
+        self.groupUseCase = groupUseCase
     }
 
     public func send(_ intent: Intent) {
@@ -97,7 +97,7 @@ public final class GroupStore: MVIStore {
     /// 자기 세대인지 한 번 더 본다 — 늦게 도착한 옛 응답이 새 응답을 덮지 않도록.
     private func loadGroups(generation: Int) async {
         do {
-            let groups = try await fetchGroupsUseCase.fetchGroups()
+            let groups = try await groupUseCase.fetchGroups()
             guard generation == loadGeneration else { return }
             send(.groupsLoaded(groups))
         } catch is CancellationError {

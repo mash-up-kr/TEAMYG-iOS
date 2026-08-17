@@ -14,11 +14,11 @@ import UIComponent
 public final class CreateGroupStore: MVIStore {
     public private(set) var state = State()
 
-    private let createGroupUseCase: any CreateGroupUseCase
+    private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var createTask: Task<Void, Never>?
 
-    public init(createGroupUseCase: any CreateGroupUseCase) {
-        self.createGroupUseCase = createGroupUseCase
+    public init(groupUseCase: any GroupUseCase) {
+        self.groupUseCase = groupUseCase
     }
 
     public func send(_ intent: Intent) {
@@ -84,7 +84,7 @@ public final class CreateGroupStore: MVIStore {
     /// 제출 시점의 입력을 파라미터로 받아, 통신 중 사용자가 값을 바꿔도 실제로 보낸 것과 어긋나지 않게 한다.
     private func requestCreate(_ draft: GroupDraft) async {
         do {
-            let group = try await createGroupUseCase.create(draft)
+            let group = try await groupUseCase.create(draft)
             send(.createSucceeded(group))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.

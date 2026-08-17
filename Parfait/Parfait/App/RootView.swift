@@ -7,6 +7,7 @@ import LoginFeature
 import GroupFeature
 import CanvasFeature
 import SettingFeature
+import UIComponent
 
 /// 앱 루트 뷰 — 실제 플로우만 조립한다. 시작 화면은 로그인이고,
 /// 저장된 토큰이 있으면 자동로그인으로 바로 그룹 화면에서 시작한다.
@@ -17,6 +18,8 @@ import SettingFeature
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
+    /// 앱 전역 토스트 스택. 화면 전환 뒤에도 살아야 하는 토스트(예: 사이드메뉴 나가기 → G-001 확인)가 쌓인다.
+    @State private var toasts: [YGToastItem] = []
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -31,6 +34,8 @@ struct RootView: View {
                 router.replaceStack(with: .login)
             }
         }
+        // 화면 위 어떤 프레젠테이션보다 위 레이어 — 스택 전환과 무관하게 마지막(바깥쪽)에 선언한다.
+        .ygToastOverlay($toasts)
     }
 
     @ViewBuilder
@@ -48,7 +53,7 @@ struct RootView: View {
     @ViewBuilder
     private var startScreen: some View {
         #if DEBUG
-        DevMenuView(router: router, diContainer: diContainer)
+        DevMenuView(router: router, diContainer: diContainer, toasts: $toasts)
         #else
         destination(for: .login)
             .task {

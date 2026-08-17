@@ -16,10 +16,10 @@ struct YGTopBarDemoView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             labeled("empty") {
-                YGTopBar(.empty(date: .now)) { lastAction = "empty · 사이드메뉴" }
+                YGTopBar(.empty) { lastAction = "empty · 사이드메뉴" }
             }
             labeled("default") {
-                YGTopBar(.default(date: .now)) {
+                YGTopBar(.default) {
                     lastAction = "default · 사이드메뉴"
                 } onNewGroupTap: {
                     lastAction = "default · 새 그룹"

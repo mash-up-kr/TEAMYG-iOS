@@ -73,21 +73,23 @@ struct AppDependencies {
     }
 
     func makeGroupStore() -> GroupStore {
-        GroupStore(
-            fetchGroupsUseCase: FetchGroupsUseCaseImpl(groupRepository: GroupRepositoryImpl())
-        )
+        GroupStore(groupUseCase: makeGroupUseCase())
     }
 
     func makeInviteCodeStore() -> InviteCodeStore {
-        InviteCodeStore(
-            joinGroupUseCase: JoinGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
-        )
+        InviteCodeStore(groupUseCase: makeGroupUseCase())
     }
 
     func makeCreateGroupStore() -> CreateGroupStore {
-        CreateGroupStore(
-            createGroupUseCase: CreateGroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
-        )
+        CreateGroupStore(groupUseCase: makeGroupUseCase())
+    }
+
+    func makeGroupSideMenuStore(groupID: String, groupName: String) -> GroupSideMenuStore {
+        GroupSideMenuStore(groupID: groupID, groupName: groupName, groupUseCase: makeGroupUseCase())
+    }
+
+    private func makeGroupUseCase() -> GroupUseCaseImpl {
+        GroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
     }
 
     func makeTermsStore(registrationToken: String) -> TermsStore {
