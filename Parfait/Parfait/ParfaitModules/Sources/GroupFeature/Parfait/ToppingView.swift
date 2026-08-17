@@ -66,11 +66,15 @@ struct ToppingView: View {
     }
 
     /// 칩은 회전하지 않고 Img 아래 끝에 붙는다. 글자는 확대하지 않으므로 위치만 scale 을 곱한다.
+    ///
+    /// 활동 이력이 없는 그룹은 타임스탬프를 넘기지 않는다 — 칩이 이름만 남긴다.
+    /// 색을 정하는 Nametag 타입도 없을 수 있는데, 그때 쓰는 기본 계열은 어차피
+    /// 타임스탬프에만 칠해지므로 눈에 띄지 않는다.
     private var chip: some View {
         YGGrouptagChip(
             name: group.name,
-            timestamp: RelativeTimeText.string(from: group.lastActivityAt),
-            type: group.lastActorNametagType.chipType
+            timestamp: group.lastActivityAt.map { RelativeTimeText.string(from: $0) },
+            type: group.lastActorNametagType?.chipType ?? .type1
         )
         .fixedSize()
         .offset(y: variant.chipTopInFrame * scale)

@@ -41,19 +41,30 @@ public struct GroupUseCaseImpl: GroupUseCase {
         self.groupRepository = groupRepository
     }
 
-    /// 최근 활동순. 밀리초까지 같으면 그룹 생성일시 최신순으로 가른다.
-    /// 두 값이 모두 같아도 순서가 흔들리지 않도록 id 로 마지막 tie-break —
-    /// 토핑 위치는 인덱스로 결정되므로 같은 데이터면 항상 같은 자리에 그려져야 한다.
+    /// 최근 활동순. 활동 이력이 없는 그룹(`lastActivityAt == nil`)은 뒤로 민다.
+    ///
+    /// 가를 수 없는 둘은 저장소가 준 순서를 그대로 둔다. `sorted(by:)` 는 안정 정렬을 보장하지
+    /// 않으므로 원래 인덱스를 마지막 tie-break 로 명시한다 — 토핑이 놓일 자리는 목록 인덱스가
+    /// 정하므로, 같은 데이터라면 새로고침해도 같은 자리에 그려져야 한다.
+    ///
+    /// ponytail: 정렬 2순위였던 그룹 생성일시가 서버 응답에 없어 규칙에서 뺐다 (#77).
+    ///           지금은 활동 이력이 없는 그룹끼리 순서를 서버가 준 순서에 기대고 있다.
     public func fetchGroups() async throws -> [ParfaitGroup] {
-        try await groupRepository.fetchGroups().sorted { lhs, rhs in
-            if lhs.lastActivityAt != rhs.lastActivityAt {
-                return lhs.lastActivityAt > rhs.lastActivityAt
+        let groups = try await groupRepository.fetchGroups()
+        return groups.enumerated()
+            .sorted { lhs, rhs in
+                switch (lhs.element.lastActivityAt, rhs.element.lastActivityAt) {
+                case (let lhsActivityAt?, let rhsActivityAt?) where lhsActivityAt != rhsActivityAt:
+                    return lhsActivityAt > rhsActivityAt
+                case (.some, nil):
+                    return true
+                case (nil, .some):
+                    return false
+                default:
+                    return lhs.offset < rhs.offset
+                }
             }
-            if lhs.createdAt != rhs.createdAt {
-                return lhs.createdAt > rhs.createdAt
-            }
-            return lhs.id < rhs.id
-        }
+            .map(\.element)
     }
 
     public func create(_ draft: GroupDraft) async throws {

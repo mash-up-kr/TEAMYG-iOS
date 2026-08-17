@@ -96,6 +96,9 @@ public struct GroupListDemoView: View {
             checkRow("새로고침마다 최근 활동 갱신", isOn: knobs.bumpsActivityOnRefresh) {
                 knobs.bumpsActivityOnRefresh.toggle()
             }
+            checkRow("서버 응답 그대로 (활동시각·색 없음)", isOn: knobs.matchesServerResponse) {
+                knobs.matchesServerResponse.toggle()
+            }
             checkRow("목록 조회 실패", isOn: knobs.isLoadFailing) { knobs.isLoadFailing.toggle() }
             checkRow("토핑 이미지 로드 실패", isOn: knobs.isToppingImageFailing) {
                 knobs.isToppingImageFailing.toggle()
@@ -162,6 +165,9 @@ public struct GroupListDemoView: View {
 private nonisolated struct DemoKnobs: Hashable {
     var groupCount = 5
     var bumpsActivityOnRefresh = false
+    /// 켜면 지금 서버가 실제로 주는 만큼만 채운다 — 활동 시각도 Nametag 타입도 없는 상태.
+    /// 칩이 이름만 남는 모습이 개발 서버에서 보이는 기본값이라, 눈으로 확인할 자리를 둔다.
+    var matchesServerResponse = false
     var isLoadFailing = false
     var isToppingImageFailing = false
 }
@@ -240,15 +246,16 @@ private struct DemoGroupRepository: GroupRepository {
     func join(inviteCode: String) async throws {}
 
     /// 만든 그룹을 데모 상태에 남겨, 목록으로 돌아왔을 때 실제로 늘어난 걸 볼 수 있게 한다.
+    ///
+    /// 활동 시각·Nametag 타입을 비워 두는 건 서버를 따라간 것이다 — 갓 만든 그룹은 토핑이 없어
+    /// 서버도 `recentImageUploadedAt` 을 주지 않는다. 그래서 목록 맨 뒤에 이름만 남은 칩으로 붙는다.
     func create(_ draft: GroupDraft) async throws {
-        let now = Date()
         let group = ParfaitGroup(
-            id: "demo-created-\(draft.name)-\(now.timeIntervalSince1970)",
+            id: "demo-created-\(draft.name)-\(Date().timeIntervalSince1970)",
             name: draft.name,
             thumbnailURL: nil,
-            lastActivityAt: now,
-            createdAt: now,
-            lastActorNametagType: .type1
+            lastActivityAt: nil,
+            lastActorNametagType: nil
         )
         demoState.append(group)
     }
@@ -264,9 +271,10 @@ private struct DemoGroupRepository: GroupRepository {
                 id: "demo-group-\(seed.index)",
                 name: Self.names[seed.index % Self.names.count],
                 thumbnailURL: knobs.isToppingImageFailing ? Self.failingThumbnailURL : nil,
-                lastActivityAt: seed.lastActivityAt,
-                createdAt: now.addingTimeInterval(-86_400 * Double(seed.index + 1)),
-                lastActorNametagType: nametagTypes[seed.index % nametagTypes.count]
+                lastActivityAt: knobs.matchesServerResponse ? nil : seed.lastActivityAt,
+                lastActorNametagType: knobs.matchesServerResponse
+                    ? nil
+                    : nametagTypes[seed.index % nametagTypes.count]
             )
         }
         // 정렬은 UseCase 가 맡으므로 여기서는 합치기만 한다.

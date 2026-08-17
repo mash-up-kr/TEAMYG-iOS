@@ -229,7 +229,6 @@ private extension [ParfaitGroup] {
                 name: names[index],
                 thumbnailURL: nil,
                 lastActivityAt: .now.addingTimeInterval(-180 * Double(index + 1)),
-                createdAt: .now.addingTimeInterval(-86_400 * Double(index + 1)),
                 lastActorNametagType: nametagTypes[index]
             )
         }

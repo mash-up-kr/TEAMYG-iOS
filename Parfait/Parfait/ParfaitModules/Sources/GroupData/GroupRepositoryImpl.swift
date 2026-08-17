@@ -6,7 +6,6 @@
 //
 
 import Core
-import Foundation
 import GroupDomain
 
 public struct GroupRepositoryImpl: GroupRepository {
@@ -21,10 +20,18 @@ public struct GroupRepositoryImpl: GroupRepository {
         print("초대코드 참여 스텁: length=\(inviteCode.count)")
     }
 
-    // ponytail: 그룹 목록 API 스펙 미정 — 확정 시 URLSession 호출 + DTO→ParfaitGroup 매핑으로 교체.
-    //           지금은 화면을 붙여보기 위한 고정 스텁이다.
+    /// 내가 속한 그룹 목록 (`GET /api/parfait-groups`).
+    ///
+    /// 서버가 준 순서를 그대로 올린다 — 정렬은 UseCase 가 맡는다.
     public func fetchGroups() async throws -> [ParfaitGroup] {
-        Self.stubGroups
+        do {
+            let groups: [MyParfaitGroupDTO] = try await networkClient.request(FetchGroupsEndpoint())
+            return groups.map { $0.toEntity() }
+        } catch {
+            // 취소는 실패가 아니다 — `create(_:)` 와 같은 이유로 에러 타입 대신 Task 상태를 본다.
+            if Task.isCancelled { throw CancellationError() }
+            throw error
+        }
     }
 
     /// 그룹 생성 (`POST /api/parfait-groups`).
@@ -102,19 +109,4 @@ public struct GroupRepositoryImpl: GroupRepository {
         return [GroupMember(id: "stub-member-me", nickname: "잠탈전용닉네임2", nametagType: .type4, isMe: true)] + others
     }()
 
-    private static let stubGroups: [ParfaitGroup] = {
-        let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
-        let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
-        let now = Date()
-        return names.indices.map { index in
-            ParfaitGroup(
-                id: "stub-group-\(index)",
-                name: names[index],
-                thumbnailURL: nil,
-                lastActivityAt: now.addingTimeInterval(-180 * Double(index + 1)),
-                createdAt: now.addingTimeInterval(-86_400 * Double(index + 1)),
-                lastActorNametagType: nametagTypes[index]
-            )
-        }
-    }()
 }

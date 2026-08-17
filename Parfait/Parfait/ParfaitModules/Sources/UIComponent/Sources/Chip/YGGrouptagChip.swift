@@ -18,10 +18,11 @@ public struct YGGrouptagChip: View {
     private static let maximumNameWidth: CGFloat = 80
 
     private let name: String
-    private let timestamp: String
+    /// nil 이면 점 디바이더까지 함께 감춰 이름만 남는다 — 아직 아무 활동도 없는 그룹의 모습.
+    private let timestamp: String?
     private let type: YGNametagChip.NametagType
 
-    public init(name: String, timestamp: String, type: YGNametagChip.NametagType) {
+    public init(name: String, timestamp: String?, type: YGNametagChip.NametagType) {
         self.name = name
         self.timestamp = timestamp
         self.type = type
@@ -35,13 +36,15 @@ public struct YGGrouptagChip: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: Self.maximumNameWidth, alignment: .leading)
                 .foregroundStyle(.whiteFixed)
-            Circle()
-                .fill(.white50)
-                .frame(width: 1, height: 1)
-            Text(timestamp)
-                .suit(.caption01Regular)
-                .lineLimit(1)
-                .foregroundStyle(type.timestampColor)
+            if let timestamp {
+                Circle()
+                    .fill(.white50)
+                    .frame(width: 1, height: 1)
+                Text(timestamp)
+                    .suit(.caption01Regular)
+                    .lineLimit(1)
+                    .foregroundStyle(type.timestampColor)
+            }
         }
         .padding(.vertical, .padding2)
         .padding(.horizontal, .padding5)
@@ -74,6 +77,8 @@ private extension YGNametagChip.NametagType {
         YGGrouptagChip(name: "잠탈감금2", timestamp: "3분전", type: .type7)
         YGGrouptagChip(name: "다섯글자임", timestamp: "3분전", type: .type9)
         YGGrouptagChip(name: "이름", timestamp: "3분전", type: .type11)
+        // 활동 이력이 없어 타임스탬프가 없는 경우
+        YGGrouptagChip(name: "새로만든그룹", timestamp: nil, type: .type1)
     }
     .padding()
 }
