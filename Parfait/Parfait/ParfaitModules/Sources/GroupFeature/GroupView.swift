@@ -60,7 +60,7 @@ public struct GroupView: View {
             case .inviteCode:
                 InviteCodeView(store: makeInviteCodeStore())
             case .createGroup:
-                CreateGroupView(store: makeCreateGroupStore()) { _ in
+                CreateGroupView(store: makeCreateGroupStore()) {
                     // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.
                 }
             }

@@ -89,7 +89,7 @@ struct AppDependencies {
     }
 
     private func makeGroupUseCase() -> GroupUseCaseImpl {
-        GroupUseCaseImpl(groupRepository: GroupRepositoryImpl())
+        GroupUseCaseImpl(groupRepository: GroupRepositoryImpl(networkClient: networkClient))
     }
 
     func makeTermsStore(registrationToken: String) -> TermsStore {

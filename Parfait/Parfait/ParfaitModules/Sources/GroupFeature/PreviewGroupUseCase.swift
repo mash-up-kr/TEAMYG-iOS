@@ -21,18 +21,10 @@ struct PreviewGroupUseCase: GroupUseCase {
         return groups
     }
 
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
+    func create(_ draft: GroupDraft) async throws {
         if let createError {
             throw createError
         }
-        return ParfaitGroup(
-            id: "preview-created",
-            name: draft.name,
-            thumbnailURL: nil,
-            lastActivityAt: .now,
-            createdAt: .now,
-            lastActorNametagType: .type1
-        )
     }
 
     func join(inviteCode: String) async throws {

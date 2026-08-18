@@ -240,7 +240,7 @@ private struct DemoGroupRepository: GroupRepository {
     func join(inviteCode: String) async throws {}
 
     /// 만든 그룹을 데모 상태에 남겨, 목록으로 돌아왔을 때 실제로 늘어난 걸 볼 수 있게 한다.
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
+    func create(_ draft: GroupDraft) async throws {
         let now = Date()
         let group = ParfaitGroup(
             id: "demo-created-\(draft.name)-\(now.timeIntervalSince1970)",
@@ -251,7 +251,6 @@ private struct DemoGroupRepository: GroupRepository {
             lastActorNametagType: .type1
         )
         demoState.append(group)
-        return group
     }
 
     func fetchGroups() async throws -> [ParfaitGroup] {
