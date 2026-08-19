@@ -13,8 +13,7 @@ struct ToppingCameraView: View {
     let weekdayText: String
     let flashMode: CameraFlashMode
     let isFlashControlEnabled: Bool
-    let isShutterEnabled: Bool
-    let isSwitchingCamera: Bool
+    let isCameraReady: Bool
     let showsToast: Bool
     let previewSource: any CameraPreviewSource
     let send: (ToppingAddStore.Intent) -> Void
@@ -36,8 +35,7 @@ struct ToppingCameraView: View {
                 CameraControlBar(
                     flashMode: flashMode,
                     isFlashControlEnabled: isFlashControlEnabled,
-                    isShutterEnabled: isShutterEnabled,
-                    isSwitchingCamera: isSwitchingCamera,
+                    isCameraReady: isCameraReady,
                     onFlashTap: { send(.flashTapped) },
                     onShutterTap: { send(.shutterTapped) },
                     onSwitchCameraTap: { send(.cameraPositionTapped) }
@@ -170,8 +168,7 @@ private struct ToppingDateBadge: View {
 private struct CameraControlBar: View {
     let flashMode: CameraFlashMode
     let isFlashControlEnabled: Bool
-    let isShutterEnabled: Bool
-    let isSwitchingCamera: Bool
+    let isCameraReady: Bool
     let onFlashTap: () -> Void
     let onShutterTap: () -> Void
     let onSwitchCameraTap: () -> Void
@@ -185,14 +182,14 @@ private struct CameraControlBar: View {
             Spacer()
 
             ShutterButton(action: onShutterTap)
-                .disabled(!isShutterEnabled)
-                .opacity(isShutterEnabled ? 1 : 0.5)
+                .disabled(!isCameraReady)
+                .opacity(isCameraReady ? 1 : 0.5)
 
             Spacer()
 
             YGCircleButton(.icReverse, variant: .default, action: onSwitchCameraTap)
-                .disabled(isSwitchingCamera)
-                .opacity(isSwitchingCamera ? 0.5 : 1)
+                .disabled(!isCameraReady)
+                .opacity(isCameraReady ? 1 : 0.5)
         }
         .frame(height: 56)
     }

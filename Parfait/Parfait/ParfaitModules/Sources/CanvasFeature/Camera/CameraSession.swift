@@ -9,7 +9,7 @@ import AVFoundation
 import Foundation
 
 actor CameraSession {
-    nonisolated let previewSource: any CameraPreviewSource
+    let previewSource: any CameraPreviewSource
 
     private let captureSession = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
@@ -24,14 +24,6 @@ actor CameraSession {
 
     init() {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
-    }
-
-    nonisolated func authorizationStatus() -> CameraAuthorization {
-        CameraAuthorization(AVCaptureDevice.authorizationStatus(for: .video))
-    }
-
-    nonisolated func requestAuthorization() async -> Bool {
-        await AVCaptureDevice.requestAccess(for: .video)
     }
 
     func start(generation: Int) -> Bool {
@@ -57,6 +49,8 @@ actor CameraSession {
     }
 
     func switchCamera() -> CameraPosition? {
+        guard isConfigured else { return nil }
+
         let nextPosition = cameraPosition.flipped
         captureSession.beginConfiguration()
         defer { captureSession.commitConfiguration() }

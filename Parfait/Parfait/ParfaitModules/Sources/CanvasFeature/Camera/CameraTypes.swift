@@ -7,23 +7,6 @@
 
 import AVFoundation
 
-enum CameraAuthorization: Sendable {
-    case authorized
-    case notDetermined
-    case denied
-    case restricted
-
-    init(_ status: AVAuthorizationStatus) {
-        switch status {
-        case .authorized: self = .authorized
-        case .notDetermined: self = .notDetermined
-        case .denied: self = .denied
-        case .restricted: self = .restricted
-        @unknown default: self = .denied
-        }
-    }
-}
-
 enum CameraFlashMode: Equatable, Sendable {
     case off
     case enabled

@@ -25,8 +25,7 @@ struct ToppingAddFlowView: View {
                     weekdayText: store.state.canvasWeekdayText,
                     flashMode: store.state.flashMode,
                     isFlashControlEnabled: store.state.isFlashControlEnabled,
-                    isShutterEnabled: store.state.isShutterEnabled,
-                    isSwitchingCamera: store.state.isSwitchingCamera,
+                    isCameraReady: store.state.isCameraReady,
                     showsToast: store.state.showsToast,
                     previewSource: store.previewSource,
                     send: { store.send($0) }

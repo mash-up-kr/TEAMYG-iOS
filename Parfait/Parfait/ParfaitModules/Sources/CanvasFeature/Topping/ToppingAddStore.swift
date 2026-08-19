@@ -78,9 +78,9 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func resolveAuthorization() async -> Bool {
-        let isAuthorized = switch cameraSession.authorizationStatus() {
+        let isAuthorized = switch CameraPermission.current() {
         case .authorized: true
-        case .notDetermined: await cameraSession.requestAuthorization()
+        case .notDetermined: await CameraPermission.request()
         case .denied, .restricted: false
         }
 
@@ -118,14 +118,14 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func switchCamera() {
-        guard !state.isSwitchingCamera, !state.isCapturing else { return }
+        guard state.isCameraReady else { return }
         state.isSwitchingCamera = true
         cameraSwitchTask = Task { [weak self, cameraSession] in
             let switchedPosition = await cameraSession.switchCamera()
             guard let self else { return }
 
             state.isSwitchingCamera = false
-            guard !Task.isCancelled, let switchedPosition else { return }
+            guard let switchedPosition else { return }
 
             state.cameraPosition = switchedPosition
             if switchedPosition == .front {
@@ -135,7 +135,7 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func capturePhoto() {
-        guard state.isShutterEnabled else { return }
+        guard state.isCameraReady else { return }
 
         state.isCapturing = true
         photoCaptureTask = Task { [weak self, cameraSession, flashMode = state.flashMode] in

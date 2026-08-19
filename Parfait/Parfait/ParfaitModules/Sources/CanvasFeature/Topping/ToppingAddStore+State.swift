@@ -19,7 +19,7 @@ extension ToppingAddStore {
         var isSwitchingCamera = false
         var isCapturing = false
 
-        var isShutterEnabled: Bool {
+        var isCameraReady: Bool {
             cameraPhase == .running && !isSwitchingCamera && !isCapturing
         }
 
