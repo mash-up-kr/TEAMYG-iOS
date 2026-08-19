@@ -14,7 +14,7 @@ struct CanvasCalendar: View {
     let onYearTap: () -> Void
     let onMonthSelect: (Int) -> Void
     let onYearSelect: (Int) -> Void
-    let onDateSelect: (CanvasStore.CalendarDate) -> Void
+    let onDateSelect: (CalendarDate) -> Void
     let onDropdownDismiss: () -> Void
 
     var body: some View {
@@ -168,7 +168,7 @@ private struct CanvasCalendarDropdown: View {
 
 private struct CanvasCalendarGrid: View {
     let days: [CanvasStore.CalendarDay]
-    let onDateSelect: (CanvasStore.CalendarDate) -> Void
+    let onDateSelect: (CalendarDate) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 0), count: 7)
     private let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
@@ -243,8 +243,8 @@ private struct CanvasCalendarDateButton: View {
 }
 
 #Preview("Calendar") {
-    let today = CanvasStore.CalendarDate(year: 2030, month: 5, day: 6)
-    let selectedDate = CanvasStore.CalendarDate(year: 2030, month: 5, day: 5)
+    let today = CalendarDate(year: 2030, month: 5, day: 6)
+    let selectedDate = CalendarDate(year: 2030, month: 5, day: 5)
 
     CanvasCalendar(
         state: .init(

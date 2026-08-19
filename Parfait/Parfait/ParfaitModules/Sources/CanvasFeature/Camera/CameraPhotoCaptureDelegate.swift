@@ -8,8 +8,6 @@
 import AVFoundation
 import Foundation
 
-/// `didFinishProcessingPhoto` / `didFinishCaptureFor` 가 둘 다 불릴 수 있어
-/// 완료 콜백이 정확히 한 번만 나가도록 잠금으로 보장한다.
 final class CameraPhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
     private let completionLock = NSLock()
     private var completion: (@Sendable (Data?) -> Void)?

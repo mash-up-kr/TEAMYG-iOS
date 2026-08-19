@@ -9,7 +9,6 @@ import AVFoundation
 import SwiftUI
 import UIKit
 
-/// `AVCaptureVideoPreviewLayer` 를 얹은 SwiftUI 래퍼.
 struct CameraPreviewView: UIViewRepresentable {
     let previewSource: any CameraPreviewSource
 

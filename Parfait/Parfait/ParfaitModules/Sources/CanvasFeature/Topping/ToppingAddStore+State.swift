@@ -8,8 +8,8 @@
 import Foundation
 
 extension ToppingAddStore {
-    public struct State: Equatable, Sendable {
-        let canvasDate: CanvasStore.CalendarDate
+    struct State: Equatable, Sendable {
+        let canvasDate: CalendarDate
         var screen: Screen = .camera
         var cameraPhase: CameraPhase = .idle
         var flashMode: CameraFlashMode = .off
@@ -19,7 +19,6 @@ extension ToppingAddStore {
         var isSwitchingCamera = false
         var isCapturing = false
 
-        /// 세션이 돌고 있고 전환·촬영이 진행 중이 아닐 때만 셔터를 연다.
         var isShutterEnabled: Bool {
             cameraPhase == .running && !isSwitchingCamera && !isCapturing
         }
@@ -37,7 +36,7 @@ extension ToppingAddStore {
         }
     }
 
-    public enum Intent {
+    enum Intent {
         case screenAppeared
         case screenDisappeared
         case sceneBecameActive
@@ -63,7 +62,6 @@ extension ToppingAddStore {
             self == .cameraPermissionError || self == .cameraUnavailable
         }
 
-        /// 세션이 돌아야 하는 화면인지. 에러 화면은 재시도로 복귀할 수 있어 포함한다.
         var needsRunningCamera: Bool {
             self == .camera || isCameraError
         }

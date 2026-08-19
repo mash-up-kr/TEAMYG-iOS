@@ -21,6 +21,7 @@ struct ToppingCameraView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var viewFinderFrame: CGRect = .zero
+    @State private var guideToasts: [YGToastItem] = []
 
     var body: some View {
         ZStack {
@@ -48,7 +49,6 @@ struct ToppingCameraView: View {
         }
     }
 
-    /// 뷰파인더 안쪽만 밝게 남기는 딤 처리 (even-odd fill 로 구멍을 뚫는다).
     @ViewBuilder
     private var dimOverlay: some View {
         if viewFinderFrame != .zero {
@@ -75,14 +75,22 @@ struct ToppingCameraView: View {
             } action: { frame in
                 viewFinderFrame = frame
             }
-            .overlay(alignment: .top) {
-                if showsToast {
-                    YGToast(.warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요")
-                        .onTapGesture { send(.toastDismissed) }
-                }
-            }
+            .ygToastOverlay($guideToasts)
             .padding(.top, .padding4)
+            .task { presentGuideToastIfNeeded() }
+            .onChange(of: guideToasts.isEmpty) { _, isEmpty in
+                if isEmpty { send(.toastDismissed) }
+            }
     }
+
+    private func presentGuideToastIfNeeded() {
+        guard showsToast, guideToasts.isEmpty else { return }
+        guideToasts = [YGToastItem(kind: .warning, message: Self.guideMessage)]
+    }
+}
+
+private extension ToppingCameraView {
+    static let guideMessage = "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요"
 }
 
 private struct CameraDimShape: Shape {
@@ -170,7 +178,6 @@ private struct CameraControlBar: View {
 
     var body: some View {
         HStack {
-            // 켜짐은 어두운 원(secondary), 꺼짐은 밝은 원(default) 으로 구분한다.
             YGCircleButton(.icLightning, variant: flashMode == .enabled ? .secondary : .default, action: onFlashTap)
                 .disabled(!isFlashControlEnabled)
                 .opacity(isFlashControlEnabled ? 1 : 0.5)
@@ -191,7 +198,6 @@ private struct CameraControlBar: View {
     }
 }
 
-/// 이중 원 셔터 — 디자인 시스템에 대응 컴포넌트가 없어 이 화면 전용으로 둔다.
 private struct ShutterButton: View {
     let action: () -> Void
 

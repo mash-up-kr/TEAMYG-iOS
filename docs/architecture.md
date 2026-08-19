@@ -34,6 +34,15 @@ Common ◀── 전 계층이 의존 (Common 은 시스템 프레임워크만 �
 
 앱 시작 시 의존성 그래프를 1회 조립(`AppDependencies` 등 팩토리 객체), `@Environment` 로 하위에 전달. Store 는 그 팩토리로 생성. **DI 컨테이너 라이브러리·전역 싱글톤 금지** — 이니셜라이저 주입만.
 
+**팩토리 경유 기준 — Store 의 의존성이 레이어 경계를 넘을 때.** App 이 조립하는 이유는 "Feature 가 볼 수 없는 곳(Data)에 구현체가 있어 Feature 스스로 연결할 수 없어서" 다. 그래프에 넣을 게 없으면 조립할 것도 없다.
+
+- **넘는다 → App 팩토리.** 예: `AlbumPickerStore` ← `RecentUploadsRepositoryImpl`(CanvasData). 피처 내부 화면이어도 마찬가지다.
+- **안 넘는다 → 피처가 직접 조립.** 의존 대상이 같은 Feature 안에서 닫히는 화면 전용 인프라면 그 화면이 만든다. 예: `ToppingAddStore` ← `CameraSession`(CanvasFeature).
+
+App 조립을 택하면 조립 재료가 전부 모듈 밖으로 `public` 이 되어야 하므로, 넘길 경계가 없는데 팩토리를 두면 공개 표면만 늘고 App 은 화면 내부 사정을 알게 된다.
+
+> 구현체를 Feature 에 둘지 Data 로 내릴지가 곧 이 판단이다. 애매하면 사람이 결정한다(위 "규칙" 절).
+
 ```swift
 // App 레이어 — 루트가 소유(싱글톤 아님)
 struct AppDependencies {

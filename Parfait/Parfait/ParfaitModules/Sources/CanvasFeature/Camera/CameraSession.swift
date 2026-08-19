@@ -8,8 +8,6 @@
 import AVFoundation
 import Foundation
 
-/// 캡처 파이프라인을 actor 안에 가둔 카메라 세션.
-/// 뷰에는 ``previewSource`` 로 미리보기 레이어 연결만 노출한다.
 actor CameraSession {
     nonisolated let previewSource: any CameraPreviewSource
 
@@ -93,7 +91,6 @@ actor CameraSession {
         }
     }
 
-    /// 늦게 도착한 옛 요청인지 판정하고, 유효하면 최신 번호를 갱신한다.
     private func acceptsRequest(_ generation: Int) -> Bool {
         guard generation >= latestGeneration else { return false }
         latestGeneration = generation
@@ -102,7 +99,6 @@ actor CameraSession {
 
     private func makePhotoSettings(flashMode requestedFlashMode: CameraFlashMode) -> AVCapturePhotoSettings {
         let settings = AVCapturePhotoSettings()
-        // 기기가 지원하지 않는 모드를 넣으면 촬영 자체가 예외로 떨어진다.
         if photoOutput.supportedFlashModes.contains(requestedFlashMode.avFoundationMode) {
             settings.flashMode = requestedFlashMode.avFoundationMode
         }

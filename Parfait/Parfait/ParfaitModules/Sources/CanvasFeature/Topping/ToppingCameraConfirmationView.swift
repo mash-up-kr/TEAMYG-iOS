@@ -52,7 +52,6 @@ struct ToppingCameraConfirmationView: View {
         }
     }
 
-    /// 큰 JPEG 디코딩은 메인 스레드를 붙잡으므로 분리한다.
     private static func decodeImage(from photoData: Data?) async -> UIImage? {
         guard let photoData else { return nil }
         return await Task.detached(priority: .userInitiated) {

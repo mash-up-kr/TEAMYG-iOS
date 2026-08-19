@@ -82,8 +82,8 @@ public struct CanvasView: View {
 }
 
 #Preview("Calendar") {
-    let today = CanvasStore.CalendarDate(year: 2026, month: 8, day: 4)
-    let selectedDate = CanvasStore.CalendarDate(year: 2026, month: 8, day: 1)
+    let today = CalendarDate(year: 2026, month: 8, day: 4)
+    let selectedDate = CalendarDate(year: 2026, month: 8, day: 1)
 
     NavigationStack {
         CanvasView(

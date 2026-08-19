@@ -11,8 +11,8 @@ import UIKit
 import UIComponent
 
 @Observable @MainActor
-public final class ToppingAddStore: MVIStore {
-    public private(set) var state: State
+final class ToppingAddStore: MVIStore {
+    private(set) var state: State
 
     private let cameraSession = CameraSession()
     private var cameraSetupTask: Task<Void, Never>?
@@ -21,7 +21,7 @@ public final class ToppingAddStore: MVIStore {
     /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
     private var cameraGeneration = 0
 
-    public init(canvasDate: CanvasStore.CalendarDate) {
+    init(canvasDate: CalendarDate) {
         state = State(canvasDate: canvasDate)
     }
 
@@ -29,7 +29,7 @@ public final class ToppingAddStore: MVIStore {
         cameraSession.previewSource
     }
 
-    public func send(_ intent: Intent) {
+    func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared, .sceneBecameActive:
             resumeCameraIfNeeded()
@@ -56,13 +56,11 @@ public final class ToppingAddStore: MVIStore {
         }
     }
 
-    /// 촬영본이 없는데 넘어가면 빈 화면이 뜨므로 확인 화면에서만 진행한다.
     private func confirmPhoto() {
         guard state.capturedPhotoData != nil else { return }
         state.screen = .analysisLoading
     }
 
-    /// 화면 복귀·재진입 공통 경로. 카메라가 필요 없는 화면이면 세션을 건드리지 않는다.
     private func resumeCameraIfNeeded() {
         guard state.screen.needsRunningCamera else { return }
         prepareCamera()
@@ -79,8 +77,6 @@ public final class ToppingAddStore: MVIStore {
         }
     }
 
-    /// 권한을 확인하고, 미결정이면 요청까지 마친 뒤 진행 가능 여부를 돌려준다.
-    /// 거부·제한이면 권한 안내 화면으로 보내고 `false`.
     private func resolveAuthorization() async -> Bool {
         let isAuthorized = switch cameraSession.authorizationStatus() {
         case .authorized: true
@@ -132,7 +128,6 @@ public final class ToppingAddStore: MVIStore {
             guard !Task.isCancelled, let switchedPosition else { return }
 
             state.cameraPosition = switchedPosition
-            // 전면은 플래시 컨트롤 자체가 비활성이라 켜진 채로 남지 않게 되돌린다.
             if switchedPosition == .front {
                 state.flashMode = .off
             }
@@ -152,7 +147,6 @@ public final class ToppingAddStore: MVIStore {
 
             state.capturedPhotoData = photoData
             state.screen = .cameraConfirmation
-            // 확인 화면에서는 세션을 붙들고 있을 이유가 없다.
             await cameraSession.stop(generation: nextCameraGeneration())
         }
     }
@@ -170,7 +164,6 @@ public final class ToppingAddStore: MVIStore {
         return cameraGeneration
     }
 
-    /// 취소되지 않았고, 그 사이 더 새로운 요청이 끼어들지도 않았는지.
     private func isLatestRequest(_ generation: Int) -> Bool {
         !Task.isCancelled && generation == cameraGeneration
     }

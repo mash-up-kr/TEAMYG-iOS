@@ -7,7 +7,6 @@
 
 import AVFoundation
 
-/// 촬영 파이프라인을 감춘 채 미리보기 레이어 연결만 뷰에 노출하는 통로.
 protocol CameraPreviewSource: Sendable {
     @MainActor func connect(to target: any CameraPreviewTarget)
     @MainActor func applyPreviewRotationAngle(_ rotationAngle: CGFloat)
