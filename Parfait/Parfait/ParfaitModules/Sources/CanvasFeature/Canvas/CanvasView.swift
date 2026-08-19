@@ -8,24 +8,12 @@
 import SwiftUI
 import UIComponent
 
-/// 토핑 추가 플로우 Store 를 만드는 팩토리. 실제 조립은 Composition Root(App) 가 소유한다.
-public typealias ToppingAddStoreFactory = @MainActor (
-    _ entryPoint: ToppingAddStore.PhotoSelectionEntryPoint,
-    _ canvasDate: CanvasStore.CalendarDate,
-    _ onFlowClosed: @escaping @MainActor @Sendable () async -> Void
-) -> ToppingAddStore
-
 public struct CanvasView: View {
     @State private var store: CanvasStore
     @Environment(\.dismiss) private var dismiss
-    private let makeToppingAddStore: ToppingAddStoreFactory
 
-    public init(
-        store: CanvasStore,
-        makeToppingAddStore: @escaping ToppingAddStoreFactory
-    ) {
+    public init(store: CanvasStore) {
         _store = State(initialValue: store)
-        self.makeToppingAddStore = makeToppingAddStore
     }
 
     public var body: some View {
@@ -55,11 +43,7 @@ public struct CanvasView: View {
         .navigationDestination(item: toppingAddSourceBinding) { source in
             switch source {
             case .camera(let canvasDate):
-                ToppingAddFlowView(
-                    store: makeToppingAddStore(.camera, canvasDate) {
-                        store.send(.toppingAddFlowDismissed)
-                    }
-                )
+                ToppingAddFlowView(store: ToppingAddStore(canvasDate: canvasDate))
             }
         }
     }
@@ -82,8 +66,6 @@ public struct CanvasView: View {
     }
 }
 
-// 아래 프리뷰들은 `ToppingAddStore+Preview.swift` 의 가짜 팩토리에 의존한다.
-// 프리뷰를 걷어낼 땐 그 파일과 함께 지운다 (제품 코드 영향 없음).
 #Preview("Empty") {
     NavigationStack {
         CanvasView(
@@ -94,8 +76,7 @@ public struct CanvasView: View {
                     loadRecordedDates: { _ in [] },
                     loadRecordedYears: { [] }
                 )
-            ),
-            makeToppingAddStore: ToppingAddStore.previewFactory
+            )
         )
     }
 }
@@ -128,8 +109,7 @@ public struct CanvasView: View {
                     loadRecordedDates: { _ in [] },
                     loadRecordedYears: { [] }
                 )
-            ),
-            makeToppingAddStore: ToppingAddStore.previewFactory
+            )
         )
     }
 }

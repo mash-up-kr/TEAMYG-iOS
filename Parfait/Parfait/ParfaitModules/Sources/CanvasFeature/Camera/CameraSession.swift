@@ -7,38 +7,9 @@
 
 import AVFoundation
 import Foundation
-import UIKit
 
-protocol CameraPreviewSource: Sendable {
-    @MainActor func connect(to target: any CameraPreviewTarget)
-    @MainActor func applyPreviewRotationAngle(_ rotationAngle: CGFloat)
-}
-
-@MainActor
-protocol CameraPreviewTarget: AnyObject {
-    func setSession(_ session: AVCaptureSession)
-}
-
-struct DefaultCameraPreviewSource: CameraPreviewSource, @unchecked Sendable {
-    private let captureSession: AVCaptureSession
-
-    init(captureSession: AVCaptureSession) {
-        self.captureSession = captureSession
-    }
-
-    @MainActor
-    func connect(to target: any CameraPreviewTarget) {
-        target.setSession(captureSession)
-    }
-
-    @MainActor
-    func applyPreviewRotationAngle(_ rotationAngle: CGFloat) {
-        guard let connection = captureSession.connections.first(where: { $0.videoPreviewLayer != nil }),
-              connection.isVideoRotationAngleSupported(rotationAngle) else { return }
-        connection.videoRotationAngle = rotationAngle
-    }
-}
-
+/// 캡처 파이프라인을 actor 안에 가둔 카메라 세션.
+/// 뷰에는 ``previewSource`` 로 미리보기 레이어 연결만 노출한다.
 actor CameraSession {
     nonisolated let previewSource: any CameraPreviewSource
 
@@ -57,23 +28,16 @@ actor CameraSession {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
     }
 
-    func authorizationStatus() -> CameraAuthorization {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized: .authorized
-        case .notDetermined: .notDetermined
-        case .denied: .denied
-        case .restricted: .restricted
-        @unknown default: .denied
-        }
+    nonisolated func authorizationStatus() -> CameraAuthorization {
+        CameraAuthorization(AVCaptureDevice.authorizationStatus(for: .video))
     }
 
-    func requestAuthorization() async -> Bool {
+    nonisolated func requestAuthorization() async -> Bool {
         await AVCaptureDevice.requestAccess(for: .video)
     }
 
     func start(generation: Int) -> Bool {
-        guard generation >= latestGeneration else { return false }
-        latestGeneration = generation
+        guard acceptsRequest(generation) else { return false }
 
         if !isConfigured, !configureSession(position: cameraPosition) {
             return false
@@ -90,15 +54,12 @@ actor CameraSession {
     }
 
     func stop(generation: Int) {
-        guard generation >= latestGeneration else { return }
-        latestGeneration = generation
-
-        guard captureSession.isRunning else { return }
+        guard acceptsRequest(generation), captureSession.isRunning else { return }
         captureSession.stopRunning()
     }
 
     func switchCamera() -> CameraPosition? {
-        let nextPosition: CameraPosition = cameraPosition == .back ? .front : .back
+        let nextPosition = cameraPosition.flipped
         captureSession.beginConfiguration()
         defer { captureSession.commitConfiguration() }
 
@@ -107,9 +68,7 @@ actor CameraSession {
         }
 
         guard let nextInput = makeVideoInput(position: nextPosition), captureSession.canAddInput(nextInput) else {
-            if let videoInput, captureSession.canAddInput(videoInput) {
-                captureSession.addInput(videoInput)
-            }
+            restorePreviousInput()
             return nil
         }
 
@@ -120,14 +79,10 @@ actor CameraSession {
         return nextPosition
     }
 
-    func capturePhoto(_ requestedFlashMode: CameraFlashMode) async -> Data? {
+    func capturePhoto(flashMode requestedFlashMode: CameraFlashMode) async -> Data? {
         guard photoCaptureDelegate == nil else { return nil }
 
-        let settings = AVCapturePhotoSettings()
-        if photoOutput.supportedFlashModes.contains(requestedFlashMode.avFoundationMode) {
-            settings.flashMode = requestedFlashMode.avFoundationMode
-        }
-
+        let settings = makePhotoSettings(flashMode: requestedFlashMode)
         return await withCheckedContinuation { continuation in
             let delegate = CameraPhotoCaptureDelegate { [weak self] photoData in
                 continuation.resume(returning: photoData)
@@ -136,6 +91,27 @@ actor CameraSession {
             photoCaptureDelegate = delegate
             photoOutput.capturePhoto(with: settings, delegate: delegate)
         }
+    }
+
+    /// 늦게 도착한 옛 요청인지 판정하고, 유효하면 최신 번호를 갱신한다.
+    private func acceptsRequest(_ generation: Int) -> Bool {
+        guard generation >= latestGeneration else { return false }
+        latestGeneration = generation
+        return true
+    }
+
+    private func makePhotoSettings(flashMode requestedFlashMode: CameraFlashMode) -> AVCapturePhotoSettings {
+        let settings = AVCapturePhotoSettings()
+        // 기기가 지원하지 않는 모드를 넣으면 촬영 자체가 예외로 떨어진다.
+        if photoOutput.supportedFlashModes.contains(requestedFlashMode.avFoundationMode) {
+            settings.flashMode = requestedFlashMode.avFoundationMode
+        }
+        return settings
+    }
+
+    private func restorePreviousInput() {
+        guard let videoInput, captureSession.canAddInput(videoInput) else { return }
+        captureSession.addInput(videoInput)
     }
 
     private func configureSession(position: CameraPosition) -> Bool {
@@ -155,10 +131,11 @@ actor CameraSession {
     }
 
     private func makeVideoInput(position: CameraPosition) -> AVCaptureDeviceInput? {
-        let avPosition: AVCaptureDevice.Position = position == .back ? .back : .front
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: avPosition) else {
-            return nil
-        }
+        guard let device = AVCaptureDevice.default(
+            .builtInWideAngleCamera,
+            for: .video,
+            position: position.avFoundationPosition
+        ) else { return nil }
         return try? AVCaptureDeviceInput(device: device)
     }
 
@@ -171,18 +148,16 @@ actor CameraSession {
         updatePreviewRotation(coordinator.videoRotationAngleForHorizonLevelPreview)
         updateCaptureRotation(coordinator.videoRotationAngleForHorizonLevelCapture)
 
-        rotationObservers.append(
+        rotationObservers = [
             coordinator.observe(\.videoRotationAngleForHorizonLevelPreview, options: .new) { [weak self] _, change in
                 guard let self, let rotationAngle = change.newValue else { return }
                 Task { await self.updatePreviewRotation(rotationAngle) }
-            }
-        )
-        rotationObservers.append(
+            },
             coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: .new) { [weak self] _, change in
                 guard let self, let rotationAngle = change.newValue else { return }
                 Task { await self.updateCaptureRotation(rotationAngle) }
             }
-        )
+        ]
     }
 
     private func updatePreviewRotation(_ rotationAngle: CGFloat) {
@@ -200,76 +175,5 @@ actor CameraSession {
 
     private func clearPhotoCaptureDelegate() {
         photoCaptureDelegate = nil
-    }
-}
-
-private final class CameraPhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
-    private let completionLock = NSLock()
-    private var completion: (@Sendable (Data?) -> Void)?
-
-    init(completion: @escaping @Sendable (Data?) -> Void) {
-        self.completion = completion
-    }
-
-    func photoOutput(
-        _ output: AVCapturePhotoOutput,
-        didFinishProcessingPhoto photo: AVCapturePhoto,
-        error: Error?
-    ) {
-        guard error == nil else {
-            finish(with: nil)
-            return
-        }
-        finish(with: photo.fileDataRepresentation())
-    }
-
-    func photoOutput(
-        _ output: AVCapturePhotoOutput,
-        didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings,
-        error: Error?
-    ) {
-        finish(with: nil)
-    }
-
-    private func finish(with photoData: Data?) {
-        let pendingCompletion = completionLock.withLock {
-            let storedCompletion = completion
-            completion = nil
-            return storedCompletion
-        }
-        pendingCompletion?(photoData)
-    }
-}
-
-extension CameraFlashMode {
-    var avFoundationMode: AVCaptureDevice.FlashMode {
-        switch self {
-        case .off: .off
-        case .enabled: .on
-        }
-    }
-}
-
-extension ToppingAddStore.Dependencies {
-    @MainActor
-    public static func live(
-        onFlowClosed: @escaping @MainActor @Sendable () async -> Void
-    ) -> Self {
-        let cameraSession = CameraSession()
-
-        return Self(
-            previewSource: cameraSession.previewSource,
-            authorizationStatus: { await cameraSession.authorizationStatus() },
-            requestAuthorization: { await cameraSession.requestAuthorization() },
-            startCamera: { generation in await cameraSession.start(generation: generation) },
-            stopCamera: { generation in await cameraSession.stop(generation: generation) },
-            switchCamera: { await cameraSession.switchCamera() },
-            capturePhoto: { await cameraSession.capturePhoto($0) },
-            openSettings: {
-                guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-                await UIApplication.shared.open(settingsURL)
-            },
-            onFlowClosed: onFlowClosed
-        )
     }
 }

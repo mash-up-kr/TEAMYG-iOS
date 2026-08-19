@@ -35,7 +35,6 @@ struct ToppingAddFlowView: View {
             case .cameraConfirmation:
                 ToppingCameraConfirmationView(
                     photoData: store.state.capturedPhotoData,
-                    onCloseTap: { store.send(.flowCloseTapped) },
                     onRetakeTap: { store.send(.retakeTapped) },
                     onNextTap: { store.send(.photoConfirmed) }
                 )
@@ -45,8 +44,7 @@ struct ToppingAddFlowView: View {
                     title: "카메라 권한이 없어요",
                     message: "설정에서 카메라 권한을 허용해 주세요",
                     actionTitle: "설정으로 이동",
-                    onActionTap: { store.send(.settingsTapped) },
-                    onCloseTap: { store.send(.flowCloseTapped) }
+                    onActionTap: { store.send(.settingsTapped) }
                 )
 
             case .cameraUnavailable:
@@ -54,17 +52,11 @@ struct ToppingAddFlowView: View {
                     title: "카메라를 사용할 수 없어요",
                     message: "잠시 후 다시 시도해 주세요",
                     actionTitle: "다시 시도",
-                    onActionTap: { store.send(.cameraRetryTapped) },
-                    onCloseTap: { store.send(.flowCloseTapped) }
+                    onActionTap: { store.send(.cameraRetryTapped) }
                 )
 
             case .analysisLoading:
-                ToppingAnalysisLoadingView(
-                    onCloseTap: { store.send(.flowCloseTapped) }
-                )
-
-            case .gallery, .galleryConfirmation:
-                Color.whiteFixed
+                ToppingAnalysisLoadingView()
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -88,34 +80,6 @@ struct ToppingAddFlowView: View {
             @unknown default:
                 break
             }
-        }
-    }
-}
-
-private struct ToppingAnalysisLoadingView: View {
-    let onCloseTap: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.whiteFixed
-                .ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(.gray900)
-
-                Text("사진을 편집하고 있어요")
-                    .suit(.title03SemiBold)
-                    .foregroundStyle(.gray900)
-
-                Text("잠시만 기다려주세요 ⋯")
-                    .suit(.body02Regular)
-                    .foregroundStyle(.gray500)
-            }
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            ToppingFloatingBar(trailingAction: onCloseTap)
         }
     }
 }

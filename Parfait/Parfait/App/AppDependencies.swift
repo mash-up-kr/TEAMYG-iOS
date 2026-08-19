@@ -57,18 +57,6 @@ struct AppDependencies {
         )
     }
 
-    func makeToppingAddStore(
-        entryPoint: ToppingAddStore.PhotoSelectionEntryPoint,
-        canvasDate: CanvasStore.CalendarDate,
-        onFlowClosed: @escaping @MainActor @Sendable () async -> Void
-    ) -> ToppingAddStore {
-        ToppingAddStore(
-            entryPoint: entryPoint,
-            canvasDate: canvasDate,
-            dependencies: .live(onFlowClosed: onFlowClosed)
-        )
-    }
-
     func makeSettingStore() -> SettingStore {
         SettingStore(state: .init(nickname: "닉네임", loginProvider: "소셜로그인", appVersion: "1.0v"))
     }
