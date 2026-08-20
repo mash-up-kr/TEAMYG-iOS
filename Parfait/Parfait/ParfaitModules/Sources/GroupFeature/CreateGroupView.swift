@@ -9,13 +9,12 @@ import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
-import UIKit
 
 /// 그룹 만들기 화면 (A-005). 그룹명·그룹 속 내 닉네임·그룹 인원을 받아 새 그룹을 만든다.
 /// 세 값 모두 나중에 바꿀 수 없어, 확인 버튼과 생성 사이에 되돌릴 수 없음을 알리는 팝업을 한 번 더 둔다.
 public struct CreateGroupView: View {
     @State private var store: CreateGroupStore
-    private let onCreated: (ParfaitGroup) -> Void
+    private let onCreated: () -> Void
 
     /// 타이핑이 직접 닿는 입력 사본. 자르기는 `maxLength` 를 받은 `YGTextField` 가 하고,
     /// 여기서는 그 결과를 Store 로 넘기기만 한다.
@@ -36,8 +35,8 @@ public struct CreateGroupView: View {
     private static let sectionGap: CGFloat = 32
     private static let horizontalInset: CGFloat = 20
 
-    /// - Parameter onCreated: 생성 성공 시 만들어진 그룹을 넘긴다. 화면 이동은 호출부가 결정한다.
-    public init(store: CreateGroupStore, onCreated: @escaping (ParfaitGroup) -> Void = { _ in }) {
+    /// - Parameter onCreated: 생성 성공을 알린다. 화면 이동은 호출부가 결정한다.
+    public init(store: CreateGroupStore, onCreated: @escaping () -> Void = {}) {
         _store = State(initialValue: store)
         // 미리 값을 채워 둔 Store(프리뷰·복원)로 들어와도 화면과 어긋나지 않게 초기 사본을 맞춘다.
         _nameInput = State(initialValue: store.state.name)
@@ -89,9 +88,9 @@ public struct CreateGroupView: View {
         ) {
             YGAlert(title: "그룹 만들기 실패", subtitle: createErrorMessage)
         }
-        .onChange(of: store.state.createdGroup) { _, createdGroup in
-            guard let createdGroup else { return }
-            onCreated(createdGroup)
+        .onChange(of: store.state.isCreated) { _, isCreated in
+            guard isCreated else { return }
+            onCreated()
             // ponytail: 캔버스(C-001) 가 붙으면 목록으로 돌아가는 대신 만든 그룹으로 이어져야 한다.
             //           그때까지는 목록으로 되돌려 새 그룹이 늘어난 걸 보여준다.
             dismiss()
@@ -161,14 +160,6 @@ public struct CreateGroupView: View {
         }
     }
 
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(
-            #selector(UIResponder.resignFirstResponder),
-            to: nil,
-            from: nil,
-            for: nil
-        )
-    }
 }
 
 // MARK: - 문구
@@ -204,14 +195,14 @@ private extension String {
 
 #Preview("빈 입력") {
     NavigationStack {
-        CreateGroupView(store: CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase()))
+        CreateGroupView(store: CreateGroupStore(groupUseCase: PreviewGroupUseCase()))
     }
 }
 
 #Preview("입력 완료") {
     NavigationStack {
         CreateGroupView(store: {
-            let store = CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
+            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
             store.send(.nameChanged("우와그룹명"))
             store.send(.nicknameChanged("아니야나그런데기니야"))
             store.send(.memberCountTapped(9))
@@ -223,31 +214,12 @@ private extension String {
 #Preview("생성 확인 팝업") {
     NavigationStack {
         CreateGroupView(store: {
-            let store = CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
+            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
             store.send(.nameChanged("그룹이름최대열글자"))
             store.send(.nicknameChanged("아니야나그런데기니야"))
             store.send(.memberCountTapped(9))
             store.send(.confirmTapped)
             return store
         }())
-    }
-}
-
-/// 프리뷰 전용 스텁 — 서버 호출 없이 성공/실패를 즉시 확인 (`createError == nil` 이면 성공).
-struct PreviewCreateGroupUseCase: CreateGroupUseCase {
-    var createError: CreateGroupError?
-
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
-        if let createError {
-            throw createError
-        }
-        return ParfaitGroup(
-            id: "preview-created",
-            name: draft.name,
-            thumbnailURL: nil,
-            lastActivityAt: .now,
-            createdAt: .now,
-            lastActorNametagType: .type1
-        )
     }
 }

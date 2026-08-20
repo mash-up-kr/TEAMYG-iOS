@@ -77,13 +77,6 @@ struct ToppingView: View {
     }
 }
 
-private extension GroupDomain.NametagType {
-    /// Domain 의 타입 번호를 UI 컴포넌트의 타입으로 옮긴다. 같은 1~12 번호 체계다.
-    var chipType: YGNametagChip.NametagType {
-        YGNametagChip.NametagType(rawValue: rawValue) ?? .type1
-    }
-}
-
 /// 토핑 이미지 자리. 대표 이미지 → 없으면 템플릿 그래픽 → 불러오기 실패면 물음표 그래픽.
 private struct ToppingImage: View {
     let group: ParfaitGroup

@@ -19,6 +19,7 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 |------|------|
 | 린트 | `swiftlint` (레포 루트에서) |
 | 자산(색·이미지) 추가 후 | 빌드하면 런스크립트가 자동 생성 (수동: `./Parfait/Parfait/ParfaitModules/scripts/gen-assets.sh`) → 생성된 `Sources/UIComponent/Sources/{Colors,Image}+.swift` 커밋 (손편집 금지) |
+| 실기기 서명 (인증서·프로파일) | `fastlane certificates` — 자동 서명 안 씀, match 로 관리. 최초 셋업·기기 추가 → [`docs/signing.md`](docs/signing.md) 필독 |
 
 > 의존성 관리: **SPM** (레이어별 로컬 패키지 + 외부 의존성). `Package.resolved` 는 커밋합니다.
 
@@ -42,6 +43,8 @@ AI가 **직접 실행해 결과를 검증**할 수 있도록 정확한 명령을
 - 이름은 **풀어서** 쓴다. 짧게 줄인 약어·의미 없는 한 글자 식별자 금지: `m`→`module`, `deps`→`dependencies`, `tmp`→`temporary`, `e`→`error`. (`id`·`url`·`max` 등 널리 통용되는 약어, 짧은 스코프의 클로저 인자 `$0`는 예외)
 - 공통 UI 컴포넌트(디자인 컴포넌트)는 `YG` prefix 를 붙인다 (예: 버튼 → `YGButton`).
 - 레이어 기능 개발 시 Domain 계약 구현체 네이밍: `~UseCase`/`~Repository` 프로토콜의 구현체는 `~UseCaseImpl`/`~RepositoryImpl` (예: `AuthRepository` → `AuthRepositoryImpl`). 단 **전체 프로토콜에 강제 아님** — 범용 프로토콜은 역할이 드러나는 이름 (예: `Router` → `PreviewRouter`).
+- Domain 유스케이스는 **행동별 타입으로 쪼개지 않는다.** 도메인 단위 프로토콜 하나에 함수로 모은다 (예: `GroupUseCase` 에 `fetchGroups()`·`create(_:)`·`leave(groupID:)`...). 행동 하나 = 타입 하나 금지.
+- 서버 응답을 디코딩하는 모델(Decodable)은 `DTO` postfix 를 붙인다 (예: `GroupDTO`) — Domain 엔티티와 구분. Data 레이어가 DTO → 엔티티로 매핑해 올린다.
 - 새 Swift 파일은 Xcode 스타일 헤더 주석으로 시작한다 (파일명·모듈/타깃명·작성자·생성일 `M/D/YY`):
 
   ```swift

@@ -1,0 +1,33 @@
+default_platform(:ios)
+
+# App Store Connect API 키 — .p8 은 gitignore, ID 두 개는 비밀 아님.
+# 처음 받는 사람: 팀 공유 채널에서 .p8 을 받아 fastlane/ 에 두고,
+# MATCH_PASSWORD 환경변수(복호화 암호)를 설정한 뒤 lane 을 실행한다.
+def asc_api_key
+  # 실행 위치에 따라 cwd 가 달라지므로 절대경로로 만들어 넘긴다
+  key_file = Dir["{,fastlane/}AuthKey_*.p8"].map { |path| File.expand_path(path) }.first
+  raise "AuthKey_*.p8 없음 — fastlane/ 폴더에 둘 것" unless key_file
+  app_store_connect_api_key(
+    key_id: "2A6FANL2GA",
+    issuer_id: "2f41e9d6-66da-4ad5-b0c4-cec6a1646cf6",
+    key_filepath: key_file
+  )
+end
+
+platform :ios do
+  desc "최초 1회 또는 인증서 만료 시: 개발용 인증서·프로파일 생성 (관리자)"
+  lane :bootstrap do
+    match(type: "development", api_key: asc_api_key)
+  end
+
+  desc "개발용 인증서·프로파일 내려받기 (팀원 공통, 읽기 전용)"
+  lane :certificates do
+    match(type: "development", readonly: true, api_key: asc_api_key)
+  end
+
+  desc "기기 등록 + 프로파일 재생성 (fastlane/devices.txt 갱신 후 실행)"
+  lane :sync_devices do
+    register_devices(devices_file: "devices.txt", api_key: asc_api_key)
+    match(type: "development", force_for_new_devices: true, api_key: asc_api_key)
+  end
+end

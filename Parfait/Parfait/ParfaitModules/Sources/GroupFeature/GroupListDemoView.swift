@@ -34,7 +34,7 @@ public struct GroupListDemoView: View {
         _demoState = State(initialValue: demoState)
         _store = State(
             initialValue: GroupStore(
-                fetchGroupsUseCase: FetchGroupsUseCaseImpl(
+                groupUseCase: GroupUseCaseImpl(
                     groupRepository: DemoGroupRepository(demoState: demoState)
                 )
             )
@@ -49,7 +49,7 @@ public struct GroupListDemoView: View {
             // 목록과 같은 데모 저장소를 물려야 만든 그룹이 돌아온 목록에 보인다.
             makeCreateGroupStore: {
                 CreateGroupStore(
-                    createGroupUseCase: CreateGroupUseCaseImpl(
+                    groupUseCase: GroupUseCaseImpl(
                         groupRepository: DemoGroupRepository(demoState: demoState)
                     )
                 )
@@ -240,7 +240,7 @@ private struct DemoGroupRepository: GroupRepository {
     func join(inviteCode: String) async throws {}
 
     /// 만든 그룹을 데모 상태에 남겨, 목록으로 돌아왔을 때 실제로 늘어난 걸 볼 수 있게 한다.
-    func create(_ draft: GroupDraft) async throws -> ParfaitGroup {
+    func create(_ draft: GroupDraft) async throws {
         let now = Date()
         let group = ParfaitGroup(
             id: "demo-created-\(draft.name)-\(now.timeIntervalSince1970)",
@@ -251,7 +251,6 @@ private struct DemoGroupRepository: GroupRepository {
             lastActorNametagType: .type1
         )
         demoState.append(group)
-        return group
     }
 
     func fetchGroups() async throws -> [ParfaitGroup] {
@@ -273,5 +272,16 @@ private struct DemoGroupRepository: GroupRepository {
         // 정렬은 UseCase 가 맡으므로 여기서는 합치기만 한다.
         return demoState.makeCreatedGroups() + panelGroups
     }
+
+    // 사이드메뉴(S-101)는 이 데모의 관심사가 아니라 최소 스텁만 둔다.
+    func fetchDetail(groupID: String) async throws -> GroupDetail {
+        GroupDetail(id: groupID, name: Self.names[0], inviteCode: "DEMO12", memberLimit: 12, members: [])
+    }
+
+    func changeMyNickname(groupID: String, nickname: String) async throws {}
+
+    func leave(groupID: String) async throws {}
+
+    func report(groupID: String) async throws {}
 }
 #endif

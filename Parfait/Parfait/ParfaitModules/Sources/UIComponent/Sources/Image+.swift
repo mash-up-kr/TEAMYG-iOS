@@ -7,6 +7,7 @@ public extension Image {
     static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
+    static let imageOnboarding3 = Image("Image-Onboarding-3", bundle: .module)
     static let parfaitCherry = Image("Parfait-Cherry", bundle: .module)
     static let parfaitCreamBody = Image("Parfait-Cream-Body", bundle: .module)
     static let parfaitCreamTop = Image("Parfait-Cream-Top", bundle: .module)
@@ -48,6 +49,7 @@ public extension UIImage {
     static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
+    static var imageOnboarding3: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-3", bundle: .module)) }
     static var parfaitCherry: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cherry", bundle: .module)) }
     static var parfaitCreamBody: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Body", bundle: .module)) }
     static var parfaitCreamTop: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Top", bundle: .module)) }

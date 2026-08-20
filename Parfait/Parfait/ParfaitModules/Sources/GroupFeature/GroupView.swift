@@ -60,7 +60,7 @@ public struct GroupView: View {
             case .inviteCode:
                 InviteCodeView(store: makeInviteCodeStore())
             case .createGroup:
-                CreateGroupView(store: makeCreateGroupStore()) { _ in
+                CreateGroupView(store: makeCreateGroupStore()) {
                     // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.
                 }
             }
@@ -204,15 +204,12 @@ public struct GroupView: View {
 
 @MainActor
 private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
-    NavigationStack {
+    let groupUseCase = PreviewGroupUseCase(groups: groups)
+    return NavigationStack {
         GroupView(
-            store: GroupStore(fetchGroupsUseCase: PreviewFetchGroupsUseCase(groups: groups)),
-            makeInviteCodeStore: {
-                InviteCodeStore(joinGroupUseCase: PreviewJoinGroupUseCase(joinError: nil))
-            },
-            makeCreateGroupStore: {
-                CreateGroupStore(createGroupUseCase: PreviewCreateGroupUseCase())
-            }
+            store: GroupStore(groupUseCase: groupUseCase),
+            makeInviteCodeStore: { InviteCodeStore(groupUseCase: groupUseCase) },
+            makeCreateGroupStore: { CreateGroupStore(groupUseCase: groupUseCase) }
         )
     }
 }
@@ -221,16 +218,6 @@ private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
 #Preview("3건") { previewGroupView(Array([ParfaitGroup].previewSample.prefix(3))) }
 #Preview("0건 — 툴팁") { previewGroupView([]) }
 #Preview("조회 실패") { previewGroupView(nil) }
-
-/// 프리뷰 전용 스텁. `groups` 가 nil 이면 조회 실패를 흉내낸다.
-private struct PreviewFetchGroupsUseCase: FetchGroupsUseCase {
-    let groups: [ParfaitGroup]?
-
-    func fetchGroups() async throws -> [ParfaitGroup] {
-        guard let groups else { throw CocoaError(.coderValueNotFound) }
-        return groups
-    }
-}
 
 private extension [ParfaitGroup] {
     static var previewSample: [ParfaitGroup] {

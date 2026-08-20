@@ -11,6 +11,7 @@ public final class PreviewRouter: Router {
     public init() {}
     public func push(_ route: AppRoute) {}
     public func pop() {}
+    public func replaceStack(with route: AppRoute) {}
 }
 
 public extension Router where Self == PreviewRouter {
