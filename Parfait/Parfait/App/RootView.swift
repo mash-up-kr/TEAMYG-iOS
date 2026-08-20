@@ -80,10 +80,13 @@ struct RootView: View {
         case .group:
             GroupView(
                 store: diContainer.makeGroupStore(),
+                router: router,
                 makeInviteCodeStore: diContainer.makeInviteCodeStore,
                 makeCreateGroupStore: diContainer.makeCreateGroupStore
             )
         case .canvas:
+            // ponytail: 캔버스가 서버에 붙으면 `groupID` 를 넘겨 그 그룹의 파르페를 조회한다 (#77).
+            //           지금은 조립본의 의존성이 모두 스텁이라 어느 그룹이든 빈 캔버스가 뜬다.
             CanvasView(store: diContainer.makeCanvasStore())
         }
     }

@@ -7,6 +7,7 @@
 
 #if DEBUG
 import GroupDomain
+import Routing
 import SwiftUI
 import UIComponent
 
@@ -44,6 +45,8 @@ public struct GroupListDemoView: View {
     public var body: some View {
         GroupView(
             store: store,
+            // 데모는 캔버스로 나가지 않는다 — 이 화면의 관심사는 목록 배치 규칙이다.
+            router: .preview,
             makeInviteCodeStore: makeInviteCodeStore,
             // 앱 조립본을 쓰면 생성이 실제 스텁 저장소로 가서 데모 목록에 안 남는다.
             // 목록과 같은 데모 저장소를 물려야 만든 그룹이 돌아온 목록에 보인다.

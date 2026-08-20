@@ -7,5 +7,10 @@ public enum AppRoute: Hashable {
     /// 약관 동의 — 로그인이 `.signupRequired` 로 돌려준 가입 토큰을 들고 간다.
     case terms(registrationToken: String)
     case group
-    case canvas
+    /// 캔버스(C-001) — 어느 그룹의 파르페인지 들고 간다.
+    ///
+    /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id` 다.
+    /// 엔티티가 아니라 원시값으로 넘긴다 — Routing 이 GroupDomain 에 의존하지 않게 하려는 것이고,
+    /// 캔버스가 그룹에서 필요한 건 조회 키뿐이다.
+    case canvas(groupID: String)
 }

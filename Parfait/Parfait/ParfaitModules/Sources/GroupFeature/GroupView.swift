@@ -6,12 +6,15 @@
 //
 
 import GroupDomain
+import Routing
 import SwiftUI
 import UIComponent
 
 /// 그룹 목록 화면 (G-001). 소속 그룹을 파르페 위 토핑으로 지그재그 배치한다.
 public struct GroupView: View {
     @State private var store: GroupStore
+    /// 캔버스(C-001)로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
+    private let router: any Router
     private let makeInviteCodeStore: () -> InviteCodeStore
     private let makeCreateGroupStore: () -> CreateGroupStore
 
@@ -33,10 +36,12 @@ public struct GroupView: View {
 
     public init(
         store: GroupStore,
+        router: any Router,
         makeInviteCodeStore: @escaping () -> InviteCodeStore,
         makeCreateGroupStore: @escaping () -> CreateGroupStore
     ) {
         _store = State(initialValue: store)
+        self.router = router
         self.makeInviteCodeStore = makeInviteCodeStore
         self.makeCreateGroupStore = makeCreateGroupStore
     }
@@ -112,8 +117,8 @@ public struct GroupView: View {
 
     private func parfaitScroll(groups: [ParfaitGroup]) -> some View {
         scaledScroll { scale in
-            ParfaitSceneView(groups: groups, scale: scale) { _ in
-                // ponytail: 캔버스(C-001) 화면이 붙으면 해당 그룹으로 이동.
+            ParfaitSceneView(groups: groups, scale: scale) { group in
+                router.push(.canvas(groupID: group.id))
             }
         }
         // 툴팁은 바깥 아무 데나 눌러 닫는다 — 툴팁 자신은 위에 떠 있어 이 제스처를 가린다.
@@ -208,6 +213,7 @@ private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
     return NavigationStack {
         GroupView(
             store: GroupStore(groupUseCase: groupUseCase),
+            router: .preview,
             makeInviteCodeStore: { InviteCodeStore(groupUseCase: groupUseCase) },
             makeCreateGroupStore: { CreateGroupStore(groupUseCase: groupUseCase) }
         )
