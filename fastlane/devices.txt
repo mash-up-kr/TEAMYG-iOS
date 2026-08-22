@@ -1,3 +1,4 @@
 Device ID	Device Name
 # UDID<탭>기기이름 형식으로 아래에 추가 (이 줄과 첫 줄은 그대로 둘 것)
 # 예: 00008120-000A1B2C3D4E5F60	남수-iPhone17Pro
+00008110-00023D842E21801E	서연-iPhone13
