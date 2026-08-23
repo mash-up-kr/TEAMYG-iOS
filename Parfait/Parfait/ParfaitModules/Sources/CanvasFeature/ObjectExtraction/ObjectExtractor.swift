@@ -56,13 +56,26 @@ actor ObjectExtractor: ObjectExtracting {
             throw ObjectExtractionError.renderingFailed
         }
 
-        let cutout = try renderCutout(of: session.photo.image, maskBuffer: maskBuffer, in: cutoutRect)
-        let extractionCanvas = try renderExtractionCanvas(
-            cutout: cutout,
+        let canvas = try renderExtractionCanvas(
+            photo: session.photo.image,
+            maskBuffer: maskBuffer,
             cutoutRect: cutoutRect,
             canvasRect: canvasRect
         )
-        return ExtractedTopping(candidateID: candidateID, image: extractionCanvas)
+        guard let cutout = ToppingCutoutCompositor.composite(
+            photo: canvas.photo,
+            mask: canvas.mask,
+            context: renderContext
+        ) else {
+            throw ObjectExtractionError.renderingFailed
+        }
+
+        return ExtractedTopping(
+            candidateID: candidateID,
+            image: cutout,
+            photo: canvas.photo,
+            mask: canvas.mask
+        )
     }
 
     func reset() {
@@ -129,12 +142,23 @@ actor ObjectExtractor: ObjectExtracting {
         )
     }
 
-    private func renderCutout(
-        of sourceImage: CGImage,
+    /// 후보를 감싸는 여백 포함 영역. 사진 밖으로 나가는 부분은 결과물에서 투명 여백이 된다.
+    private func extractionCanvasRect(of boundingBox: CGRect) -> CGRect {
+        let margin = max(
+            min(boundingBox.width, boundingBox.height) * ObjectExtractionPolicy.safeMarginRatio,
+            ObjectExtractionPolicy.minimumSafeMargin
+        )
+        return boundingBox.insetBy(dx: -margin, dy: -margin)
+    }
+
+    /// 후보 하나를 추출 캔버스 크기로 옮겨 담는다. 원본 사진 크롭과 알파 마스크를 같은 좌표계로 맞춰 돌려준다.
+    private func renderExtractionCanvas(
+        photo: CGImage,
         maskBuffer: CVPixelBuffer,
-        in cutoutRect: CGRect
-    ) throws -> CGImage {
-        let source = CIImage(cgImage: sourceImage)
+        cutoutRect: CGRect,
+        canvasRect: CGRect
+    ) throws -> (photo: CGImage, mask: CGImage) {
+        let source = CIImage(cgImage: photo)
         let mask = CIImage(cvPixelBuffer: maskBuffer)
         guard mask.extent.width > 0, mask.extent.height > 0 else {
             throw ObjectExtractionError.renderingFailed
@@ -146,15 +170,8 @@ actor ObjectExtractor: ObjectExtracting {
                 y: source.extent.height / mask.extent.height
             )
         )
-        let cutoutImage = source.applyingFilter(
-            "CIBlendWithMask",
-            parameters: [
-                kCIInputBackgroundImageKey: CIImage.empty(),
-                kCIInputMaskImageKey: scaledMask
-            ]
-        )
 
-        // Core Image 는 요청한 영역만 렌더한다 — 원본 전체 크기 RGBA 비트맵을 만들지 않도록 잘라낼 영역만 넘긴다.
+        // Core Image 는 요청한 영역만 렌더한다 — 원본 전체 크기 비트맵을 만들지 않도록 잘라낼 영역만 넘긴다.
         // `cutoutRect` 는 좌상단 원점, CIImage 는 좌하단 원점이라 y 를 뒤집어 맞춘다.
         let renderRect = CGRect(
             x: cutoutRect.minX,
@@ -162,60 +179,40 @@ actor ObjectExtractor: ObjectExtracting {
             width: cutoutRect.width,
             height: cutoutRect.height
         )
-        guard let cutout = renderContext.createCGImage(cutoutImage, from: renderRect) else {
-            throw ObjectExtractionError.renderingFailed
-        }
-        return cutout
-    }
+        guard let photoCrop = renderContext.createCGImage(source, from: renderRect),
+              let maskCrop = renderContext.createCGImage(scaledMask, from: renderRect)
+        else { throw ObjectExtractionError.renderingFailed }
 
-    /// 후보를 감싸는 여백 포함 영역. 사진 밖으로 나가는 부분은 결과물에서 투명 여백이 된다.
-    private func extractionCanvasRect(of boundingBox: CGRect) -> CGRect {
-        let margin = max(
-            min(boundingBox.width, boundingBox.height) * ObjectExtractionPolicy.safeMarginRatio,
-            ObjectExtractionPolicy.minimumSafeMargin
-        )
-        return boundingBox.insetBy(dx: -margin, dy: -margin)
-    }
-
-    private func renderExtractionCanvas(
-        cutout: CGImage,
-        cutoutRect: CGRect,
-        canvasRect: CGRect
-    ) throws -> CGImage {
         let scale = min(
             1,
             ObjectExtractionPolicy.extractionCanvasLongEdge / max(canvasRect.width, canvasRect.height)
         )
-        let canvasWidth = max(1, Int((canvasRect.width * scale).rounded()))
-        let canvasHeight = max(1, Int((canvasRect.height * scale).rounded()))
+        let canvasSize = CGSize(
+            width: max(1, (canvasRect.width * scale).rounded()),
+            height: max(1, (canvasRect.height * scale).rounded())
+        )
+        let drawRect = CGRect(
+            x: (cutoutRect.minX - canvasRect.minX) * scale,
+            y: (canvasRect.maxY - cutoutRect.maxY) * scale,
+            width: cutoutRect.width * scale,
+            height: cutoutRect.height * scale
+        )
 
-        guard let context = CGContext(
-            data: nil,
-            width: canvasWidth,
-            height: canvasHeight,
-            bitsPerComponent: 8,
-            bytesPerRow: 0,
-            space: CGColorSpaceCreateDeviceRGB(),
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        guard let photoCanvas = ToppingCutoutCompositor.drawCanvas(
+            photoCrop,
+            in: drawRect,
+            canvasSize: canvasSize,
+            isMask: false
+        ), let maskCanvas = ToppingCutoutCompositor.drawCanvas(
+            maskCrop,
+            in: drawRect,
+            canvasSize: canvasSize,
+            isMask: true
         ) else {
             throw ObjectExtractionError.renderingFailed
         }
 
-        context.interpolationQuality = .high
-        context.draw(
-            cutout,
-            in: CGRect(
-                x: (cutoutRect.minX - canvasRect.minX) * scale,
-                y: (canvasRect.maxY - cutoutRect.maxY) * scale,
-                width: cutoutRect.width * scale,
-                height: cutoutRect.height * scale
-            )
-        )
-
-        guard let canvasImage = context.makeImage() else {
-            throw ObjectExtractionError.renderingFailed
-        }
-        return canvasImage
+        return (photoCanvas, maskCanvas)
     }
 
     private struct AnalysisSession {
