@@ -9,6 +9,8 @@ import SwiftUI
 import UIComponent
 
 struct ToppingAnalysisLoadingView: View {
+    let onCancelTap: () -> Void
+
     var body: some View {
         ZStack {
             Color.whiteFixed
@@ -29,7 +31,7 @@ struct ToppingAnalysisLoadingView: View {
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.close)
+            YGFloatingBar(.close, onClose: onCancelTap)
         }
     }
 }
