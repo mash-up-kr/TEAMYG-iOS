@@ -18,21 +18,26 @@ final class ToppingAddStore: MVIStore {
     private let cameraSession = CameraSession()
     private let objectExtractor: any ObjectExtracting
     private let borderRenderer = ToppingBorderRenderer()
+    private let maskRenderer = ToppingMaskRenderer()
+    /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
+    private var baseMask: CGImage?
     private var cameraSetupTask: Task<Void, Never>?
     private var cameraSwitchTask: Task<Void, Never>?
     private var photoCaptureTask: Task<Void, Never>?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
     private var borderRenderTask: Task<Void, Never>?
+    private var maskRenderTask: Task<Void, Never>?
     /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
     private var cameraGeneration = 0
 
     init(
         canvasDate: CalendarDate,
         photoSource: PhotoSource,
+        canvasContent: CanvasStore.CanvasContent? = nil,
         objectExtractor: any ObjectExtracting = ObjectExtractor()
     ) {
-        state = State(canvasDate: canvasDate, photoSource: photoSource)
+        state = State(canvasDate: canvasDate, photoSource: photoSource, canvasContent: canvasContent)
         self.objectExtractor = objectExtractor
     }
 
@@ -58,32 +63,17 @@ final class ToppingAddStore: MVIStore {
             handleAnalysisIntent(intent)
 
         case .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
-             .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderConfirmed:
+             .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderAreaTabTapped,
+             .borderConfirmed:
             handleBorderIntent(intent)
-        }
-    }
 
-    private func handleCameraIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            resumeCameraIfNeeded()
-        case .screenDisappeared:
-            cancelAnalysis()
-            suspendCamera()
-        case .sceneEnteredBackground:
-            suspendCamera()
-        case .cameraRetryTapped:
-            prepareCamera()
-        case .flashTapped:
-            state.flashMode = state.flashMode.toggled
-        case .cameraPositionTapped:
-            switchCamera()
-        case .shutterTapped(let viewFinderRegion):
-            capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            retakePhoto()
-        default:
-            break
+        case .brushModeSelected, .brushDiameterChanged, .brushStrokeEnded, .maskUndoTapped,
+             .maskRedoTapped, .manualCutoutClosed, .manualCutoutConfirmed:
+            handleManualCutoutIntent(intent)
+
+        case .placementCanvasResized, .placementMoved, .placementScaled, .placementRotated,
+             .placementClosed, .placementConfirmed:
+            handlePlacementIntent(intent)
         }
     }
 
@@ -99,31 +89,78 @@ final class ToppingAddStore: MVIStore {
             extractCandidate(at: normalizedPoint)
         case .candidateSelectionBackTapped, .analysisErrorClosed:
             returnToPhotoConfirm()
-        case .cutoutResultClosed:
-            releaseExtractedTopping()
-            state.screen = .candidateSelection
-        case .cutoutConfirmed:
-            guard state.extractedTopping != nil else { break }
-            state.screen = .borderEdit
-            renderBorderSilhouette()
-        case .photoEditTapped:
-            break
         default:
-            break
+            handleCutoutResultIntent(intent)
         }
     }
 
     private func handleBorderIntent(_ intent: Intent) {
         switch intent {
         case .borderEditClosed:
+            guard state.cutoutPath == .automatic else {
+                state.screen = .manualCutout
+                break
+            }
             releaseExtractedTopping()
             state.screen = .candidateSelection
+        case .borderAreaTabTapped:
+            guard state.extractedTopping != nil else { break }
+            state.cutoutPath = .manual
+            state.screen = .manualCutout
         case .borderConfirmed:
-            break
+            guard let extractedTopping = state.extractedTopping else { break }
+            state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.screen = .placement
         default:
             if state.borderEditor.apply(intent) {
                 renderBorderSilhouette()
             }
+        }
+    }
+
+    private func handleManualCutoutIntent(_ intent: Intent) {
+        switch intent {
+        case .manualCutoutClosed:
+            state.screen = .candidateSelection
+        case .manualCutoutConfirmed:
+            state.screen = .borderEdit
+            renderBorderSilhouette()
+        default:
+            if state.maskEditor.apply(intent) {
+                renderMask()
+            }
+        }
+    }
+
+    private func renderMask() {
+        maskRenderTask?.cancel()
+        guard let topping = state.extractedTopping, let baseMask else { return }
+
+        let strokes = state.maskEditor.strokes
+        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
+            let cutout = await maskRenderer.cutout(
+                photo: topping.photo,
+                baseMask: baseMask,
+                strokes: strokes
+            )
+            guard !Task.isCancelled, let self, let cutout else { return }
+
+            state.extractedTopping = topping.replacingCutout(image: cutout.image, mask: cutout.mask)
+            // 실루엣 캐시는 후보 ID 로만 구분한다 — 마스크가 바뀌면 통째로 버려야 한다.
+            await borderRenderer.reset()
+        }
+    }
+
+    /// 저장 파이프라인(`docs/worklog/topping/topping_cutout_progress.md` §2.2)이 붙기 전이라
+    /// 배치 확정은 아직 화면 이탈만 하고 서버에 올리지 않는다.
+    private func handlePlacementIntent(_ intent: Intent) {
+        switch intent {
+        case .placementClosed:
+            state.screen = .borderEdit
+        case .placementConfirmed:
+            break
+        default:
+            state.placementEditor.apply(intent)
         }
     }
 
@@ -143,8 +180,13 @@ final class ToppingAddStore: MVIStore {
 
     private func releaseExtractedTopping() {
         borderRenderTask?.cancel()
+        maskRenderTask?.cancel()
+        baseMask = nil
         state.extractedTopping = nil
         state.borderSilhouette = nil
+        state.maskEditor.reset()
+        state.placementEditor.reset()
+        state.cutoutPath = .automatic
     }
 
     private func resetToppingDraft() {
@@ -198,6 +240,12 @@ final class ToppingAddStore: MVIStore {
               let candidate = state.analysis?.candidate(at: normalizedPoint)
         else { return }
 
+        // 같은 후보를 다시 고르면 수동 마스크 초안이 살아 있어야 한다 (`topping_ui.md` §6.4).
+        guard state.extractedTopping?.candidateID != candidate.id else {
+            state.screen = .cutoutResult
+            return
+        }
+
         analysisTask?.cancel()
         releaseExtractedTopping()
         state.screen = .analysisLoading
@@ -206,6 +254,7 @@ final class ToppingAddStore: MVIStore {
             do {
                 let topping = try await objectExtractor.extractTopping(candidateID: candidate.id)
                 guard let self, !Task.isCancelled else { return }
+                baseMask = topping.mask
                 state.extractedTopping = topping
                 state.screen = .cutoutResult
             } catch is CancellationError {
@@ -229,6 +278,54 @@ final class ToppingAddStore: MVIStore {
         resetToppingDraft()
         extractorResetTask = Task { [objectExtractor] in
             await objectExtractor.reset()
+        }
+    }
+}
+
+/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
+private extension ToppingAddStore {
+    private func handleCutoutResultIntent(_ intent: Intent) {
+        switch intent {
+        case .cutoutResultClosed:
+            releaseExtractedTopping()
+            state.screen = .candidateSelection
+        case .cutoutConfirmed:
+            guard state.extractedTopping != nil else { break }
+            state.screen = .borderEdit
+            renderBorderSilhouette()
+        case .photoEditTapped:
+            guard state.extractedTopping != nil else { break }
+            state.cutoutPath = .manual
+            state.screen = .manualCutout
+        default:
+            break
+        }
+    }
+}
+
+/// 카메라 세션 켜기·끄기와 촬영. `cameraGeneration` 으로 뒤늦게 도착한 옛 요청을 걸러낸다.
+private extension ToppingAddStore {
+    private func handleCameraIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            resumeCameraIfNeeded()
+        case .screenDisappeared:
+            cancelAnalysis()
+            suspendCamera()
+        case .sceneEnteredBackground:
+            suspendCamera()
+        case .cameraRetryTapped:
+            prepareCamera()
+        case .flashTapped:
+            state.flashMode = state.flashMode.toggled
+        case .cameraPositionTapped:
+            switchCamera()
+        case .shutterTapped(let viewFinderRegion):
+            capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            retakePhoto()
+        default:
+            break
         }
     }
 
