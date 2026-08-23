@@ -24,14 +24,8 @@ public struct GroupRepositoryImpl: GroupRepository {
     ///
     /// 서버가 준 순서를 그대로 올린다 — 정렬은 UseCase 가 맡는다.
     public func fetchGroups() async throws -> [ParfaitGroup] {
-        do {
-            let groups: [MyParfaitGroupDTO] = try await networkClient.request(FetchGroupsEndpoint())
-            return groups.map { $0.toEntity() }
-        } catch {
-            // 취소는 실패가 아니다 — `create(_:)` 와 같은 이유로 에러 타입 대신 Task 상태를 본다.
-            if Task.isCancelled { throw CancellationError() }
-            throw error
-        }
+        let groups: [MyParfaitGroupDTO] = try await request(FetchGroupsEndpoint())
+        return groups.map { $0.toEntity() }
     }
 
     /// 그룹 생성 (`POST /api/parfait-groups`).
@@ -41,14 +35,12 @@ public struct GroupRepositoryImpl: GroupRepository {
     /// 안 읽는 필드 때문에 디코딩이 깨질 수 있어, 형태를 보지 않는 `EmptyDTO` 로 받는다.
     public func create(_ draft: GroupDraft) async throws {
         do {
-            let _: EmptyDTO = try await networkClient.request(
-                CreateGroupEndpoint(draft: draft)
-            )
-        } catch {
-            // 취소는 실패가 아니다. 여기서 CreateGroupError 로 바꿔 버리면 호출부의
+            let _: EmptyDTO = try await request(CreateGroupEndpoint(draft: draft))
+        } catch is CancellationError {
+            // 취소는 실패가 아니다. CreateGroupError 로 바꿔 버리면 호출부의
             // `catch is CancellationError` 를 못 타고 실패 알럿 경로로 빠진다.
-            // (Alamofire 는 취소를 AFError 로 감싸 던지므로 에러 타입 대신 Task 상태를 본다)
-            if Task.isCancelled { throw CancellationError() }
+            throw CancellationError()
+        } catch {
             throw Self.createError(from: error)
         }
     }
@@ -70,43 +62,55 @@ public struct GroupRepositoryImpl: GroupRepository {
         return .server(message: message)
     }
 
-    // ponytail: 그룹 상세 API 스펙 미정 — 확정 시 URLSession 호출 + DTO→GroupDetail 매핑으로 교체.
-    //           지금은 사이드메뉴(S-101)를 붙여보기 위한 고정 스텁이다 (디자인 시안과 같은 11/12명 구성).
+    /// 그룹 상세 (`GET /api/parfait-groups/{groupId}`) — 사이드메뉴(S-101)가 그리는 단위.
     public func fetchDetail(groupID: String) async throws -> GroupDetail {
-        GroupDetail(
-            id: groupID,
-            name: "그룹이름",
-            inviteCode: "WDIDCJ",
-            memberLimit: 12,
-            members: Self.stubMembers
-        )
+        let detail: GroupDetailDTO = try await request(GroupDetailEndpoint(groupID: groupID))
+        return detail.toEntity()
     }
 
+    /// 그룹 속 내 닉네임 변경 (`PATCH /api/parfait-groups/{groupId}/nickname`).
+    ///
+    /// 응답(`groupId`·`groupNickname`)은 방금 보낸 값이라 버린다 — 화면은 제출한 닉네임으로 갱신한다.
     public func changeMyNickname(groupID: String, nickname: String) async throws {
-        // ponytail: 닉네임 변경 API 스펙 미정 — 확정 시 URLSession 호출 + 에러 응답→ChangeGroupNicknameError 매핑 채움.
-        print("그룹 닉네임 변경 스텁: groupID=\(groupID) length=\(nickname.count)")
-    }
-
-    public func leave(groupID: String) async throws {
-        // ponytail: 그룹 나가기 API 스펙 미정 — 확정 시 URLSession 호출 채움.
-        print("그룹 나가기 스텁: groupID=\(groupID)")
-    }
-
-    public func report(groupID: String) async throws {
-        // ponytail: 그룹 신고 API 스펙 미정 — 확정 시 URLSession 호출 채움. (접수 시 서버가 탈퇴까지 처리)
-        print("그룹 신고 스텁: groupID=\(groupID)")
-    }
-
-    private static let stubMembers: [GroupMember] = {
-        let others = (1...10).map { index in
-            GroupMember(
-                id: "stub-member-\(index)",
-                nickname: "아니야나그런데기니야기니라니까",
-                nametagType: NametagType.allCases[index % NametagType.allCases.count],
-                isMe: false
+        do {
+            let _: EmptyDTO = try await request(
+                ChangeGroupNicknameEndpoint(groupID: groupID, nickname: nickname)
             )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            // 사유를 나눠 봐야 쓸 곳이 없다 — 닉네임 규칙은 화면·UseCase 가 두 겹으로 먼저 막고,
+            // 그 뒤 실패의 안내 문구는 디자인 미정이라 View 가 어느 사유든 같게 다룬다.
+            throw ChangeGroupNicknameError.unknown
         }
-        return [GroupMember(id: "stub-member-me", nickname: "잠탈전용닉네임2", nametagType: .type4, isMe: true)] + others
-    }()
+    }
 
+    /// 그룹 나가기 (`DELETE /api/parfait-groups/{groupId}/members/me`).
+    /// 응답(`groupId`)은 방금 나간 그룹이라 버린다.
+    public func leave(groupID: String) async throws {
+        let _: EmptyDTO = try await request(LeaveGroupEndpoint(groupID: groupID))
+    }
+
+    /// 그룹 신고 (`POST /api/parfait-groups/{groupId}/reports`).
+    /// 접수되면 서버가 탈퇴까지 처리한다 — 별도의 `leave` 호출이 필요 없다.
+    /// 응답(`reportId`)은 화면에 쓰지 않아 버린다.
+    public func report(groupID: String) async throws {
+        let _: EmptyDTO = try await request(ReportGroupEndpoint(groupID: groupID))
+    }
+}
+
+private extension GroupRepositoryImpl {
+    /// 취소를 `CancellationError` 로 되돌려 주는 요청 래퍼.
+    ///
+    /// Alamofire 는 취소를 `AFError` 로 감싸 던져서, 그대로 올리면 Store 의
+    /// `catch is CancellationError` 를 못 타고 실패 경로(에러 화면·실패 토스트)로 빠진다.
+    /// 화면 이탈로 취소된 요청은 실패가 아니므로 에러 타입 대신 Task 상태를 보고 갈아끼운다.
+    func request<Response: Decodable & Sendable>(_ endpoint: some Endpoint) async throws -> Response {
+        do {
+            return try await networkClient.request(endpoint)
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw error
+        }
+    }
 }

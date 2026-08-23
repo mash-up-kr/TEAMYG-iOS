@@ -10,11 +10,14 @@ public struct GroupMember: Sendable, Identifiable, Hashable {
     public let id: String
     public let nickname: String
     /// 프로필 이미지(Nametag-Chip) 색 계열 — 계정 생성 시 1회 배정, 불변.
-    public let nametagType: NametagType
+    ///
+    /// 색을 모를 때는 nil 이다 (서버가 색 없는 코드를 내려준 경우). `ParfaitGroup` 의
+    /// `lastActorNametagType` 과 같은 규칙이고, UI 가 기본 계열 색으로 그린다.
+    public let nametagType: NametagType?
     /// 조회한 본인인지. 목록 맨 위 "(나)" 표기·닉네임 강조의 기준.
     public let isMe: Bool
 
-    public init(id: String, nickname: String, nametagType: NametagType, isMe: Bool) {
+    public init(id: String, nickname: String, nametagType: NametagType?, isMe: Bool) {
         self.id = id
         self.nickname = nickname
         self.nametagType = nametagType
