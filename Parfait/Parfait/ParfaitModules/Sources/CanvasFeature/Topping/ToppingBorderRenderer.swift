@@ -11,7 +11,9 @@ import CoreImage
 actor ToppingBorderRenderer {
     private struct CacheKey: Hashable {
         let candidateID: Int
-        let width: Int
+        let widthPerMyriad: Int
+
+        var width: Double { Double(widthPerMyriad) / 10_000 }
     }
 
     private static let previewLongEdge: CGFloat = 1200
@@ -20,7 +22,10 @@ actor ToppingBorderRenderer {
     private var cache: [CacheKey: CGImage] = [:]
 
     func silhouette(of topping: ExtractedTopping, width: Double) -> CGImage? {
-        let key = CacheKey(candidateID: topping.candidateID, width: Int(width.rounded()))
+        let key = CacheKey(
+            candidateID: topping.candidateID,
+            widthPerMyriad: Int((width * 10_000).rounded())
+        )
         if let cached = cache[key] {
             return cached
         }
@@ -28,9 +33,10 @@ actor ToppingBorderRenderer {
         let source = CIImage(cgImage: topping.image)
         let scale = min(1, Self.previewLongEdge / max(source.extent.width, source.extent.height))
         let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let longEdge = max(scaled.extent.width, scaled.extent.height)
         let dilated = scaled.applyingFilter(
             "CIMorphologyMaximum",
-            parameters: [kCIInputRadiusKey: Double(key.width) * scale]
+            parameters: [kCIInputRadiusKey: key.width * longEdge]
         )
 
         guard let rendered = context.createCGImage(dilated, from: scaled.extent) else { return nil }

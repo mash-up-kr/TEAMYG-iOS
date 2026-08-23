@@ -49,8 +49,8 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
 }
 
 struct ToppingBorder: Equatable, Sendable {
-    static let widthRange: ClosedRange<Double> = 2...50
-    static let defaultWidth: Double = 24
+    static let widthRange: ClosedRange<Double> = 0.005...0.05
+    static let defaultWidth: Double = 0.02
 
     var color: ToppingBorderColor = .none
     var width: Double = ToppingBorder.defaultWidth
