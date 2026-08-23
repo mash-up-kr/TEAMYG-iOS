@@ -13,6 +13,9 @@ actor CameraSession {
 
     private let captureSession = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
+    private let videoDataOutput = AVCaptureVideoDataOutput()
+    private let previewFrameReceiver = CameraPreviewFrameReceiver()
+    private let previewFrameQueue = DispatchQueue(label: "com.parfait.camera.preview-frame")
     private var videoInput: AVCaptureDeviceInput?
     private var cameraPosition: CameraPosition = .back
     private var photoCaptureDelegate: CameraPhotoCaptureDelegate?
@@ -44,16 +47,20 @@ actor CameraSession {
     }
 
     func stop(generation: Int) {
-        guard acceptsRequest(generation), captureSession.isRunning else { return }
-        captureSession.stopRunning()
+        guard acceptsRequest(generation) else { return }
+        if captureSession.isRunning {
+            captureSession.stopRunning()
+        }
+        previewFrameReceiver.pauseAndClear()
+        cancelPendingPhotoCapture()
     }
 
     func switchCamera() -> CameraPosition? {
         guard isConfigured else { return nil }
 
         let nextPosition = cameraPosition.flipped
+        previewFrameReceiver.pauseAndClear()
         captureSession.beginConfiguration()
-        defer { captureSession.commitConfiguration() }
 
         if let videoInput {
             captureSession.removeInput(videoInput)
@@ -61,28 +68,42 @@ actor CameraSession {
 
         guard let nextInput = makeVideoInput(position: nextPosition), captureSession.canAddInput(nextInput) else {
             restorePreviousInput()
+            captureSession.commitConfiguration()
+            if let device = videoInput?.device {
+                updateRotationCoordinator(for: device)
+            }
             return nil
         }
 
         captureSession.addInput(nextInput)
+        applyMaxPhotoDimensions(for: nextInput.device)
         videoInput = nextInput
         cameraPosition = nextPosition
+        captureSession.commitConfiguration()
         updateRotationCoordinator(for: nextInput.device)
         return nextPosition
+    }
+
+    func latestPreviewFrame() -> CameraPreviewFrame? {
+        previewFrameReceiver.latestFrame()
     }
 
     func capturePhoto(flashMode requestedFlashMode: CameraFlashMode) async -> Data? {
         guard photoCaptureDelegate == nil else { return nil }
 
         let settings = makePhotoSettings(flashMode: requestedFlashMode)
-        return await withCheckedContinuation { continuation in
-            let delegate = CameraPhotoCaptureDelegate { [weak self] photoData in
-                continuation.resume(returning: photoData)
-                Task { await self?.clearPhotoCaptureDelegate() }
-            }
-            photoCaptureDelegate = delegate
-            photoOutput.capturePhoto(with: settings, delegate: delegate)
+        let captureDelegate = CameraPhotoCaptureDelegate()
+        photoCaptureDelegate = captureDelegate
+
+        let photoData = await withCheckedContinuation { continuation in
+            captureDelegate.setCompletion { continuation.resume(returning: $0) }
+            photoOutput.capturePhoto(with: settings, delegate: captureDelegate)
         }
+
+        if photoCaptureDelegate === captureDelegate {
+            photoCaptureDelegate = nil
+        }
+        return photoData
     }
 
     private func acceptsRequest(_ generation: Int) -> Bool {
@@ -93,6 +114,8 @@ actor CameraSession {
 
     private func makePhotoSettings(flashMode requestedFlashMode: CameraFlashMode) -> AVCapturePhotoSettings {
         let settings = AVCapturePhotoSettings()
+        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
+        settings.photoQualityPrioritization = .speed
         if photoOutput.supportedFlashModes.contains(requestedFlashMode.avFoundationMode) {
             settings.flashMode = requestedFlashMode.avFoundationMode
         }
@@ -111,13 +134,25 @@ actor CameraSession {
 
         guard let input = makeVideoInput(position: position),
               captureSession.canAddInput(input),
-              captureSession.canAddOutput(photoOutput) else { return false }
+              captureSession.canAddOutput(photoOutput),
+              captureSession.canAddOutput(videoDataOutput) else { return false }
 
+        configureVideoDataOutput()
         captureSession.addInput(input)
         captureSession.addOutput(photoOutput)
+        captureSession.addOutput(videoDataOutput)
+        applyMaxPhotoDimensions(for: input.device)
         videoInput = input
         isConfigured = true
         return true
+    }
+
+    private func applyMaxPhotoDimensions(for device: AVCaptureDevice) {
+        let largestDimensions = device.activeFormat.supportedMaxPhotoDimensions.max {
+            Int($0.width) * Int($0.height) < Int($1.width) * Int($1.height)
+        }
+        guard let largestDimensions else { return }
+        photoOutput.maxPhotoDimensions = largestDimensions
     }
 
     private func makeVideoInput(position: CameraPosition) -> AVCaptureDeviceInput? {
@@ -129,25 +164,33 @@ actor CameraSession {
         return try? AVCaptureDeviceInput(device: device)
     }
 
+    private func configureVideoDataOutput() {
+        videoDataOutput.alwaysDiscardsLateVideoFrames = true
+        videoDataOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+        videoDataOutput.setSampleBufferDelegate(previewFrameReceiver, queue: previewFrameQueue)
+    }
+
     private func updateRotationCoordinator(for device: AVCaptureDevice) {
         let previewLayer = captureSession.connections.compactMap(\.videoPreviewLayer).first
         let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: previewLayer)
         rotationCoordinator = coordinator
         rotationObservers.removeAll()
 
-        updatePreviewRotation(coordinator.videoRotationAngleForHorizonLevelPreview)
-        updateCaptureRotation(coordinator.videoRotationAngleForHorizonLevelCapture)
+        applyRotationAngle(coordinator.videoRotationAngleForHorizonLevelPreview)
 
         rotationObservers = [
             coordinator.observe(\.videoRotationAngleForHorizonLevelPreview, options: .new) { [weak self] _, change in
                 guard let self, let rotationAngle = change.newValue else { return }
-                Task { await self.updatePreviewRotation(rotationAngle) }
-            },
-            coordinator.observe(\.videoRotationAngleForHorizonLevelCapture, options: .new) { [weak self] _, change in
-                guard let self, let rotationAngle = change.newValue else { return }
-                Task { await self.updateCaptureRotation(rotationAngle) }
+                Task { await self.applyRotationAngle(rotationAngle) }
             }
         ]
+    }
+
+    private func applyRotationAngle(_ rotationAngle: CGFloat) {
+        updatePreviewRotation(rotationAngle)
+        updateCaptureRotation(rotationAngle)
     }
 
     private func updatePreviewRotation(_ rotationAngle: CGFloat) {
@@ -158,12 +201,28 @@ actor CameraSession {
     }
 
     private func updateCaptureRotation(_ rotationAngle: CGFloat) {
-        guard let connection = photoOutput.connection(with: .video),
-              connection.isVideoRotationAngleSupported(rotationAngle) else { return }
-        connection.videoRotationAngle = rotationAngle
+        previewFrameReceiver.pauseAndClear()
+        defer { previewFrameReceiver.resume() }
+
+        guard let photoConnection = photoOutput.connection(with: .video) else { return }
+        if photoConnection.isVideoRotationAngleSupported(rotationAngle) {
+            photoConnection.videoRotationAngle = rotationAngle
+        }
+
+        if let videoConnection = videoDataOutput.connection(with: .video) {
+            if videoConnection.isVideoRotationAngleSupported(rotationAngle) {
+                videoConnection.videoRotationAngle = rotationAngle
+            }
+            if videoConnection.isVideoMirroringSupported {
+                videoConnection.automaticallyAdjustsVideoMirroring = false
+                videoConnection.isVideoMirrored = photoConnection.isVideoMirrored
+            }
+        }
     }
 
-    private func clearPhotoCaptureDelegate() {
+    private func cancelPendingPhotoCapture() {
+        guard let pendingDelegate = photoCaptureDelegate else { return }
         photoCaptureDelegate = nil
+        pendingDelegate.cancel()
     }
 }

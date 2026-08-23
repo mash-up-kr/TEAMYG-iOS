@@ -6,6 +6,15 @@
 //
 
 import AVFoundation
+import CoreGraphics
+
+struct CameraPreviewFrame: Equatable, @unchecked Sendable {
+    let image: CGImage
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.image === rhs.image
+    }
+}
 
 enum CameraFlashMode: Equatable, Sendable {
     case off

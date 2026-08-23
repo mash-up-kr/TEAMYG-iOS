@@ -12,8 +12,12 @@ final class CameraPhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate,
     private let completionLock = NSLock()
     private var completion: (@Sendable (Data?) -> Void)?
 
-    init(completion: @escaping @Sendable (Data?) -> Void) {
-        self.completion = completion
+    func setCompletion(_ completion: @escaping @Sendable (Data?) -> Void) {
+        completionLock.withLock { self.completion = completion }
+    }
+
+    func cancel() {
+        finish(with: nil)
     }
 
     func photoOutput(
