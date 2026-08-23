@@ -152,6 +152,24 @@ struct ToppingAddFlowView: View {
                 )
             }
 
+        case .borderEdit:
+            if let extractedTopping = store.state.extractedTopping {
+                ToppingBorderEditView(
+                    topping: extractedTopping,
+                    silhouette: store.state.borderSilhouette?.image,
+                    border: store.state.borderEditor.border,
+                    canUndo: store.state.borderEditor.canUndo,
+                    canRedo: store.state.borderEditor.canRedo,
+                    onUndoTap: { store.send(.borderUndoTapped) },
+                    onRedoTap: { store.send(.borderRedoTapped) },
+                    onWidthChange: { store.send(.borderWidthChanged($0)) },
+                    onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
+                    onColorSelect: { store.send(.borderColorSelected($0)) },
+                    onCloseTap: { store.send(.borderEditClosed) },
+                    onConfirmTap: { store.send(.borderConfirmed) }
+                )
+            }
+
         default:
             EmptyView()
         }

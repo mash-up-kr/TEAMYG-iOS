@@ -21,6 +21,8 @@ extension ToppingAddStore {
         var galleryAssetIdentifier: String?
         var analysis: PhotoAnalysis?
         var extractedTopping: ExtractedTopping?
+        var borderEditor = ToppingBorderEditor()
+        var borderSilhouette: BorderSilhouette?
         var showsToast = true
         var isSwitchingCamera = false
 
@@ -90,6 +92,13 @@ extension ToppingAddStore {
         case cutoutResultClosed
         case photoEditTapped
         case cutoutConfirmed
+        case borderWidthChanged(Double)
+        case borderWidthEditingChanged(Bool)
+        case borderColorSelected(ToppingBorderColor)
+        case borderUndoTapped
+        case borderRedoTapped
+        case borderEditClosed
+        case borderConfirmed
     }
 
     enum PhotoSource: Equatable, Sendable {
@@ -121,6 +130,7 @@ extension ToppingAddStore {
         case analysisError
         case candidateSelection
         case cutoutResult
+        case borderEdit
 
         var isCameraError: Bool {
             self == .cameraPermissionError || self == .cameraUnavailable
@@ -132,7 +142,7 @@ extension ToppingAddStore {
 
         var isAnalysisScreen: Bool {
             switch self {
-            case .analysisLoading, .analysisError, .candidateSelection, .cutoutResult: true
+            case .analysisLoading, .analysisError, .candidateSelection, .cutoutResult, .borderEdit: true
             default: false
             }
         }
