@@ -43,7 +43,7 @@ public actor RecentUploadsRepositoryImpl: RecentUploadsRepository {
             .sorted { $0.createdAt > $1.createdAt }
             .prefix(limit)
             .compactMap { fileURL, createdAt in
-                guard let imageData = try? Data(contentsOf: fileURL) else { return nil }
+                guard let imageData = try? Data(contentsOf: fileURL, options: .mappedIfSafe) else { return nil }
                 return makeStoredImage(
                     id: fileURL.lastPathComponent,
                     imageData: imageData,

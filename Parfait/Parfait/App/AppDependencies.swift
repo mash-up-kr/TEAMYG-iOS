@@ -7,6 +7,7 @@
 
 import AuthData
 import AuthDomain
+import CanvasData
 import CanvasDomain
 import CanvasFeature
 import Core
@@ -109,6 +110,17 @@ struct AppDependencies {
                 loadRecordedDates: { _ in [] },
                 loadRecordedYears: { [] }
             )
+        )
+    }
+
+    func makeAlbumPickerStore(
+        isLimited: Bool,
+        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+    ) -> AlbumPickerStore {
+        AlbumPickerStore(
+            isLimited: isLimited,
+            recentUploadsRepository: RecentUploadsRepositoryImpl(),
+            onPhotoConfirmed: onPhotoConfirmed
         )
     }
 }

@@ -5,6 +5,7 @@
 //  Created by 김남수 on 8/1/26.
 //
 
+import CanvasDomain
 import Photos
 import SwiftUI
 import UIComponent
@@ -42,14 +43,9 @@ struct PhotoConfirmView: View {
                 } action: { newSize in
                     imageAreaSize = newSize
                 }
-                // 최근 업로드(asset 없음)는 썸네일이 곧 원본이라 후속 로드가 없다.
                 .task(id: imageAreaSize) {
-                    guard let asset = photo.asset, imageAreaSize != .zero else { return }
-                    let targetSize = CGSize(
-                        width: imageAreaSize.width * displayScale,
-                        height: imageAreaSize.height * displayScale
-                    )
-                    fullImage = await asset.requestImage(targetSize: targetSize)
+                    guard imageAreaSize != .zero else { return }
+                    fullImage = await loadFullImage()
                 }
 
             HStack(spacing: .gap4) {
@@ -63,12 +59,26 @@ struct PhotoConfirmView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.whiteFixed.ignoresSafeArea())
     }
+
+    private func loadFullImage() async -> UIImage? {
+        if let asset = photo.asset {
+            let targetSize = CGSize(
+                width: imageAreaSize.width * displayScale,
+                height: imageAreaSize.height * displayScale
+            )
+            return await asset.requestImage(targetSize: targetSize)
+        }
+        guard let upload = photo.upload else { return nil }
+        return await upload.downsampledImage(
+            maxPixelSize: imageAreaSize.longEdgePixelSize(scale: displayScale)
+        )
+    }
 }
 
 #Preview {
     @Previewable @Namespace var zoomNamespace
     PhotoConfirmView(
-        photo: .init(id: "preview", asset: nil, thumbnail: nil),
+        photo: .init(id: "preview", asset: nil, upload: nil, thumbnail: nil),
         zoomNamespace: zoomNamespace,
         onReselect: {},
         onNext: {}

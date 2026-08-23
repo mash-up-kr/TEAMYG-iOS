@@ -12,8 +12,11 @@ public struct CanvasView: View {
     @State private var store: CanvasStore
     @Environment(\.dismiss) private var dismiss
 
-    public init(store: CanvasStore) {
+    private let makeAlbumPickerStore: AlbumPickerStoreFactory
+
+    public init(store: CanvasStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
         _store = State(initialValue: store)
+        self.makeAlbumPickerStore = makeAlbumPickerStore
     }
 
     public var body: some View {
@@ -43,9 +46,21 @@ public struct CanvasView: View {
         .navigationDestination(item: toppingAddSourceBinding) { source in
             switch source {
             case .camera(let canvasDate):
-                ToppingAddFlowView(store: ToppingAddStore(canvasDate: canvasDate))
+                toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
+            case .gallery(let canvasDate):
+                toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
             }
         }
+    }
+
+    private func toppingAddFlow(
+        canvasDate: CalendarDate,
+        photoSource: ToppingAddStore.PhotoSource
+    ) -> some View {
+        ToppingAddFlowView(
+            store: ToppingAddStore(canvasDate: canvasDate, photoSource: photoSource),
+            makeAlbumPickerStore: makeAlbumPickerStore
+        )
     }
 
     private var toppingAddSourceBinding: Binding<CanvasStore.ToppingAddSource?> {
@@ -76,7 +91,14 @@ public struct CanvasView: View {
                     loadRecordedDates: { _ in [] },
                     loadRecordedYears: { [] }
                 )
-            )
+            ),
+            makeAlbumPickerStore: { isLimited, onPhotoConfirmed in
+                AlbumPickerStore(
+                    isLimited: isLimited,
+                    recentUploadsRepository: PreviewRecentUploadsRepository(),
+                    onPhotoConfirmed: onPhotoConfirmed
+                )
+            }
         )
     }
 }
@@ -109,7 +131,14 @@ public struct CanvasView: View {
                     loadRecordedDates: { _ in [] },
                     loadRecordedYears: { [] }
                 )
-            )
+            ),
+            makeAlbumPickerStore: { isLimited, onPhotoConfirmed in
+                AlbumPickerStore(
+                    isLimited: isLimited,
+                    recentUploadsRepository: PreviewRecentUploadsRepository(),
+                    onPhotoConfirmed: onPhotoConfirmed
+                )
+            }
         )
     }
 }

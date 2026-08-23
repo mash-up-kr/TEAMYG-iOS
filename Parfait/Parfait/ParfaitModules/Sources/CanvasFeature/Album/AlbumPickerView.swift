@@ -136,7 +136,7 @@ public struct AlbumPickerView: View {
     }
 }
 
-/// 최근 업로드 셀 — 저장소가 넘긴 Data 를 UIImage 로 표시 (파일 IO 없음).
+/// 최근 업로드 셀 — 저장소가 넘긴 Data 를 실제 셀 크기(포인트) × 스케일 픽셀로 축소 디코딩해 표시.
 private struct RecentUploadCell: View {
     let upload: StoredImage
     let zoomNamespace: Namespace.ID
@@ -145,6 +145,8 @@ private struct RecentUploadCell: View {
     let onTap: (UIImage?) -> Void
 
     @State private var image: UIImage?
+    @State private var cellSize = CGSize.zero
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         Button {
@@ -163,8 +165,16 @@ private struct RecentUploadCell: View {
                 .matchedGeometryEffect(id: upload.zoomIdentifier, in: zoomNamespace, isSource: isZoomSource)
         }
         .buttonStyle(.plain)
-        .task(id: upload.id) {
-            image = UIImage(data: upload.imageData)
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { newSize in
+            cellSize = newSize
+        }
+        .task(id: cellSize) {
+            guard cellSize != .zero else { return }
+            image = await upload.downsampledImage(
+                maxPixelSize: cellSize.longEdgePixelSize(scale: displayScale)
+            )
         }
     }
 }
@@ -218,6 +228,16 @@ private struct PhotoAssetCell: View {
     }
 }
 
+extension StoredImage {
+    func downsampledImage(maxPixelSize: Int) async -> UIImage? {
+        let imageData = imageData
+        let decodedImage = await Task.detached(priority: .userInitiated) {
+            ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+        }.value
+        return decodedImage.map { UIImage(cgImage: $0) }
+    }
+}
+
 extension PHAsset {
     /// 셀·확인 화면 공용 이미지 요청.
     /// ponytail: 요청 취소·프리페치·캐싱은 성능 최적화 작업에서 (스펙: 스코프 제외).
@@ -248,7 +268,8 @@ extension PHAsset {
     AlbumPickerView(
         store: AlbumPickerStore(
             isLimited: true,
-            recentUploadsRepository: PreviewRecentUploadsRepository()
+            recentUploadsRepository: PreviewRecentUploadsRepository(),
+            onPhotoConfirmed: { _ in }
         )
     )
 }
@@ -257,7 +278,8 @@ extension PHAsset {
     AlbumPickerView(
         store: AlbumPickerStore(
             isLimited: false,
-            recentUploadsRepository: PreviewRecentUploadsRepository()
+            recentUploadsRepository: PreviewRecentUploadsRepository(),
+            onPhotoConfirmed: { _ in }
         )
     )
 }
