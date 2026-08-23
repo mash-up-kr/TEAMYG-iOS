@@ -25,19 +25,14 @@ struct PhotoConfirmView: View {
 
     var body: some View {
         VStack(spacing: .gap5) {
-            Color.gray100
+            Color.clear
                 .overlay {
-                    if let image = fullImage ?? photo.thumbnail {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                    }
+                    photoContent
+                        .overlay {
+                            Rectangle().strokeBorder(Color.gray500, lineWidth: 1)
+                        }
+                        .matchedGeometryEffect(id: photo.id, in: zoomNamespace)
                 }
-                .clipped()
-                .overlay {
-                    Rectangle().strokeBorder(Color.gray500, lineWidth: 1)
-                }
-                .matchedGeometryEffect(id: photo.id, in: zoomNamespace)
                 .onGeometryChange(for: CGSize.self) { proxy in
                     proxy.size
                 } action: { newSize in
@@ -58,6 +53,17 @@ struct PhotoConfirmView: View {
         .padding(.bottom, .padding6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.whiteFixed.ignoresSafeArea())
+    }
+
+    @ViewBuilder
+    private var photoContent: some View {
+        if let image = fullImage ?? photo.thumbnail {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Color.gray100
+        }
     }
 
     private func loadFullImage() async -> UIImage? {
