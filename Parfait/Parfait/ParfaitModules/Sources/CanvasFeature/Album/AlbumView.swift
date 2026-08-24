@@ -7,12 +7,14 @@
 
 import SwiftUI
 import UIComponent
+import UIKit
 
 /// 앨범 플로우 진입점 — 권한 3분기로 화면을 전환하고 우상단 닫기 버튼을 소유한다.
 public struct AlbumView: View {
     @State private var store = AlbumStore()
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     /// 사진 선택 화면 Store 팩토리 — `isLimited` 는 권한이 풀린 뒤에야 아는 런타임 값이라
     /// composition root 가 store 를 미리 만들지 못하고 클로저로 주입한다.
@@ -33,7 +35,14 @@ public struct AlbumView: View {
                 case .limited:
                     AlbumPickerView(store: makeAlbumPickerStore(true))
                 case .denied:
-                    AlbumPermissionDeniedView()
+                    YGErrorView(
+                        title: "갤러리 권한이 없어요",
+                        message: "설정에서 갤러리 권한을 허용해 주세요",
+                        buttonTitle: "설정으로 이동"
+                    ) {
+                        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+                        openURL(settingsURL)
+                    }
                 case .notDetermined, nil:
                     Color.clear // 시스템 권한 팝업 대기
                 }
