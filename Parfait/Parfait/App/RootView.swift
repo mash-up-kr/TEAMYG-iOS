@@ -20,8 +20,18 @@ struct RootView: View {
     @State private var router = AppRouter()
     /// 앱 전역 토스트 스택. 화면 전환 뒤에도 살아야 하는 토스트(예: 사이드메뉴 나가기 → G-001 확인)가 쌓인다.
     @State private var toasts: [YGToastItem] = []
+    /// 스플래시(로고 애니메이션) 재생 중 — 끝나면 실제 시작 화면으로 교체한다.
+    @State private var isPlayingSplash = true
 
     var body: some View {
+        if isPlayingSplash {
+            SplashView { isPlayingSplash = false }
+        } else {
+            mainFlow
+        }
+    }
+
+    private var mainFlow: some View {
         NavigationStack(path: $router.path) {
             root
                 .navigationDestination(for: AppRoute.self) { route in

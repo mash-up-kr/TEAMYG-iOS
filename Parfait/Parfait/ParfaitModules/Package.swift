@@ -10,13 +10,17 @@ let designSystemResources: [Resource] = [
     .process("Resources/Colors.xcassets"),
     .process("Resources/Assets.xcassets"),
     .copy("Resources/SUIT-ttf"), // 폰트: 폴더째 복사(하위경로 유지) → 런타임 등록
+    // 로띠 애니메이션(.lottie = zip) — 압축 그대로 복사, 런타임에 DotLottieFile 이 해제.
+    .copy("Resources/Lottie_Loading_Light.lottie"),
+    .copy("Resources/Lottie_Loading_Dark.lottie"),
+    .copy("Resources/Lottie-Logo.lottie"),
 ]
 
 // (이름, 의존, 리소스)
 let modules: [(name: String, dependencies: [String], resources: [Resource])] = [
     ("Common", [], []), // 순수 코드. 의존성 0. (외부 패키지 금지)
     ("Core", ["Common", "Alamofire"], []), // 외부 SDK 기반 공유 구현(네트워크·캐싱). Domain 금지.
-    ("UIComponent", ["Common"], designSystemResources), // 공용 UI/디자인 시스템 + MVI 베이스. Domain 금지.
+    ("UIComponent", ["Common", "Lottie"], designSystemResources), // 공용 UI/디자인 시스템 + MVI 베이스. Domain 금지.
     ("Routing", [], []), // 네비게이션 계약(AppRoute·Router). 페이로드 추가 시 deps 에 도메인.
 
     // 비즈니스 규칙(UseCase·엔티티·Repository 프로토콜).
@@ -44,6 +48,7 @@ let externalProducts: [String: String] = [
     "KakaoSDKCommon": "kakao-ios-sdk",
     "KakaoSDKUser": "kakao-ios-sdk",
     "Alamofire": "Alamofire",
+    "Lottie": "lottie-ios",
 ]
 
 let package = Package(
@@ -52,7 +57,8 @@ let package = Package(
     products: modules.map { .library(name: $0.name, targets: [$0.name]) },
     dependencies: [
         .package(url: "https://github.com/kakao/kakao-ios-sdk", from: "2.28.0"),
-        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.12.0")
+        .package(url: "https://github.com/Alamofire/Alamofire", from: "5.12.0"),
+        .package(url: "https://github.com/airbnb/lottie-ios", from: "4.5.0")
     ],
     targets: modules.map { module in
         .target(
