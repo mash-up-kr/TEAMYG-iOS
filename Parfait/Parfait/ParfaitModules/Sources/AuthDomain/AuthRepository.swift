@@ -19,4 +19,8 @@ public protocol AuthRepository: Sendable {
 
     /// 서버 약관 목록을 조회한다 (`/api/v1/policies`).
     func fetchPolicies() async throws -> [Policy]
+
+    /// 로그아웃 — 서버에 리프레시 토큰을 무효화하고 로컬 세션을 종료한다.
+    /// 성공 시 세션 종료 이벤트가 발행돼 App 루트가 로그인 화면으로 되돌린다.
+    func logout() async throws
 }

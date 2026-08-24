@@ -34,6 +34,11 @@ public actor TokenManager {
         keychain.load(.accessToken)
     }
 
+    /// 로그아웃 요청처럼 서버가 리프레시 토큰 자체를 요구하는 API 용.
+    public var refreshToken: String? {
+        keychain.load(.refreshToken)
+    }
+
     public func update(accessToken: String, refreshToken: String) {
         keychain.save(accessToken, for: .accessToken)
         keychain.save(refreshToken, for: .refreshToken)

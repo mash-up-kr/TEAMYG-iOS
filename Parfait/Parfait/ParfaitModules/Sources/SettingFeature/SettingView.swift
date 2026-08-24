@@ -10,9 +10,15 @@ import UIComponent
 
 public struct SettingView: View {
     @State private var store: SettingStore
+    /// 계정 정보 화면 store 팩토리 — UseCase 주입은 App(Composition Root)이 담당한다.
+    private let makeAccountInfoStore: (String) -> AccountInfoStore
 
-    public init(store: SettingStore) {
+    public init(
+        store: SettingStore,
+        makeAccountInfoStore: @escaping (String) -> AccountInfoStore
+    ) {
         _store = State(initialValue: store)
+        self.makeAccountInfoStore = makeAccountInfoStore
     }
 
     public var body: some View {
@@ -25,6 +31,8 @@ public struct SettingView: View {
         }
         .ygTopBar(.detail(title: "설정"))
         .background(.whiteFixed)
+        // 계정 정보에서 닉네임 변경 후 복귀 시에도 다시 조회되도록 task 가 아니라 onAppear
+        .onAppear { store.send(.appeared) }
         .ygPopup(
             isPresented: store.binding(
                 \.isWithdrawPopupPresented,
@@ -39,9 +47,7 @@ public struct SettingView: View {
         .navigationDestination(for: SettingRoute.self) { route in
             switch route {
             case .accountInfo:
-                AccountInfoView(
-                    store: AccountInfoStore(state: .init(nickname: store.state.nickname))
-                )
+                AccountInfoView(store: makeAccountInfoStore(store.state.nickname))
             case .termsOfService:
                 YGWebView(title: "서비스 이용약관", url: .termsOfService)
             case .privacyPolicy:
@@ -143,12 +149,20 @@ private extension URL {
     NavigationStack {
         SettingView(
             store: SettingStore(
+                memberUseCase: PreviewMemberUseCase(),
+                authUseCase: PreviewAuthUseCase(),
                 state: .init(
                     nickname: "아니야나그런데기니야",
                     loginProvider: "Kakao",
                     appVersion: "1.0v"
                 )
-            )
+            ),
+            makeAccountInfoStore: { nickname in
+                AccountInfoStore(
+                    state: .init(nickname: nickname),
+                    memberUseCase: PreviewMemberUseCase()
+                )
+            }
         )
     }
 }

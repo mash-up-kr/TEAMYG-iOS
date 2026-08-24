@@ -12,6 +12,7 @@
 		AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E702FECFD6700703DBC /* CanvasData */; };
 		AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E722FECFD6700703DBC /* CanvasFeature */; };
 		AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E742FECFD6700703DBC /* GroupData */; };
+		AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7A2FECFD6700703DBC /* MemberData */; };
 		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
 		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
 		DEC0DE000000000000000001 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = DEC0DE000000000000000002 /* UIComponent */; };
@@ -55,6 +56,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */,
+				AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */,
 				AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */,
 				AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */,
 				AB03410A300F3F2800ACF3EF /* SettingFeature in Frameworks */,
@@ -125,6 +127,7 @@
 				AB4D0E702FECFD6700703DBC /* CanvasData */,
 				AB4D0E722FECFD6700703DBC /* CanvasFeature */,
 				AB4D0E742FECFD6700703DBC /* GroupData */,
+				AB4D0E7A2FECFD6700703DBC /* MemberData */,
 				AB4D0E762FECFD6700703DBC /* GroupFeature */,
 				AB4D0E782FECFD6700703DBC /* LoginFeature */,
 				AB034109300F3F2800ACF3EF /* SettingFeature */,
@@ -569,6 +572,10 @@
 		AB4D0E742FECFD6700703DBC /* GroupData */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GroupData;
+		};
+		AB4D0E7A2FECFD6700703DBC /* MemberData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MemberData;
 		};
 		AB4D0E762FECFD6700703DBC /* GroupFeature */ = {
 			isa = XCSwiftPackageProductDependency;

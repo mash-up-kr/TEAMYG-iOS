@@ -20,11 +20,11 @@ public final class LoginStore: MVIStore {
     let events: AsyncStream<Event>
     @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
 
-    private let socialLoginUseCase: any SocialLoginUseCase
+    private let authUseCase: any AuthUseCase
     @ObservationIgnored private var loginTask: Task<Void, Never>?
 
-    public init(socialLoginUseCase: any SocialLoginUseCase) {
-        self.socialLoginUseCase = socialLoginUseCase
+    public init(authUseCase: any AuthUseCase) {
+        self.authUseCase = authUseCase
         (events, eventContinuation) = AsyncStream.makeStream()
     }
 
@@ -49,7 +49,7 @@ public final class LoginStore: MVIStore {
 
     private func performKakaoLogin() async {
         do {
-            let result = try await socialLoginUseCase.loginWithKakao()
+            let result = try await authUseCase.loginWithKakao()
             YGLogger.log("카카오 로그인 완료: \(result)")
             handle(result)
         } catch SocialLoginError.cancelled {
@@ -92,7 +92,7 @@ public final class LoginStore: MVIStore {
             )
 
             let credential = AppleLoginCredential(identityToken: identityToken, nonce: nonce)
-            let loginResult = try await socialLoginUseCase.loginWithApple(credential)
+            let loginResult = try await authUseCase.loginWithApple(credential)
             YGLogger.log("Apple 로그인 완료: \(loginResult)")
             handle(loginResult)
         } catch let error as ASAuthorizationError where error.code == .canceled {

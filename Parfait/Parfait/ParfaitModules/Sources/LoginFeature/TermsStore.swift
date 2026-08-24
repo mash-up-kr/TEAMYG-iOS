@@ -20,19 +20,16 @@ public final class TermsStore: MVIStore {
 
     /// 로그인이 `.signupRequired` 로 돌려준 가입 토큰 — 회원가입 완료 요청에 실린다.
     private let registrationToken: String
-    private let policiesUseCase: any PoliciesUseCase
-    private let signupUseCase: any SignupUseCase
+    private let authUseCase: any AuthUseCase
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var signupTask: Task<Void, Never>?
 
     public init(
         registrationToken: String,
-        policiesUseCase: any PoliciesUseCase,
-        signupUseCase: any SignupUseCase
+        authUseCase: any AuthUseCase
     ) {
         self.registrationToken = registrationToken
-        self.policiesUseCase = policiesUseCase
-        self.signupUseCase = signupUseCase
+        self.authUseCase = authUseCase
         (events, eventContinuation) = AsyncStream.makeStream()
     }
 
@@ -86,7 +83,7 @@ public final class TermsStore: MVIStore {
         state.phase = .loading
         loadTask = Task {
             do {
-                let policies = try await policiesUseCase.fetchPolicies()
+                let policies = try await authUseCase.fetchPolicies()
                 send(.policiesLoaded(policies))
             } catch is CancellationError {
                 // 화면 이탈로 취소됨 — 실패로 오인하지 않는다.
@@ -105,7 +102,7 @@ public final class TermsStore: MVIStore {
         let agreements = state.agreements
         signupTask = Task {
             do {
-                try await signupUseCase.signup(
+                try await authUseCase.signup(
                     registrationToken: registrationToken,
                     agreements: agreements
                 )
@@ -146,7 +143,7 @@ public final class TermsStore: MVIStore {
                 && policies.filter(\.isRequired).allSatisfy { agreed.contains($0.id) }
         }
 
-        /// 회원가입 완료 요청(`SignupUseCase`)에 실을 항목별 동의 여부.
+        /// 회원가입 완료 요청(`AuthUseCase.signup`)에 실을 항목별 동의 여부.
         var agreements: [TermsAgreement] {
             policies.map { TermsAgreement(termsId: $0.id, agreed: agreed.contains($0.id)) }
         }

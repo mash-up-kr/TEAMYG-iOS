@@ -23,17 +23,19 @@ let modules: [(name: String, dependencies: [String], resources: [Resource])] = [
     ("AuthDomain", ["Common"], []),
     ("GroupDomain", ["Common"], []),
     ("CanvasDomain", ["Common"], []),
+    ("MemberDomain", ["Common"], []),
 
     // Domain 프로토콜 구현(DTO·매핑·소스).
     ("AuthData", ["AuthDomain", "Core", "Common", "KakaoSDKAuth", "KakaoSDKCommon", "KakaoSDKUser"], []),
     ("GroupData", ["GroupDomain", "Core", "Common"], []),
     ("CanvasData", ["CanvasDomain", "Core", "Common"], []),
+    ("MemberData", ["MemberDomain", "Core", "Common"], []),
 
     // 화면 단위(MVI). 피처끼리 import 금지.
     ("LoginFeature", ["AuthDomain", "Core", "UIComponent", "Routing", "Common"], []),
     ("GroupFeature", ["GroupDomain", "Core", "UIComponent", "Routing", "Common"], []),
     ("CanvasFeature", ["CanvasDomain", "Core", "UIComponent", "Routing", "Common"], []),
-    ("SettingFeature", ["Core", "UIComponent", "Routing", "Common"], []),
+    ("SettingFeature", ["MemberDomain", "AuthDomain", "Core", "UIComponent", "Routing", "Common"], []),
 ]
 
 // MARK: 외부 의존성 정의

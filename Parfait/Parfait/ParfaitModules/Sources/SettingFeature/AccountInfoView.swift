@@ -54,6 +54,9 @@ public struct AccountInfoView: View {
 
 #Preview {
     AccountInfoView(
-        store: AccountInfoStore(state: .init(nickname: "대충지은랜덤닉네임"))
+        store: AccountInfoStore(
+            state: .init(nickname: "대충지은랜덤닉네임"),
+            memberUseCase: PreviewMemberUseCase()
+        )
     )
 }
