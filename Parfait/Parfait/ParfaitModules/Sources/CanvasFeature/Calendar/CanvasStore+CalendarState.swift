@@ -7,6 +7,66 @@
 
 import Foundation
 
+public struct CalendarDate: Hashable, Comparable, Sendable {
+    public let year: Int
+    public let month: Int
+    public let day: Int
+
+    public init(year: Int, month: Int, day: Int) {
+        self.year = year
+        self.month = month
+        self.day = day
+    }
+
+    public init(date: Date) {
+        let components = Self.gregorian.dateComponents([.year, .month, .day], from: date)
+        year = components.year ?? 1
+        month = components.month ?? 1
+        day = components.day ?? 1
+    }
+
+    public init(canvasDayContaining date: Date) {
+        let shiftedDate = Self.gregorian.date(byAdding: .hour, value: -Self.dayResetHour, to: date)
+        self.init(date: shiftedDate ?? date)
+    }
+
+    public static var today: CalendarDate {
+        CalendarDate(canvasDayContaining: .now)
+    }
+
+    static let dayResetHour = 3
+
+    public static func < (lhs: CalendarDate, rhs: CalendarDate) -> Bool {
+        (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
+    }
+
+    static let monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ]
+
+    static let gregorian: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar
+    }()
+
+    var date: Date? {
+        Self.gregorian.date(from: DateComponents(year: year, month: month, day: day))
+    }
+
+    var monthName: String {
+        guard Self.monthNames.indices.contains(month - 1) else { return "" }
+        return Self.monthNames[month - 1]
+    }
+
+    var weekdayName: String {
+        guard let date else { return "" }
+        let weekday = Self.gregorian.component(.weekday, from: date)
+        return Self.gregorian.shortWeekdaySymbols[weekday - 1]
+    }
+}
+
 public extension CanvasStore {
     struct CalendarState: Equatable, Sendable {
         public var selectedDate: CalendarDate
@@ -179,59 +239,6 @@ public extension CanvasStore {
 
         private func isSelectable(_ date: CalendarDate) -> Bool {
             date <= today && (date == today || recordedDates.contains(date))
-        }
-    }
-
-    struct CalendarDate: Hashable, Comparable, Sendable {
-        public let year: Int
-        public let month: Int
-        public let day: Int
-
-        public init(year: Int, month: Int, day: Int) {
-            self.year = year
-            self.month = month
-            self.day = day
-        }
-
-        public init(date: Date) {
-            let components = Self.gregorian.dateComponents([.year, .month, .day], from: date)
-            year = components.year ?? 1
-            month = components.month ?? 1
-            day = components.day ?? 1
-        }
-
-        public static var today: CalendarDate {
-            CalendarDate(date: .now)
-        }
-
-        public static func < (lhs: CalendarDate, rhs: CalendarDate) -> Bool {
-            (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
-        }
-
-        static let monthNames = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
-
-        static let gregorian: Calendar = {
-            var calendar = Calendar(identifier: .gregorian)
-            calendar.timeZone = .autoupdatingCurrent
-            return calendar
-        }()
-
-        var date: Date? {
-            Self.gregorian.date(from: DateComponents(year: year, month: month, day: day))
-        }
-
-        var monthName: String {
-            guard Self.monthNames.indices.contains(month - 1) else { return "" }
-            return Self.monthNames[month - 1]
-        }
-
-        var weekdayName: String {
-            guard let date else { return "" }
-            let weekday = Self.gregorian.component(.weekday, from: date)
-            return Self.gregorian.shortWeekdaySymbols[weekday - 1]
         }
     }
 

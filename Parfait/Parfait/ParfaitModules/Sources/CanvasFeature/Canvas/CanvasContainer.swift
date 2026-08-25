@@ -295,7 +295,7 @@ private struct CanvasPanelShape: Shape {
 }
 
 #Preview("Calendar") {
-    let today = CanvasStore.CalendarDate(year: 2026, month: 8, day: 5)
+    let today = CalendarDate(year: 2026, month: 8, day: 5)
 
     CanvasContainer(
         state: .init(

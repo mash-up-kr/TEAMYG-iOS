@@ -40,6 +40,23 @@ public struct CanvasView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        .navigationDestination(item: toppingAddSourceBinding) { source in
+            switch source {
+            case .camera(let canvasDate):
+                ToppingAddFlowView(store: ToppingAddStore(canvasDate: canvasDate))
+            }
+        }
+    }
+
+    private var toppingAddSourceBinding: Binding<CanvasStore.ToppingAddSource?> {
+        Binding(
+            get: { store.state.toppingAddSource },
+            set: { source in
+                if source == nil {
+                    store.send(.toppingAddFlowDismissed)
+                }
+            }
+        )
     }
 
     private var topBarMembers: [YGTopBar.Member] {
@@ -65,8 +82,8 @@ public struct CanvasView: View {
 }
 
 #Preview("Calendar") {
-    let today = CanvasStore.CalendarDate(year: 2026, month: 8, day: 4)
-    let selectedDate = CanvasStore.CalendarDate(year: 2026, month: 8, day: 1)
+    let today = CalendarDate(year: 2026, month: 8, day: 4)
+    let selectedDate = CalendarDate(year: 2026, month: 8, day: 1)
 
     NavigationStack {
         CanvasView(
