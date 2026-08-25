@@ -166,7 +166,8 @@ public struct GroupSideMenuView: View {
                 ForEach(detail.members) { member in
                     YGUserChip(
                         nickname: member.isMe ? "\(member.nickname) (나)" : member.nickname,
-                        type: member.nametagType.chipType,
+                        // 색을 모르는 구성원은 기본 계열로 그린다 (`ToppingView` 의 칩과 같은 규칙).
+                        type: member.nametagType?.chipType ?? .type1,
                         isSelf: member.isMe
                     )
                 }

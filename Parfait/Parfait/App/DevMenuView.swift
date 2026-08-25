@@ -31,6 +31,13 @@ struct DevMenuView: View {
         case setting
     }
 
+    /// 사이드메뉴 데모가 열어 볼 개발 서버 그룹 — 개발용 토큰 계정이 속한 그룹이다.
+    /// 상세를 서버에서 받아오므로 아무 문자열이나 넣으면 `GROUP_NOT_FOUND` 로 실패 화면만 뜬다.
+    /// 개발 서버 데이터가 초기화되면 그룹을 다시 만들어 이 값만 바꾸면 된다.
+    private static let demoGroupID = "25"
+    /// 상세 응답이 오기 전 상단 바에 띄울 이름 — 응답이 오면 서버 값으로 바뀐다.
+    private static let demoGroupName = "사이드메뉴데모"
+
     var body: some View {
         List {
             Button("실제 로그인") {
@@ -63,10 +70,13 @@ struct DevMenuView: View {
                 // ponytail: 실제 진입점은 캔버스(C-001) 상단 바 사이드메뉴 버튼 — 연결되면 이 데모 항목 제거.
                 //           나가기/신고 후 G-001 이동도 그때 이 콜백과 같은 방식으로 잇는다.
                 GroupSideMenuView(
-                    store: diContainer.makeGroupSideMenuStore(groupID: "stub-group-0", groupName: "그룹이름")
+                    store: diContainer.makeGroupSideMenuStore(
+                        groupID: Self.demoGroupID,
+                        groupName: Self.demoGroupName
+                    )
                 ) { exitAction in
                     router.pop()
-                    if let toastMessage = exitAction.completionToastMessage(groupName: "그룹이름") {
+                    if let toastMessage = exitAction.completionToastMessage(groupName: Self.demoGroupName) {
                         toasts.append(YGToastItem(kind: .success, message: toastMessage))
                     }
                 }
