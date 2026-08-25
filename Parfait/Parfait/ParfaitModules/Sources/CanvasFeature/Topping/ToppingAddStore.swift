@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+import CanvasDomain
 import CoreGraphics
 import Foundation
 import Observation
@@ -16,6 +17,7 @@ final class ToppingAddStore: MVIStore {
     private(set) var state: State
 
     private let cameraSession = CameraSession()
+    private let dependencies: Dependencies
     private let objectExtractor: any ObjectExtracting
     private let borderRenderer = ToppingBorderRenderer()
     private let maskRenderer = ToppingMaskRenderer()
@@ -28,6 +30,7 @@ final class ToppingAddStore: MVIStore {
     private var extractorResetTask: Task<Void, Never>?
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
+    private var saveTask: Task<Void, Never>?
     /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
     private var cameraGeneration = 0
 
@@ -35,14 +38,12 @@ final class ToppingAddStore: MVIStore {
         canvasDate: CalendarDate,
         photoSource: PhotoSource,
         canvasContent: CanvasStore.CanvasContent? = nil,
+        dependencies: Dependencies,
         objectExtractor: any ObjectExtracting = ObjectExtractor()
     ) {
         state = State(canvasDate: canvasDate, photoSource: photoSource, canvasContent: canvasContent)
+        self.dependencies = dependencies
         self.objectExtractor = objectExtractor
-    }
-
-    var previewSource: any CameraPreviewSource {
-        cameraSession.previewSource
     }
 
     func send(_ intent: Intent) {
@@ -57,7 +58,7 @@ final class ToppingAddStore: MVIStore {
              .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
             handleCameraIntent(intent)
 
-        case .photoConfirmed, .galleryPhotoConfirmed, .analysisCancelled, .candidateTapped,
+        case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
              .candidateSelectionBackTapped, .analysisErrorClosed, .cutoutResultClosed,
              .photoEditTapped, .cutoutConfirmed:
             handleAnalysisIntent(intent)
@@ -72,7 +73,7 @@ final class ToppingAddStore: MVIStore {
             handleManualCutoutIntent(intent)
 
         case .placementCanvasResized, .placementMoved, .placementScaled, .placementRotated,
-             .placementClosed, .placementConfirmed:
+             .placementClosed, .placementConfirmed, .saveErrorDismissed:
             handlePlacementIntent(intent)
         }
     }
@@ -83,6 +84,8 @@ final class ToppingAddStore: MVIStore {
             proceedWithCapturedPhoto()
         case .galleryPhotoConfirmed(let assetIdentifier):
             confirmGalleryPhoto(assetIdentifier: assetIdentifier)
+        case .recentUploadConfirmed(let upload):
+            openRecentUpload(upload)
         case .analysisCancelled:
             cancelAnalysis()
         case .candidateTapped(let normalizedPoint):
@@ -97,14 +100,18 @@ final class ToppingAddStore: MVIStore {
     private func handleBorderIntent(_ intent: Intent) {
         switch intent {
         case .borderEditClosed:
-            guard state.cutoutPath == .automatic else {
+            switch state.cutoutPath {
+            case .manual:
                 state.screen = .manualCutout
-                break
+            case .recentUpload:
+                releaseExtractedTopping()
+                state.screen = .gallery
+            case .automatic:
+                releaseExtractedTopping()
+                state.screen = .candidateSelection
             }
-            releaseExtractedTopping()
-            state.screen = .candidateSelection
         case .borderAreaTabTapped:
-            guard state.extractedTopping != nil else { break }
+            guard state.extractedTopping != nil, state.cutoutPath != .recentUpload else { break }
             state.cutoutPath = .manual
             state.screen = .manualCutout
         case .borderConfirmed:
@@ -124,57 +131,11 @@ final class ToppingAddStore: MVIStore {
             state.screen = .candidateSelection
         case .manualCutoutConfirmed:
             state.screen = .borderEdit
-            renderBorderSilhouette()
+            tightenCutout()
         default:
             if state.maskEditor.apply(intent) {
                 renderMask()
             }
-        }
-    }
-
-    private func renderMask() {
-        maskRenderTask?.cancel()
-        guard let topping = state.extractedTopping, let baseMask else { return }
-
-        let strokes = state.maskEditor.strokes
-        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
-            let cutout = await maskRenderer.cutout(
-                photo: topping.photo,
-                baseMask: baseMask,
-                strokes: strokes
-            )
-            guard !Task.isCancelled, let self, let cutout else { return }
-
-            state.extractedTopping = topping.replacingCutout(image: cutout.image, mask: cutout.mask)
-            // 실루엣 캐시는 후보 ID 로만 구분한다 — 마스크가 바뀌면 통째로 버려야 한다.
-            await borderRenderer.reset()
-        }
-    }
-
-    /// 저장 파이프라인(`docs/worklog/topping/topping_cutout_progress.md` §2.2)이 붙기 전이라
-    /// 배치 확정은 아직 화면 이탈만 하고 서버에 올리지 않는다.
-    private func handlePlacementIntent(_ intent: Intent) {
-        switch intent {
-        case .placementClosed:
-            state.screen = .borderEdit
-        case .placementConfirmed:
-            break
-        default:
-            state.placementEditor.apply(intent)
-        }
-    }
-
-    private func renderBorderSilhouette() {
-        borderRenderTask?.cancel()
-        guard let topping = state.extractedTopping, state.borderEditor.border.isVisible else {
-            state.borderSilhouette = nil
-            return
-        }
-        let width = state.borderEditor.border.width
-        borderRenderTask = Task { [weak self, borderRenderer] in
-            let image = await borderRenderer.silhouette(of: topping, width: width)
-            guard !Task.isCancelled, let image else { return }
-            self?.state.borderSilhouette = BorderSilhouette(image: image)
         }
     }
 
@@ -266,6 +227,31 @@ final class ToppingAddStore: MVIStore {
         }
     }
 
+    /// 최근 업로드 누끼는 이미 잘라낸 결과물이라 분석·후보 선택을 건너뛰고 곧장 테두리 편집으로 간다
+    /// (`canvas-policy.md` §5.3). 원본 사진이 없으므로 영역 편집은 이 경로에서 제공하지 않는다.
+    private func openRecentUpload(_ upload: StoredImage) {
+        analysisTask?.cancel()
+        state.analysis = nil
+        resetToppingDraft()
+
+        guard let image = ToppingImageEncoder.decode(upload.imageData) else {
+            state.screen = .analysisError
+            return
+        }
+        state.extractedTopping = ExtractedTopping(
+            candidateID: Self.recentUploadCandidateID,
+            image: image,
+            photo: image,
+            mask: image
+        )
+        state.cutoutPath = .recentUpload
+        state.screen = .borderEdit
+        renderBorderSilhouette()
+    }
+
+    /// 최근 업로드에는 후보 번호가 없다. 실루엣 캐시 키로만 쓰이며 `resetToppingDraft` 가 매번 캐시를 비운다.
+    private static let recentUploadCandidateID = -1
+
     private func returnToPhotoConfirm() {
         cancelAnalysis()
         state.screen = state.photoSource.confirmScreen
@@ -279,6 +265,38 @@ final class ToppingAddStore: MVIStore {
         extractorResetTask = Task { [objectExtractor] in
             await objectExtractor.reset()
         }
+    }
+}
+
+/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
+/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
+extension ToppingAddStore {
+    struct Dependencies: Sendable {
+        let groupID: Int
+        /// 오늘 캔버스 조회에 실패했으면 nil — 저장할 대상이 없다.
+        let parfaitID: Int?
+        let toppingUseCase: any ToppingUseCase
+        let recentUploadsRepository: any RecentUploadsRepository
+        /// 저장이 끝나 캔버스로 돌아가야 할 때 호출한다.
+        let onSaved: @MainActor () -> Void
+
+        init(
+            groupID: Int,
+            parfaitID: Int?,
+            toppingUseCase: any ToppingUseCase,
+            recentUploadsRepository: any RecentUploadsRepository,
+            onSaved: @escaping @MainActor () -> Void
+        ) {
+            self.groupID = groupID
+            self.parfaitID = parfaitID
+            self.toppingUseCase = toppingUseCase
+            self.recentUploadsRepository = recentUploadsRepository
+            self.onSaved = onSaved
+        }
+    }
+
+    var previewSource: any CameraPreviewSource {
+        cameraSession.previewSource
     }
 }
 
@@ -299,6 +317,78 @@ private extension ToppingAddStore {
             state.screen = .manualCutout
         default:
             break
+        }
+    }
+}
+
+/// 마스크·테두리 실루엣 다시 그리기. 셋 다 무거워 액터에 맡기고 결과만 상태에 얹는다.
+private extension ToppingAddStore {
+    func renderMask() {
+        maskRenderTask?.cancel()
+        guard let topping = state.extractedTopping, let baseMask else { return }
+
+        let strokes = state.maskEditor.strokes
+        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
+            let cutout = await maskRenderer.cutout(
+                photo: topping.photo,
+                baseMask: baseMask,
+                strokes: strokes
+            )
+            guard !Task.isCancelled, let self, let cutout else { return }
+
+            state.extractedTopping = topping.replacingCutout(image: cutout.image, mask: cutout.mask)
+            // 실루엣 캐시는 후보 ID 로만 구분한다 — 마스크가 바뀌면 통째로 버려야 한다.
+            await borderRenderer.reset()
+        }
+    }
+
+    /// C-104 를 빠져나갈 때 편집된 마스크에 맞춰 추출 캔버스를 다시 잘라낸다.
+    /// 진행 중인 마스크 렌더는 버리고 스트로크 목록에서 최종 결과를 한 번에 만든다.
+    func tightenCutout() {
+        maskRenderTask?.cancel()
+        guard state.maskEditor.hasEdits,
+              let topping = state.extractedTopping,
+              let editedBaseMask = baseMask
+        else {
+            renderBorderSilhouette()
+            return
+        }
+
+        let strokes = state.maskEditor.strokes
+        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
+            let tightened = await maskRenderer.tightenedCutout(
+                photo: topping.photo,
+                baseMask: editedBaseMask,
+                strokes: strokes
+            )
+            guard !Task.isCancelled, let self else { return }
+
+            if let tightened {
+                baseMask = tightened.baseMask
+                state.maskEditor.translateStrokes(by: tightened.strokeOffset)
+                state.extractedTopping = topping.replacingCanvas(
+                    image: tightened.image,
+                    photo: tightened.photo,
+                    mask: tightened.mask
+                )
+                // 실루엣 캐시는 후보 ID 로만 구분한다 — 캔버스가 바뀌면 통째로 버려야 한다.
+                await borderRenderer.reset()
+            }
+            renderBorderSilhouette()
+        }
+    }
+
+    func renderBorderSilhouette() {
+        borderRenderTask?.cancel()
+        guard let topping = state.extractedTopping, state.borderEditor.border.isVisible else {
+            state.borderSilhouette = nil
+            return
+        }
+        let width = state.borderEditor.border.width
+        borderRenderTask = Task { [weak self, borderRenderer] in
+            let image = await borderRenderer.silhouette(of: topping, width: width)
+            guard !Task.isCancelled, let image else { return }
+            self?.state.borderSilhouette = BorderSilhouette(image: image)
         }
     }
 }
@@ -492,5 +582,69 @@ private extension ToppingAddStore {
         cameraSwitchTask = nil
         photoCaptureTask = nil
         state.isSwitchingCamera = false
+    }
+}
+
+/// C-106 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
+private extension ToppingAddStore {
+    private func handlePlacementIntent(_ intent: Intent) {
+        switch intent {
+        case .placementClosed:
+            guard state.saveState != .saving else { break }
+            state.screen = .borderEdit
+        case .placementConfirmed:
+            saveTopping()
+        case .saveErrorDismissed:
+            state.saveState = .idle
+        default:
+            state.placementEditor.apply(intent)
+        }
+    }
+
+    /// 누끼를 PNG 로 굽고 업로드·배치까지 맡긴 뒤, 성공하면 최근 업로드에 남기고 캔버스로 돌아간다.
+    private func saveTopping() {
+        guard state.saveState != .saving,
+              let topping = state.extractedTopping,
+              let parfaitID = dependencies.parfaitID
+        else {
+            state.saveState = .failed
+            return
+        }
+        guard let pngData = ToppingImageEncoder.encodePNG(topping.image) else {
+            state.saveState = .failed
+            return
+        }
+
+        let draft = ToppingDraft(
+            image: .topping(pngData: pngData),
+            placement: state.placementEditor.placementValues(zOrder: nextZOrder),
+            border: state.borderEditor.border.style
+        )
+        state.saveState = .saving
+
+        saveTask = Task { [weak self, dependencies] in
+            do {
+                _ = try await dependencies.toppingUseCase.place(
+                    draft,
+                    groupID: dependencies.groupID,
+                    parfaitID: parfaitID
+                )
+                try? await dependencies.recentUploadsRepository.save(pngData)
+                guard !Task.isCancelled, let self else { return }
+                state.saveState = .idle
+                dependencies.onSaved()
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled, let self else { return }
+                state.saveState = .failed
+            }
+        }
+    }
+
+    /// 새 토핑은 항상 맨 위에 얹는다.
+    private var nextZOrder: Int {
+        let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
+        return Int(highest.rounded()) + 1
     }
 }

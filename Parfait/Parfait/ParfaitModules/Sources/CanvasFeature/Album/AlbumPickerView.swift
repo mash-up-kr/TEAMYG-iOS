@@ -269,7 +269,8 @@ extension PHAsset {
         store: AlbumPickerStore(
             isLimited: true,
             recentUploadsRepository: PreviewRecentUploadsRepository(),
-            onPhotoConfirmed: { _ in }
+            onPhotoConfirmed: { _ in },
+            onRecentUploadConfirmed: { _ in }
         )
     )
 }
@@ -279,7 +280,8 @@ extension PHAsset {
         store: AlbumPickerStore(
             isLimited: false,
             recentUploadsRepository: PreviewRecentUploadsRepository(),
-            onPhotoConfirmed: { _ in }
+            onPhotoConfirmed: { _ in },
+            onRecentUploadConfirmed: { _ in }
         )
     )
 }

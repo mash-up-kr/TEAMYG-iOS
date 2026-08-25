@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -57,6 +58,13 @@ struct ToppingBorder: Equatable, Sendable {
 
     var isVisible: Bool {
         color != .none
+    }
+}
+
+extension ToppingBorder {
+    var style: ToppingBorderStyle {
+        guard let hex = color.hex else { return .none }
+        return .solid(colorHex: hex, width: width)
     }
 }
 

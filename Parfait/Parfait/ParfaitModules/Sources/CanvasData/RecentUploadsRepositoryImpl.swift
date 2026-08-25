@@ -17,10 +17,11 @@ public actor RecentUploadsRepositoryImpl: RecentUploadsRepository {
     public init() {}
 
     /// 이미지 데이터를 파일로 저장하고 저장된 기록을 반환한다.
+    /// 누끼는 알파가 살아 있어야 해서 PNG 로 보관한다 — C-102 최근 업로드에서 다시 꺼내 쓴다.
     @discardableResult
     public func save(_ imageData: Data) throws -> StoredImage {
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-        let fileName = "\(UUID().uuidString).jpg"
+        let fileName = "\(UUID().uuidString).png"
         try imageData.write(to: directoryURL.appending(path: fileName))
         return makeStoredImage(id: fileName, imageData: imageData, createdAt: .now)
     }

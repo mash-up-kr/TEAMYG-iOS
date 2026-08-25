@@ -23,6 +23,7 @@ struct ToppingPlacementView: View {
     let silhouette: CGImage?
     let borderColor: Color?
     let editor: ToppingPlacementEditor
+    let isSaving: Bool
     let onCanvasResize: (CGSize) -> Void
     let onMove: (CGSize) -> Void
     let onScale: (Double) -> Void
@@ -47,6 +48,13 @@ struct ToppingPlacementView: View {
             }
             .padding(.horizontal, .padding7)
             .padding(.top, Self.canvasTopSpacing)
+
+            if isSaving {
+                Color.black25
+                    .ignoresSafeArea()
+                ProgressView()
+                    .tint(.whiteFixed)
+            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGFloatingBar(
@@ -55,6 +63,7 @@ struct ToppingPlacementView: View {
                 onConfirm: onConfirmTap
             )
         }
+        .disabled(isSaving)
     }
 
     private var canvas: some View {
@@ -65,7 +74,7 @@ struct ToppingPlacementView: View {
                 CanvasContentView(content: canvasContent)
             }
 
-            Color.gray500
+            Color.black25
 
             placedTopping
         }

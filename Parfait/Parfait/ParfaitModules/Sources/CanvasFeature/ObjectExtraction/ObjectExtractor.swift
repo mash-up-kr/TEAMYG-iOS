@@ -38,7 +38,7 @@ actor ObjectExtractor: ObjectExtracting {
         }
 
         let pixelSize = session.photo.pixelSize
-        let canvasRect = extractionCanvasRect(of: candidate.pixelBoundingBox(in: pixelSize))
+        let canvasRect = ObjectExtractionPolicy.canvasRect(around: candidate.pixelBoundingBox(in: pixelSize))
         let cutoutRect = canvasRect
             .intersection(CGRect(origin: .zero, size: pixelSize))
             .integral
@@ -140,15 +140,6 @@ actor ObjectExtractor: ObjectExtracting {
                 .sorted { $0.areaRatio > $1.areaRatio }
                 .prefix(ObjectExtractionPolicy.maximumCandidateCount)
         )
-    }
-
-    /// 후보를 감싸는 여백 포함 영역. 사진 밖으로 나가는 부분은 결과물에서 투명 여백이 된다.
-    private func extractionCanvasRect(of boundingBox: CGRect) -> CGRect {
-        let margin = max(
-            min(boundingBox.width, boundingBox.height) * ObjectExtractionPolicy.safeMarginRatio,
-            ObjectExtractionPolicy.minimumSafeMargin
-        )
-        return boundingBox.insetBy(dx: -margin, dy: -margin)
     }
 
     /// 후보 하나를 추출 캔버스 크기로 옮겨 담는다. 원본 사진 크롭과 알파 마스크를 같은 좌표계로 맞춰 돌려준다.

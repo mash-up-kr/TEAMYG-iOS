@@ -21,6 +21,15 @@ struct ToppingBrushStroke: Equatable, Sendable {
     let mode: ToppingBrushMode
     let diameter: Double
     var points: [CGPoint]
+
+    /// 굵기는 마스크 픽셀 단위라 캔버스를 잘라내도 그대로다. 좌표만 새 원점으로 옮긴다.
+    func translated(by offset: CGPoint) -> Self {
+        Self(
+            mode: mode,
+            diameter: diameter,
+            points: points.map { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) }
+        )
+    }
 }
 
 struct ToppingBrush: Equatable, Sendable {
@@ -46,6 +55,15 @@ struct ToppingMaskEditor: Equatable, Sendable {
 
     mutating func reset() {
         self = Self()
+    }
+
+    /// 추출 캔버스를 다시 잘라낸 뒤 호출한다. undo/redo 로 되돌려도 새 캔버스에서 같은 자리를 칠하도록
+    /// 되돌리기 대기 중인 스트로크까지 함께 옮긴다.
+    mutating func translateStrokes(by offset: CGPoint) {
+        guard offset != .zero else { return }
+
+        strokes = strokes.map { $0.translated(by: offset) }
+        undoneStrokes = undoneStrokes.map { $0.translated(by: offset) }
     }
 
     /// 마스크를 다시 그려야 하는 변경이면 `true`.

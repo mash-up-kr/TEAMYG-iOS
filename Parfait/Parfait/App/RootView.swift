@@ -76,12 +76,24 @@ struct RootView: View {
                 makeAccountInfoStore: diContainer.makeAccountInfoStore
             )
         case .canvas:
-            // ponytail: 캔버스가 서버에 붙으면 `groupID` 를 넘겨 그 그룹의 파르페를 조회한다 (#77).
-            //           지금은 조립본의 의존성이 모두 스텁이라 어느 그룹이든 빈 캔버스가 뜬다.
+            // ponytail: 그룹 목록 → 캔버스 라우팅이 붙기 전까지 쓰는 임시 진입값.
+            //           `AppRoute.canvas` 에 groupID·groupName 페이로드가 생기면 이 상수를 지운다.
             CanvasView(
-                store: diContainer.makeCanvasStore(),
-                makeAlbumPickerStore: diContainer.makeAlbumPickerStore
+                store: diContainer.makeCanvasStore(
+                    groupID: TemporaryCanvasEntry.groupID,
+                    groupName: TemporaryCanvasEntry.groupName
+                ),
+                makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
+                toppingUseCase: diContainer.makeToppingUseCase(),
+                recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
+                toppingRenderer: diContainer.makeCanvasToppingRenderer()
             )
         }
     }
+}
+
+/// 그룹 목록 연결 전까지 캔버스가 바라볼 그룹. 개발 서버의 실제 그룹이다.
+enum TemporaryCanvasEntry {
+    static let groupID = 25
+    static let groupName = "사이드메뉴데모"
 }

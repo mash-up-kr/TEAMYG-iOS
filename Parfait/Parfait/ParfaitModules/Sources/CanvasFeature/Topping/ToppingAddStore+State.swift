@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/20/26.
 //
 
+import CanvasDomain
 import CoreGraphics
 import Foundation
 
@@ -29,6 +30,7 @@ extension ToppingAddStore {
         var cutoutPath: CutoutPath = .automatic
         var showsToast = true
         var isSwitchingCamera = false
+        var saveState: SaveState = .idle
 
         init(
             canvasDate: CalendarDate,
@@ -92,6 +94,7 @@ extension ToppingAddStore {
         case retakeTapped
         case photoConfirmed
         case galleryPhotoConfirmed(assetIdentifier: String)
+        case recentUploadConfirmed(StoredImage)
         case cameraRetryTapped
         case settingsTapped
         case analysisCancelled
@@ -116,6 +119,7 @@ extension ToppingAddStore {
         case maskRedoTapped
         case manualCutoutClosed
         case manualCutoutConfirmed
+        case saveErrorDismissed
         case placementCanvasResized(CGSize)
         case placementMoved(translation: CGSize)
         case placementScaled(factor: Double)
@@ -129,6 +133,8 @@ extension ToppingAddStore {
     enum CutoutPath: Equatable, Sendable {
         case automatic
         case manual
+        /// 최근 업로드에서 바로 C-105 로 온 경로. 원본 사진이 없어 영역 편집(C-104)으로 갈 수 없다.
+        case recentUpload
     }
 
     enum PhotoSource: Equatable, Sendable {
@@ -194,5 +200,14 @@ extension ToppingAddStore {
         case idle
         case processing(previewFrame: CameraPreviewFrame?)
         case ready(previewFrame: CameraPreviewFrame?, photoData: Data)
+    }
+}
+
+extension ToppingAddStore {
+    /// 배치 확정 후 업로드·저장 진행 상태. 실패 화면 시안이 없어 토스트로 알리고 배치 화면에 머문다.
+    enum SaveState: Equatable, Sendable {
+        case idle
+        case saving
+        case failed
     }
 }

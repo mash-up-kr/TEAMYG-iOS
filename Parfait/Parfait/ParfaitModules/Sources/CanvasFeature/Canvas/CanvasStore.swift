@@ -5,6 +5,7 @@
 //  Created by 박서연 on 7/30/26.
 //
 
+import CanvasDomain
 import Foundation
 import Observation
 import UIComponent
@@ -17,6 +18,8 @@ public final class CanvasStore: MVIStore {
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
+    /// 과거 캔버스는 `parfaitID` 로만 조회할 수 있다. 목록 응답에서 받은 매핑을 들고 있는다.
+    private var parfaitIDsByDate: [CalendarDate: Int] = [:]
 
     public init(
         state: State = State(),
@@ -25,6 +28,9 @@ public final class CanvasStore: MVIStore {
         self.state = state
         self.dependencies = dependencies
     }
+
+    /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
+    public var groupID: Int { dependencies.groupID }
 
     public func send(_ intent: Intent) {
         switch intent {
@@ -59,6 +65,10 @@ public final class CanvasStore: MVIStore {
 
         case .toppingAddFlowDismissed:
             state.toppingAddSource = nil
+
+        case .toppingSaved:
+            state.toppingAddSource = nil
+            loadCanvas(for: state.calendar.selectedDate)
 
         case .calendarTapped,
              .calendarDimTapped,
@@ -107,18 +117,49 @@ public final class CanvasStore: MVIStore {
         state.contentState = .loading
         state.canvasContent = nil
 
+        let parfaitID = date == state.calendar.today ? nil : parfaitIDsByDate[date]
         canvasLoadTask = Task { [weak self, dependencies] in
-            let loadResult = await dependencies.loadCanvas(date)
-            guard !Task.isCancelled, let self else { return }
-
-            switch loadResult {
-            case .empty:
-                state.contentState = .empty
-            case .filled(let content):
-                state.contentState = .filled
-                state.canvasContent = content
+            do {
+                let parfait = try await Self.fetchParfait(parfaitID: parfaitID, dependencies: dependencies)
+                guard !Task.isCancelled, let self else { return }
+                apply(parfait)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled, let self else { return }
+                state.contentState = .failed
             }
         }
+    }
+
+    /// 오늘은 전용 조회를, 과거는 목록에서 받아 둔 `parfaitID` 를 쓴다.
+    private static func fetchParfait(
+        parfaitID: Int?,
+        dependencies: Dependencies
+    ) async throws -> Parfait {
+        guard let parfaitID else {
+            return try await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+        }
+        return try await dependencies.canvasUseCase.fetchParfait(
+            groupID: dependencies.groupID,
+            parfaitID: parfaitID
+        )
+    }
+
+    private func apply(_ parfait: Parfait) {
+        state.parfaitID = parfait.id
+        state.status = parfait.status
+        state.lastClosedDate = parfait.lastClosedDate.map(CalendarDate.init)
+        state.members = parfait.members.map(Member.init)
+        parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id
+
+        guard !parfait.isEmpty else {
+            state.contentState = .empty
+            state.canvasContent = nil
+            return
+        }
+        state.contentState = .filled
+        state.canvasContent = CanvasContent(parfait)
     }
 
     private func loadInitialDataIfNeeded() {
@@ -130,18 +171,28 @@ public final class CanvasStore: MVIStore {
         loadRecordedDates(for: selectedDate.year)
 
         recordedYearsLoadTask = Task { [weak self, dependencies] in
-            let recordedYears = await dependencies.loadRecordedYears()
-            guard !Task.isCancelled, let self else { return }
-            state.calendar.recordedYears = recordedYears
+            let years = try? await dependencies.canvasUseCase.fetchYears(groupID: dependencies.groupID)
+            guard !Task.isCancelled, let self, let years else { return }
+            state.calendar.recordedYears = Set(years)
         }
     }
 
     private func loadRecordedDates(for year: Int) {
         recordedDatesLoadTask?.cancel()
         recordedDatesLoadTask = Task { [weak self, dependencies] in
-            let recordedDates = await dependencies.loadRecordedDates(year)
-            guard !Task.isCancelled, let self else { return }
-            state.calendar.replaceRecordedDates(recordedDates, for: year)
+            let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
+                groupID: dependencies.groupID,
+                year: year
+            )
+            guard !Task.isCancelled, let self, let summaries else { return }
+
+            for summary in summaries {
+                parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
+            }
+            state.calendar.replaceRecordedDates(
+                Set(summaries.map { CalendarDate($0.date) }),
+                for: year
+            )
         }
     }
 
@@ -158,20 +209,17 @@ public final class CanvasStore: MVIStore {
 
 public extension CanvasStore {
     struct Dependencies: Sendable {
-        public let loadCanvas: @Sendable (CalendarDate) async -> CanvasLoadResult
-        public let loadRecordedDates: @Sendable (Int) async -> Set<CalendarDate>
-        public let loadRecordedYears: @Sendable () async -> Set<Int>
+        public let groupID: Int
+        public let canvasUseCase: any CanvasUseCase
         public let now: @Sendable () -> Date
 
         public init(
-            loadCanvas: @escaping @Sendable (CalendarDate) async -> CanvasLoadResult,
-            loadRecordedDates: @escaping @Sendable (Int) async -> Set<CalendarDate>,
-            loadRecordedYears: @escaping @Sendable () async -> Set<Int>,
+            groupID: Int,
+            canvasUseCase: any CanvasUseCase,
             now: @escaping @Sendable () -> Date = { .now }
         ) {
-            self.loadCanvas = loadCanvas
-            self.loadRecordedDates = loadRecordedDates
-            self.loadRecordedYears = loadRecordedYears
+            self.groupID = groupID
+            self.canvasUseCase = canvasUseCase
             self.now = now
         }
     }
@@ -184,6 +232,11 @@ public extension CanvasStore {
         public var menuState: MenuState
         public var calendar: CalendarState
         public var toppingAddSource: ToppingAddSource?
+        /// 현재 그려진 캔버스의 서버 ID. 토핑 배치·편집이 이 값을 쓴다.
+        public var parfaitID: Int?
+        public var status: ParfaitStatus?
+        /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
+        public var lastClosedDate: CalendarDate?
 
         public init(
             groupName: String = "그룹이름",
@@ -215,40 +268,31 @@ public extension CanvasStore {
     struct Member: Equatable, Identifiable, Sendable {
         public let id: Int
         public let nickname: String
+        public let nametagChip: NametagChip
 
-        public init(id: Int, nickname: String) {
+        public init(id: Int, nickname: String, nametagChip: NametagChip) {
             self.id = id
             self.nickname = nickname
+            self.nametagChip = nametagChip
         }
 
-        /// 네임태그 타입은 원래 서버가 계정 생성 시 1회 배정하는 고정 값이라 화면마다 같아야 한다.
-        /// 캔버스 API 가 아직 이 값을 주지 않아 멤버 ID 로 임시 계산한다 — 그룹 목록과 색이 어긋난다.
-        /// API 연결 시 제거할 것.
-        public var nametagType: YGNametagChip.NametagType {
-            let typeCount = YGNametagChip.NametagType.allCases.count
-            let rawValue = Int(id.magnitude % UInt(typeCount)) + 1
-            return YGNametagChip.NametagType(rawValue: rawValue) ?? .type1
+        init(_ member: ParfaitMember) {
+            id = member.id
+            nickname = member.nickname
+            nametagChip = member.nametagChip
         }
 
-        public static let defaultMembers = [
-            Member(id: 1, nickname: "김"),
-            Member(id: 2, nickname: "박"),
-            Member(id: 3, nickname: "신"),
-            Member(id: 4, nickname: "전"),
-            Member(id: 5, nickname: "전"),
-            Member(id: 6, nickname: "이")
-        ]
+        var nametagType: YGNametagChip.NametagType {
+            nametagChip.chipType
+        }
     }
 
     enum ContentState: Equatable, Sendable {
         case empty
         case loading
         case filled
-    }
-
-    enum CanvasLoadResult: Equatable, Sendable {
-        case empty
-        case filled(CanvasContent)
+        /// 조회 실패. 피그마 프레임이 없어 우선 빈 캔버스와 같은 자리에 표시한다.
+        case failed
     }
 
     struct CanvasContent: Equatable, Sendable {
@@ -327,6 +371,7 @@ public extension CanvasStore {
         case cameraOptionTapped
         case galleryOptionTapped
         case toppingAddFlowDismissed
+        case toppingSaved
         case calendarTapped
         case calendarDimTapped
         case calendarMonthTapped

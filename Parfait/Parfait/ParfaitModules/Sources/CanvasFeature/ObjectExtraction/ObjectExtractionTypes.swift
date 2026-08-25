@@ -67,6 +67,11 @@ struct ExtractedTopping: Equatable, Sendable {
         Self(candidateID: candidateID, image: image, photo: photo, mask: mask)
     }
 
+    /// 추출 캔버스를 더 좁은 영역으로 다시 잘라낸 결과. 세 장을 같은 영역으로 함께 갈아 끼운다.
+    func replacingCanvas(image: CGImage, photo: CGImage, mask: CGImage) -> Self {
+        Self(candidateID: candidateID, image: image, photo: photo, mask: mask)
+    }
+
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.candidateID == rhs.candidateID && lhs.image === rhs.image
     }
@@ -90,6 +95,16 @@ enum ObjectExtractionPolicy {
     static let minimumSafeMargin: CGFloat = 50
     static let extractionCanvasLongEdge: CGFloat = 1500
     static let analysisTimeout: Duration = .seconds(30)
+
+    /// 오브젝트를 감싸는 여백 포함 영역. 사진 밖으로 나가는 부분은 결과물에서 투명 여백이 된다.
+    /// C-103 자동 추출과 C-104 편집 후 재크롭이 같은 식을 써야 두 경로의 토핑 여백이 같아진다.
+    static func canvasRect(around boundingBox: CGRect) -> CGRect {
+        let margin = max(
+            min(boundingBox.width, boundingBox.height) * safeMarginRatio,
+            minimumSafeMargin
+        )
+        return boundingBox.insetBy(dx: -margin, dy: -margin)
+    }
 }
 
 private extension CGRect {

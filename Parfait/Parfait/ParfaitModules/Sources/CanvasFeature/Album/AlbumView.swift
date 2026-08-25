@@ -70,7 +70,8 @@ public struct AlbumView: View {
         AlbumPickerStore(
             isLimited: isLimited,
             recentUploadsRepository: PreviewRecentUploadsRepository(),
-            onPhotoConfirmed: { _ in }
+            onPhotoConfirmed: { _ in },
+            onRecentUploadConfirmed: { _ in }
         )
     }
 }

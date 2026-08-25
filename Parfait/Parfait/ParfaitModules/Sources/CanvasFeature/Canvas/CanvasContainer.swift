@@ -59,7 +59,7 @@ struct CanvasContainer: View {
             }
             .buttonStyle(.plain)
             .overlay {
-                Color.gray500
+                Color.black25
                     .padding(.horizontal, .padding7)
                     .padding(.bottom, .padding6)
                     .allowsHitTesting(false)
@@ -95,7 +95,7 @@ private struct CanvasBoard: View {
 
             Group {
                 switch contentState {
-                case .empty:
+                case .empty, .failed:
                     VStack(spacing: 0) {
                         Text("아직 캔버스가 비어 있어요")
                         Text("첫번째 토핑을 올려 캔버스를 채워보세요")
@@ -132,7 +132,7 @@ private struct CanvasBoard: View {
 
             if isDimmed {
                 CanvasPanelShape()
-                    .fill(Color.gray500)
+                    .fill(Color.black25)
                     .allowsHitTesting(false)
             }
         }

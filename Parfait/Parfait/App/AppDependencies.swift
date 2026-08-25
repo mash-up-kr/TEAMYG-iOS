@@ -25,6 +25,10 @@ struct AppDependencies {
     /// 본 클라이언트에 인증 헤더·401 재시도 인터셉터를 붙인다.
     private let tokenManager: TokenManager
     private let networkClient: any NetworkClient
+    /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
+    private let recentUploadsRepository = RecentUploadsRepositoryImpl()
+    /// 캔버스를 나갔다 들어와도 토핑 이미지·테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
+    private let canvasToppingRenderer = CanvasToppingRenderer()
 
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
@@ -75,6 +79,13 @@ struct AppDependencies {
         GroupUseCaseImpl(groupRepository: GroupRepositoryImpl(networkClient: networkClient))
     }
 
+    func makeToppingUseCase() -> ToppingUseCaseImpl {
+        ToppingUseCaseImpl(
+            imageUploadRepository: ImageUploadRepositoryImpl(networkClient: networkClient),
+            toppingRepository: ToppingRepositoryImpl(networkClient: networkClient)
+        )
+    }
+
     func makeSettingStore() -> SettingStore {
         SettingStore(
             memberUseCase: makeMemberUseCase(),
@@ -103,24 +114,36 @@ struct AppDependencies {
         )
     }
 
-    func makeCanvasStore() -> CanvasStore {
+    func makeCanvasStore(groupID: Int, groupName: String) -> CanvasStore {
         CanvasStore(
+            state: .init(groupName: groupName),
             dependencies: .init(
-                loadCanvas: { _ in .empty },
-                loadRecordedDates: { _ in [] },
-                loadRecordedYears: { [] }
+                groupID: groupID,
+                canvasUseCase: CanvasUseCaseImpl(
+                    canvasRepository: CanvasRepositoryImpl(networkClient: networkClient)
+                )
             )
         )
     }
 
     func makeAlbumPickerStore(
         isLimited: Bool,
-        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
+        onRecentUploadConfirmed: @escaping (StoredImage) -> Void
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,
-            recentUploadsRepository: RecentUploadsRepositoryImpl(),
-            onPhotoConfirmed: onPhotoConfirmed
+            recentUploadsRepository: recentUploadsRepository,
+            onPhotoConfirmed: onPhotoConfirmed,
+            onRecentUploadConfirmed: onRecentUploadConfirmed
         )
+    }
+
+    func makeRecentUploadsRepository() -> any RecentUploadsRepository {
+        recentUploadsRepository
+    }
+
+    func makeCanvasToppingRenderer() -> CanvasToppingRenderer {
+        canvasToppingRenderer
     }
 }

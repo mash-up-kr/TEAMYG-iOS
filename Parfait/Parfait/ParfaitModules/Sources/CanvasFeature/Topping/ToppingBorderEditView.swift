@@ -23,6 +23,7 @@ struct ToppingBorderEditView: View {
     let onWidthChange: (Double) -> Void
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
+    let showsAreaTab: Bool
     let onAreaTabTap: () -> Void
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
@@ -42,7 +43,9 @@ struct ToppingBorderEditView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGFloatingBar(
-                .editTab(tabs: ["영역", "테두리"], selection: tabSelection),
+                showsAreaTab
+                    ? .editTab(tabs: ["영역", "테두리"], selection: tabSelection)
+                    : .edit(title: "테두리"),
                 onClose: onCloseTap,
                 onConfirm: onConfirmTap
             )

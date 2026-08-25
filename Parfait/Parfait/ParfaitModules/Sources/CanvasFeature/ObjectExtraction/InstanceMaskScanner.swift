@@ -54,6 +54,46 @@ enum InstanceMaskScanner {
         )
     }
 
+    /// 브러시로 고쳐 그린 8bit 그레이 마스크를 재다. `CGImage` 는 행 0 이 맨 윗줄이라
+    /// 픽셀 버퍼와 같은 좌상단 원점 좌표계로 나온다.
+    static func metrics(of maskImage: CGImage) -> InstanceMaskMetrics? {
+        let width = maskImage.width
+        let height = maskImage.height
+        guard width > 0, height > 0 else { return nil }
+
+        var pixels = [UInt8](repeating: 0, count: width * height)
+        let didDraw = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let baseAddress = buffer.baseAddress,
+                  let context = CGContext(
+                      data: baseAddress,
+                      width: width,
+                      height: height,
+                      bitsPerComponent: 8,
+                      bytesPerRow: width,
+                      space: CGColorSpaceCreateDeviceGray(),
+                      bitmapInfo: CGImageAlphaInfo.none.rawValue
+                  )
+            else { return false }
+
+            context.draw(maskImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard didDraw else { return nil }
+
+        return pixels.withUnsafeBytes { buffer -> InstanceMaskMetrics? in
+            guard let baseAddress = buffer.baseAddress else { return nil }
+            return scan(
+                baseAddress: baseAddress,
+                bytesPerRow: width,
+                width: width,
+                height: height,
+                isForeground: { rowStart, column in
+                    rowStart.load(fromByteOffset: column, as: UInt8.self) >= 128
+                }
+            )
+        }
+    }
+
     private static func foregroundTest(for pixelFormat: OSType) -> ForegroundTest? {
         switch pixelFormat {
         case kCVPixelFormatType_OneComponent8:
