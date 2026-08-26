@@ -75,7 +75,10 @@ struct ToppingAddFlowView: View {
                 isCameraReady: store.state.isCameraReady,
                 showsToast: store.state.showsToast,
                 previewSource: store.previewSource,
-                send: { store.send($0) }
+                onToastDismissed: { store.send(.toastDismissed) },
+                onFlashTap: { store.send(.flashTapped) },
+                onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
+                onSwitchCameraTap: { store.send(.cameraPositionTapped) }
             )
 
         case .cameraConfirmation:
@@ -189,7 +192,7 @@ struct ToppingAddFlowView: View {
         case .borderEdit:
             if let extractedTopping = store.state.extractedTopping {
                 ToppingBorderEditView(
-                    topping: extractedTopping,
+                    topping: extractedTopping.image,
                     silhouette: store.state.borderSilhouette?.image,
                     border: store.state.borderEditor.border,
                     canUndo: store.state.borderEditor.canUndo,

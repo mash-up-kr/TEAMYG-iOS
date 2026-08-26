@@ -13,7 +13,7 @@ struct ToppingBorderEditView: View {
     private static let historyButtonLength: CGFloat = 42
     private static let chipLength: CGFloat = 36
 
-    let topping: ExtractedTopping
+    let topping: CGImage?
     let silhouette: CGImage?
     let border: ToppingBorder
     let canUndo: Bool
@@ -24,11 +24,46 @@ struct ToppingBorderEditView: View {
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
     let showsAreaTab: Bool
+    let singleTitle: String
     let onAreaTabTap: () -> Void
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
 
     @State private var selectedTab = 1
+
+    init(
+        topping: CGImage?,
+        silhouette: CGImage?,
+        border: ToppingBorder,
+        canUndo: Bool,
+        canRedo: Bool,
+        onUndoTap: @escaping () -> Void,
+        onRedoTap: @escaping () -> Void,
+        onWidthChange: @escaping (Double) -> Void,
+        onWidthEditingChange: @escaping (Bool) -> Void,
+        onColorSelect: @escaping (ToppingBorderColor) -> Void,
+        showsAreaTab: Bool,
+        singleTitle: String = "테두리",
+        onAreaTabTap: @escaping () -> Void,
+        onCloseTap: @escaping () -> Void,
+        onConfirmTap: @escaping () -> Void
+    ) {
+        self.topping = topping
+        self.silhouette = silhouette
+        self.border = border
+        self.canUndo = canUndo
+        self.canRedo = canRedo
+        self.onUndoTap = onUndoTap
+        self.onRedoTap = onRedoTap
+        self.onWidthChange = onWidthChange
+        self.onWidthEditingChange = onWidthEditingChange
+        self.onColorSelect = onColorSelect
+        self.showsAreaTab = showsAreaTab
+        self.singleTitle = singleTitle
+        self.onAreaTabTap = onAreaTabTap
+        self.onCloseTap = onCloseTap
+        self.onConfirmTap = onConfirmTap
+    }
 
     var body: some View {
         ZStack {
@@ -45,7 +80,7 @@ struct ToppingBorderEditView: View {
             YGFloatingBar(
                 showsAreaTab
                     ? .editTab(tabs: ["영역", "테두리"], selection: tabSelection)
-                    : .edit(title: "테두리"),
+                    : .edit(title: singleTitle),
                 onClose: onCloseTap,
                 onConfirm: onConfirmTap
             )
@@ -99,9 +134,14 @@ struct ToppingBorderEditView: View {
                     .scaledToFit()
             }
 
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
-                .scaledToFit()
+            if let topping {
+                Image(decorative: topping, scale: 1, orientation: .up)
+                    .resizable()
+                    .scaledToFit()
+            } else {
+                ProgressView()
+                    .tint(.gray500)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, .padding7)

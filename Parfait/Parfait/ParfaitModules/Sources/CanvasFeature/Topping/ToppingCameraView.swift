@@ -16,7 +16,10 @@ struct ToppingCameraView: View {
     let isCameraReady: Bool
     let showsToast: Bool
     let previewSource: any CameraPreviewSource
-    let send: (ToppingAddStore.Intent) -> Void
+    let onToastDismissed: () -> Void
+    let onFlashTap: () -> Void
+    let onShutterTap: (ViewFinderRegion?) -> Void
+    let onSwitchCameraTap: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var previewFrame: CGRect = .zero
@@ -42,9 +45,9 @@ struct ToppingCameraView: View {
                     flashMode: flashMode,
                     isFlashControlEnabled: isFlashControlEnabled,
                     isCameraReady: isCameraReady,
-                    onFlashTap: { send(.flashTapped) },
-                    onShutterTap: { send(.shutterTapped(viewFinderRegion: viewFinderRegion)) },
-                    onSwitchCameraTap: { send(.cameraPositionTapped) }
+                    onFlashTap: onFlashTap,
+                    onShutterTap: { onShutterTap(viewFinderRegion) },
+                    onSwitchCameraTap: onSwitchCameraTap
                 )
                 .padding(.top, .padding3)
             }
@@ -83,7 +86,7 @@ struct ToppingCameraView: View {
             .padding(.top, .padding4)
             .task { presentGuideToastIfNeeded() }
             .onChange(of: guideToasts.isEmpty) { _, isEmpty in
-                if isEmpty { send(.toastDismissed) }
+                if isEmpty { onToastDismissed() }
             }
     }
 
