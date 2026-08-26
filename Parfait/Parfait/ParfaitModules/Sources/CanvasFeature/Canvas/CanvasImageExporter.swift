@@ -82,7 +82,15 @@ public struct CanvasImageExporter: Sendable {
     }
 
     private func preparedTopping(_ canvasImage: CanvasStore.CanvasImage) async -> PreparedTopping? {
-        guard let image = await toppingRenderer.topping(at: canvasImage.imageURL) else { return nil }
+        // 저장본에 그려질 크기로만 받는다 — 화면과 같은 식이되 배율이 `renderScale` 이다.
+        let neededLongEdge = Self.canvasSize.width
+            * CanvasArea.toppingBaseLongSideRatio
+            * CGFloat(canvasImage.scale)
+            * Self.renderScale
+        guard let image = await toppingRenderer.topping(
+            at: canvasImage.imageURL,
+            neededLongEdge: neededLongEdge
+        ) else { return nil }
 
         var silhouette: CGImage?
         if let border = canvasImage.border, border.width > 0 {

@@ -296,7 +296,11 @@ private extension CanvasEditView {
 
         borderTopping = nil
         borderSilhouette = nil
-        let topping = await toppingRenderer.topping(at: key.imageURL)
+        // 테두리 편집(C-306)은 토핑 한 장을 화면 가득 띄운다. 한 장뿐이라 원본 해상도를 그대로 쓴다.
+        let topping = await toppingRenderer.topping(
+            at: key.imageURL,
+            neededLongEdge: ToppingImageEncoder.maximumLongEdge
+        )
         guard !Task.isCancelled else { return }
         borderTopping = topping
 
