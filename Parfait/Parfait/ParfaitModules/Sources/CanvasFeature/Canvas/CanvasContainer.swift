@@ -34,10 +34,7 @@ struct CanvasContainer: View {
                         }
                     }
 
-                    CanvasMenuBar(
-                        onToppingAddTap: { send(.toppingAddTapped) },
-                        onCanvasEditTap: { send(.canvasEditTapped) }
-                    )
+                    menuBar
                 }
                 .frame(width: CanvasArea.width(fitting: proxy.size))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -48,6 +45,22 @@ struct CanvasContainer: View {
             if state.calendar.presentation != .closed {
                 calendarLayer
             }
+        }
+    }
+
+    /// 과거 캔버스는 열람 전용이라 토핑 추가·캔버스 편집 대신 저장·오늘 가기를 제공한다 (`canvas-policy.md` §7.2).
+    @ViewBuilder
+    private var menuBar: some View {
+        if state.isClosedCanvas {
+            CanvasClosedMenuBar(
+                onSaveToGalleryTap: { send(.saveToGalleryTapped) },
+                onTodayParfaitTap: { send(.todayParfaitTapped) }
+            )
+        } else {
+            CanvasMenuBar(
+                onToppingAddTap: { send(.toppingAddTapped) },
+                onCanvasEditTap: { send(.canvasEditTapped) }
+            )
         }
     }
 
@@ -225,6 +238,24 @@ private struct CanvasPanelShape: Shape {
                 ],
                 today: today,
                 presentation: .grid
+            )
+        ),
+        send: { _ in }
+    )
+}
+
+#Preview("SY-001-Closed") {
+    let today = CalendarDate(year: 2026, month: 8, day: 26)
+    let pastDate = CalendarDate(year: 2026, month: 5, day: 20)
+
+    CanvasContainer(
+        state: .init(
+            contentState: .filled,
+            canvasContent: .init(background: .color(hex: "#FFDDE5")),
+            calendar: .init(
+                selectedDate: pastDate,
+                recordedDates: [pastDate],
+                today: today
             )
         ),
         send: { _ in }

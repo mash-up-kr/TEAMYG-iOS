@@ -11,6 +11,7 @@ import UIComponent
 
 public struct CanvasView: View {
     @State private var store: CanvasStore
+    @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
@@ -56,6 +57,20 @@ public struct CanvasView: View {
         .task {
             store.send(.screenAppeared)
         }
+        .task {
+            for await event in store.events {
+                switch event {
+                case .gallerySaveSucceeded(let dateText):
+                    toasts.append(
+                        YGToastItem(kind: .success, message: "\(dateText)의 캔버스가 갤러리에 저장됐어요")
+                    )
+                case .gallerySaveFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
+                    )
+                }
+            }
+        }
         .onDisappear {
             store.send(.screenDisappeared)
         }
@@ -72,6 +87,7 @@ public struct CanvasView: View {
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
+        .ygToastOverlay($toasts)
     }
 
     private func toppingAddFlow(

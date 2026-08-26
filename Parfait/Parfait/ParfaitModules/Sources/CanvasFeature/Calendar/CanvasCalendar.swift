@@ -65,12 +65,14 @@ private struct CanvasCalendarHeader: View {
         HStack(spacing: 0) {
             CanvasCalendarHeaderButton(
                 title: state.monthTitle,
-                action: onMonthTap
+                action: onMonthTap,
+                color: .gray300
             )
 
             CanvasCalendarHeaderButton(
                 title: String(state.exploredYear),
-                action: onYearTap
+                action: onYearTap,
+                color: .gray200
             )
 
             Spacer(minLength: 0)
@@ -102,7 +104,8 @@ private struct CanvasDropdownDismissLayer: View {
 private struct CanvasCalendarHeaderButton: View {
     let title: String
     let action: () -> Void
-
+    let color: Color
+    
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
@@ -113,7 +116,7 @@ private struct CanvasCalendarHeaderButton: View {
                 Image.icCaretBottom
                     .renderingMode(.template)
                     .resizable()
-                    .foregroundStyle(.gray300)
+                    .foregroundStyle(color)
                     .frame(width: 24, height: 24)
                     .frame(width: 44, height: 44)
             }

@@ -125,7 +125,8 @@ struct AppDependencies {
                 groupID: groupID,
                 canvasUseCase: CanvasUseCaseImpl(
                     canvasRepository: CanvasRepositoryImpl(networkClient: networkClient)
-                )
+                ),
+                canvasImageExporter: CanvasImageExporter(toppingRenderer: canvasToppingRenderer)
             )
         )
     }

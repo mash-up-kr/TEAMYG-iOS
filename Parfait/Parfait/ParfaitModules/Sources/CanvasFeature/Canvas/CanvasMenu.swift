@@ -30,6 +30,28 @@ struct CanvasMenuBar: View {
     }
 }
 
+/// 과거 캔버스(SY-001-Closed)의 하단 메뉴. 열람 전용이라 저장과 오늘로 돌아가기만 제공한다.
+struct CanvasClosedMenuBar: View {
+    let onSaveToGalleryTap: () -> Void
+    let onTodayParfaitTap: () -> Void
+
+    var body: some View {
+        HStack(spacing: -1) {
+            CanvasMenuButton(
+                "갤러리에 저장",
+                style: .primary,
+                action: onSaveToGalleryTap
+            )
+            CanvasMenuButton(
+                "오늘의 파르페 가기",
+                icon: .icCaretRight,
+                style: .primary,
+                action: onTodayParfaitTap
+            )
+        }
+    }
+}
+
 struct CanvasMenuSourceOptions: View {
     let onCameraOptionTap: () -> Void
     let onGalleryOptionTap: () -> Void

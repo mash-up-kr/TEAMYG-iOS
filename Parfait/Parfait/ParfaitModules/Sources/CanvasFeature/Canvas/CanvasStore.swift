@@ -13,8 +13,14 @@ import UIComponent
 @Observable @MainActor
 public final class CanvasStore: MVIStore {
     public private(set) var state: State
+
+    /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
+    let events: AsyncStream<Event>
+    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+
     private let dependencies: Dependencies
     private var canvasLoadTask: Task<Void, Never>?
+    private var gallerySaveTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
@@ -27,6 +33,7 @@ public final class CanvasStore: MVIStore {
     ) {
         self.state = state
         self.dependencies = dependencies
+        (events, eventContinuation) = AsyncStream.makeStream()
     }
 
     /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
@@ -47,30 +54,12 @@ public final class CanvasStore: MVIStore {
              .canvasEditSaved:
             handleCanvasEditIntent(intent)
 
-        case .toppingAddTapped:
-            state.calendar.close()
-            state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
-
-        case .cameraOptionTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            state.toppingAddSource = .camera(
-                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
-            )
-
-        case .galleryOptionTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            state.toppingAddSource = .gallery(
-                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
-            )
-
-        case .toppingAddFlowDismissed:
-            state.toppingAddSource = nil
-
-        case .toppingSaved:
-            state.toppingAddSource = nil
-            loadCanvas(for: state.calendar.selectedDate)
+        case .toppingAddTapped,
+             .cameraOptionTapped,
+             .galleryOptionTapped,
+             .toppingAddFlowDismissed,
+             .toppingSaved:
+            handleToppingAddIntent(intent)
 
         case .calendarTapped,
              .calendarDimTapped,
@@ -81,10 +70,50 @@ public final class CanvasStore: MVIStore {
              .calendarDateSelected:
             handleCalendarIntent(intent)
 
+        case .saveToGalleryTapped:
+            saveCanvasToGallery()
+
+        case .todayParfaitTapped:
+            openTodayCanvas()
+
         case .moreMenuTapped:
             // 후속 화면 정책 확정 전까지 외형과 Intent 경계만 제공한다.
             break
         }
+    }
+
+    /// 과거 캔버스에서는 토핑을 올릴 수 없다 (`canvas-policy.md` §7.2).
+    private func handleToppingAddIntent(_ intent: Intent) {
+        switch intent {
+        case .toppingAddTapped:
+            guard !state.isClosedCanvas else { return }
+            state.calendar.close()
+            state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
+
+        case .cameraOptionTapped:
+            openToppingAddFlow { .camera(canvasDate: $0) }
+
+        case .galleryOptionTapped:
+            openToppingAddFlow { .gallery(canvasDate: $0) }
+
+        case .toppingAddFlowDismissed:
+            state.toppingAddSource = nil
+
+        case .toppingSaved:
+            state.toppingAddSource = nil
+            loadCanvas(for: state.calendar.selectedDate)
+
+        default:
+            break
+        }
+    }
+
+    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
+    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
+        guard !state.isClosedCanvas else { return }
+        state.calendar.close()
+        state.menuState = .collapsed
+        state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
     private func handleCalendarIntent(_ intent: Intent) {
@@ -116,6 +145,7 @@ public final class CanvasStore: MVIStore {
     private func handleCanvasEditIntent(_ intent: Intent) {
         switch intent {
         case .canvasEditTapped:
+            guard !state.isClosedCanvas else { return }
             state.calendar.close()
             state.menuState = .collapsed
             guard state.parfaitID != nil, state.canvasContent != nil else { return }
@@ -127,6 +157,40 @@ public final class CanvasStore: MVIStore {
             loadCanvas(for: state.calendar.selectedDate)
         default:
             break
+        }
+    }
+
+    /// SY-001-Closed `오늘의 파르페 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
+    private func openTodayCanvas() {
+        state.menuState = .collapsed
+        guard state.calendar.selectDate(state.calendar.today) else { return }
+        loadCanvas(for: state.calendar.today)
+    }
+
+    /// SY-001-Closed `갤러리에 저장` — 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다.
+    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패 Toast 로 수렴한다.
+    private func saveCanvasToGallery() {
+        guard state.gallerySave != .saving else { return }
+        state.calendar.close()
+
+        guard let canvasContent = state.canvasContent else {
+            eventContinuation.yield(.gallerySaveFailed)
+            return
+        }
+
+        state.gallerySave = .saving
+        let savedDate = state.calendar.selectedDate
+        gallerySaveTask = Task { [weak self, dependencies] in
+            var isSaved = false
+            if let canvasImage = await dependencies.canvasImageExporter.image(of: canvasContent) {
+                isSaved = await CanvasGallerySaver.save(canvasImage)
+            }
+
+            guard !Task.isCancelled, let self else { return }
+            state.gallerySave = .idle
+            eventContinuation.yield(
+                isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
+            )
         }
     }
 
@@ -219,177 +283,11 @@ public final class CanvasStore: MVIStore {
         canvasLoadTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
+        gallerySaveTask?.cancel()
+        gallerySaveTask = nil
         canvasLoadTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
         didLoadInitialData = false
-    }
-}
-
-public extension CanvasStore {
-    struct Dependencies: Sendable {
-        public let groupID: Int
-        public let canvasUseCase: any CanvasUseCase
-        public let now: @Sendable () -> Date
-
-        public init(
-            groupID: Int,
-            canvasUseCase: any CanvasUseCase,
-            now: @escaping @Sendable () -> Date = { .now }
-        ) {
-            self.groupID = groupID
-            self.canvasUseCase = canvasUseCase
-            self.now = now
-        }
-    }
-
-    struct State: Equatable, Sendable {
-        public var groupName: String
-        public var members: [Member]
-        public var contentState: ContentState
-        public var canvasContent: CanvasContent?
-        public var menuState: MenuState
-        public var calendar: CalendarState
-        public var toppingAddSource: ToppingAddSource?
-        var canvasEditDestination: CanvasEditDestination?
-        /// 현재 그려진 캔버스의 서버 ID. 토핑 배치·편집이 이 값을 쓴다.
-        public var parfaitID: Int?
-        public var status: ParfaitStatus?
-        /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
-        public var lastClosedDate: CalendarDate?
-
-        public init(
-            groupName: String = "그룹이름",
-            members: [Member] = [],
-            contentState: ContentState? = nil,
-            canvasContent: CanvasContent? = nil,
-            menuState: MenuState = .collapsed,
-            calendar: CalendarState = CalendarState(),
-            toppingAddSource: ToppingAddSource? = nil
-        ) {
-            self.groupName = groupName
-            self.members = members
-            self.contentState = contentState ?? calendar.contentState(for: calendar.selectedDate)
-            self.canvasContent = canvasContent
-            self.menuState = menuState
-            self.calendar = calendar
-            self.toppingAddSource = toppingAddSource
-            canvasEditDestination = nil
-        }
-
-        public var dateText: String {
-            calendar.dateText
-        }
-
-        public var weekdayText: String {
-            calendar.weekdayText
-        }
-    }
-
-    struct Member: Equatable, Identifiable, Sendable {
-        public let id: Int
-        public let nickname: String
-        public let nametagChip: NametagChip
-
-        public init(id: Int, nickname: String, nametagChip: NametagChip) {
-            self.id = id
-            self.nickname = nickname
-            self.nametagChip = nametagChip
-        }
-
-        init(_ member: ParfaitMember) {
-            id = member.id
-            nickname = member.nickname
-            nametagChip = member.nametagChip
-        }
-
-        var nametagType: YGNametagChip.NametagType {
-            nametagChip.chipType
-        }
-    }
-
-    enum ContentState: Equatable, Sendable {
-        case empty
-        case loading
-        case filled
-        /// 조회 실패. 피그마 프레임이 없어 우선 빈 캔버스와 같은 자리에 표시한다.
-        case failed
-    }
-
-    struct CanvasContent: Equatable, Sendable {
-        public let background: CanvasBackground
-        public let images: [CanvasImage]
-
-        public init(background: CanvasBackground, images: [CanvasImage] = []) {
-            self.background = background
-            self.images = images.sorted { $0.positionZ < $1.positionZ }
-        }
-    }
-
-    enum CanvasBackground: Equatable, Sendable {
-        case color(hex: String)
-        case image(url: URL)
-        /// 배경 편집에서 아직 서버에 저장하지 않은 JPEG 초안.
-        case imageData(Data)
-    }
-
-    struct CanvasImage: Equatable, Identifiable, Sendable {
-        public let id: Int
-        public let imageURL: URL
-        public let positionX: Double
-        public let positionY: Double
-        public let positionZ: Double
-        public let scale: Double
-        public let rotation: Double
-        public let border: CanvasImageBorder?
-        public let isMine: Bool
-
-        public init(
-            id: Int,
-            imageURL: URL,
-            positionX: Double,
-            positionY: Double,
-            positionZ: Double,
-            scale: Double = 1,
-            rotation: Double = 0,
-            border: CanvasImageBorder? = nil,
-            isMine: Bool = false
-        ) {
-            self.id = id
-            self.imageURL = imageURL
-            self.positionX = positionX
-            self.positionY = positionY
-            self.positionZ = positionZ
-            self.scale = scale
-            self.rotation = rotation
-            self.border = border
-            self.isMine = isMine
-        }
-    }
-
-    enum MenuState: Equatable, Sendable {
-        case collapsed
-        case sourceOptions
-    }
-
-    enum Intent {
-        case screenAppeared
-        case screenDisappeared
-        case canvasEditTapped
-        case canvasEditFlowDismissed
-        case canvasEditSaved
-        case toppingAddTapped
-        case cameraOptionTapped
-        case galleryOptionTapped
-        case toppingAddFlowDismissed
-        case toppingSaved
-        case calendarTapped
-        case calendarDimTapped
-        case calendarMonthTapped
-        case calendarYearTapped
-        case calendarMonthSelected(Int)
-        case calendarYearSelected(Int)
-        case calendarDateSelected(CalendarDate)
-        case moreMenuTapped
     }
 }
