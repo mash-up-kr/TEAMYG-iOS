@@ -71,7 +71,7 @@ struct CanvasEditView: View {
             store.send(.saveErrorDismissed)
         }
         .task {
-            for await event in store.events {
+            for await event in store.eventStream() {
                 switch event {
                 case .otherToppingSelected:
                     toasts.append(YGToastItem(kind: .warning, message: "내 토핑만 편집할 수 있어요"))
@@ -288,7 +288,7 @@ private extension CanvasEditView {
     }
 
     func loadBorderPreview() async {
-        guard let key = borderPreviewKey else {
+        guard let key = borderPreviewKey, let toppingRenderer else {
             borderTopping = nil
             borderSilhouette = nil
             return

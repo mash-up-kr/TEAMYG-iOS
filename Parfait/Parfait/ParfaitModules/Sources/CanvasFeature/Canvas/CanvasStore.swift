@@ -15,8 +15,7 @@ public final class CanvasStore: MVIStore {
     public private(set) var state: State
 
     /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
-    let events: AsyncStream<Event>
-    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
     private var canvasLoadTask: Task<Void, Never>?
@@ -33,7 +32,11 @@ public final class CanvasStore: MVIStore {
     ) {
         self.state = state
         self.dependencies = dependencies
-        (events, eventContinuation) = AsyncStream.makeStream()
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
@@ -174,7 +177,7 @@ public final class CanvasStore: MVIStore {
         state.calendar.close()
 
         guard let canvasContent = state.canvasContent else {
-            eventContinuation.yield(.gallerySaveFailed)
+            eventChannel.send(.gallerySaveFailed)
             return
         }
 
@@ -188,7 +191,7 @@ public final class CanvasStore: MVIStore {
 
             guard !Task.isCancelled, let self else { return }
             state.gallerySave = .idle
-            eventContinuation.yield(
+            eventChannel.send(
                 isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
             )
         }
@@ -280,6 +283,8 @@ public final class CanvasStore: MVIStore {
     }
 
     private func cancelTasks() {
+        // 저장 태스크를 취소하면 완료 클로저가 상태를 되돌리지 못한다 — 여기서 직접 풀어 준다.
+        state.gallerySave = .idle
         canvasLoadTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()

@@ -15,8 +15,7 @@ final class CanvasEditStore: MVIStore {
     private(set) var state: State
 
     /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
-    let events: AsyncStream<Event>
-    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
     @ObservationIgnored private var saveTask: Task<Void, Never>?
@@ -24,7 +23,11 @@ final class CanvasEditStore: MVIStore {
     init(state: State, dependencies: Dependencies) {
         self.state = state
         self.dependencies = dependencies
-        (events, eventContinuation) = AsyncStream.makeStream()
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     func send(_ intent: Intent) {
@@ -139,7 +142,7 @@ final class CanvasEditStore: MVIStore {
         else { return }
 
         guard topping.isMine else {
-            eventContinuation.yield(.otherToppingSelected)
+            eventChannel.send(.otherToppingSelected)
             return
         }
         state.selectedToppingID = toppingID

@@ -29,7 +29,7 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
         case .black: "#0E0E0E"
         case .pink: "#FCC2CC"
         case .orange: "#FCE7C2"
-        case .yellow: "#FAFAAB"
+        case .yellow: "#F9F9AB"
         case .green: "#C5FFD7"
         case .sky: "#C2E4FC"
         case .purple: "#DCC2FC"
@@ -50,10 +50,6 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
 
     init?(hex: String) {
         let normalizedHex = hex.uppercased()
-        if normalizedHex == "#F9F9AB" {
-            self = .yellow
-            return
-        }
         guard let color = Self.allCases.first(where: { $0.hex == normalizedHex }) else { return nil }
         self = color
     }

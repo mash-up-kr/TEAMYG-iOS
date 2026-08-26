@@ -15,8 +15,8 @@ import UIComponent
 final class BackgroundImagePickerStore: MVIStore {
     private(set) var state: State
 
-    let events: AsyncStream<Event>
-    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+    /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let cameraSession = CameraSession()
     private let dependencies: Dependencies
@@ -29,7 +29,11 @@ final class BackgroundImagePickerStore: MVIStore {
     init(state: State, dependencies: Dependencies) {
         self.state = state
         self.dependencies = dependencies
-        (events, eventContinuation) = AsyncStream.makeStream()
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     var previewSource: any CameraPreviewSource {
@@ -101,7 +105,7 @@ final class BackgroundImagePickerStore: MVIStore {
             guard let self, !Task.isCancelled else { return }
             state.isPreparingImage = false
             guard let jpegData else {
-                eventContinuation.yield(.imagePreparationFailed)
+                eventChannel.send(.imagePreparationFailed)
                 return
             }
             dependencies.onImageSelected(jpegData, source)

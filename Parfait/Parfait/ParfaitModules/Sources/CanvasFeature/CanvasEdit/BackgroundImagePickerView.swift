@@ -39,7 +39,7 @@ struct BackgroundImagePickerView: View {
         .ygToastOverlay($toasts)
         .task {
             store.send(.screenAppeared)
-            for await event in store.events {
+            for await event in store.eventStream() {
                 switch event {
                 case .imagePreparationFailed:
                     toasts.append(

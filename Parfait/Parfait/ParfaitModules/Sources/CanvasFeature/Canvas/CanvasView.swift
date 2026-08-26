@@ -58,7 +58,7 @@ public struct CanvasView: View {
             store.send(.screenAppeared)
         }
         .task {
-            for await event in store.events {
+            for await event in store.eventStream() {
                 switch event {
                 case .gallerySaveSucceeded(let dateText):
                     toasts.append(

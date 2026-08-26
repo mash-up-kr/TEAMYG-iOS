@@ -159,6 +159,8 @@ struct CanvasPlacedImage: View {
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        // 렌더러는 캔버스 화면이 주입한다. 주입이 없으면 그릴 수단이 없다.
+        guard let renderer else { return }
 
         let loaded = await renderer.topping(at: canvasImage.imageURL)
         guard !Task.isCancelled else { return }

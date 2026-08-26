@@ -629,7 +629,8 @@ private extension ToppingAddStore {
                     groupID: dependencies.groupID,
                     parfaitID: parfaitID
                 )
-                try? await dependencies.recentUploadsRepository.save(pngData)
+                // 서버 배치는 이미 끝났다 — 최근 업로드 기록 실패로 저장 전체를 물리지 않는다.
+                _ = try? await dependencies.recentUploadsRepository.save(pngData)
                 guard !Task.isCancelled, let self else { return }
                 state.saveState = .idle
                 dependencies.onSaved()
