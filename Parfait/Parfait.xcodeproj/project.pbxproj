@@ -12,9 +12,9 @@
 		AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E702FECFD6700703DBC /* CanvasData */; };
 		AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E722FECFD6700703DBC /* CanvasFeature */; };
 		AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E742FECFD6700703DBC /* GroupData */; };
-		AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7A2FECFD6700703DBC /* MemberData */; };
 		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
 		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
+		AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7A2FECFD6700703DBC /* MemberData */; };
 		DEC0DE000000000000000001 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = DEC0DE000000000000000002 /* UIComponent */; };
 /* End PBXBuildFile section */
 
@@ -358,6 +358,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Parfait/Parfait.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
@@ -406,6 +407,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Parfait/Parfait.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
@@ -573,10 +575,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = GroupData;
 		};
-		AB4D0E7A2FECFD6700703DBC /* MemberData */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = MemberData;
-		};
 		AB4D0E762FECFD6700703DBC /* GroupFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GroupFeature;
@@ -584,6 +582,10 @@
 		AB4D0E782FECFD6700703DBC /* LoginFeature */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LoginFeature;
+		};
+		AB4D0E7A2FECFD6700703DBC /* MemberData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MemberData;
 		};
 		DEC0DE000000000000000002 /* UIComponent */ = {
 			isa = XCSwiftPackageProductDependency;
