@@ -186,11 +186,7 @@ private struct CanvasEditableTopping: View {
 private extension CanvasEditableTopping {
     var previewPlacement: ToppingPlacement {
         topping.placement
-            .magnified(
-                by: scaleFactor,
-                toppingPixelSize: toppingPixelSize,
-                canvasSize: canvasSize
-            )
+            .magnified(by: scaleFactor)
             .moved(by: dragTranslation, in: canvasSize)
             .rotated(by: rotationDelta)
     }
@@ -232,13 +228,7 @@ private extension CanvasEditableTopping {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
             .onChanged { scaleFactor = magnification(for: $0) }
             .onEnded { value in
-                onPlacementChange(
-                    topping.placement.magnified(
-                        by: magnification(for: value),
-                        toppingPixelSize: toppingPixelSize,
-                        canvasSize: canvasSize
-                    )
-                )
+                onPlacementChange(topping.placement.magnified(by: magnification(for: value)))
                 scaleFactor = 1
             }
     }
