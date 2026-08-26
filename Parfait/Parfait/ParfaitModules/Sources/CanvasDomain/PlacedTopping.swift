@@ -19,6 +19,7 @@ public struct PlacedTopping: Identifiable, Equatable, Sendable {
     public let rotation: Double
     public let border: ToppingBorderStyle
     public let placedBy: ParfaitMember
+    public let ownerType: ToppingOwnerType
     public let createdAt: Date?
 
     public init(
@@ -32,6 +33,7 @@ public struct PlacedTopping: Identifiable, Equatable, Sendable {
         rotation: Double,
         border: ToppingBorderStyle,
         placedBy: ParfaitMember,
+        ownerType: ToppingOwnerType = .unknown,
         createdAt: Date?
     ) {
         self.id = id
@@ -44,6 +46,14 @@ public struct PlacedTopping: Identifiable, Equatable, Sendable {
         self.rotation = rotation
         self.border = border
         self.placedBy = placedBy
+        self.ownerType = ownerType
         self.createdAt = createdAt
     }
+}
+
+/// 현재 로그인 사용자 기준 토핑 소유자. 서버의 `placedBy.ownerType` 값을 그대로 보존한다.
+public enum ToppingOwnerType: Equatable, Sendable {
+    case currentUser
+    case other
+    case unknown
 }

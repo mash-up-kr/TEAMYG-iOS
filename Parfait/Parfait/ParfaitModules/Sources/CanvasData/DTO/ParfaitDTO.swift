@@ -27,8 +27,8 @@ struct BackgroundDTO: Decodable, Sendable {
     let value: String
 }
 
-/// `TodayParfaitImageResponse`. `createdAt` 은 타임존이 없는 `date-time` 이라
-/// `String` 으로 받아 매핑에서 파싱한다 — `JSONDecoder.iso8601` 로는 디코딩되지 않는다.
+/// `TodayParfaitImageResponse`. `createdAt` 은 소수 초가 포함될 수 있는 ISO 8601 문자열이라
+/// `String` 으로 받아 매핑에서 형식별로 파싱한다.
 struct ParfaitImageDTO: Decodable, Sendable {
     let parfaitImageId: Int
     let imageId: Int
@@ -49,6 +49,7 @@ struct PlacedByDTO: Decodable, Sendable {
     let groupMemberId: Int
     let nickname: String
     let nameTagChip: String?
+    let ownerType: String?
 }
 
 /// `PastParfaitsResponse`

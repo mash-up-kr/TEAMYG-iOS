@@ -76,6 +76,7 @@ extension ParfaitImageDTO {
             rotation: rotation,
             border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
             placedBy: placedBy?.toEntity() ?? .unknown,
+            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
             createdAt: ServerDateTime.parse(createdAt)
         )
     }
@@ -97,6 +98,7 @@ extension PlacedToppingDTO {
             rotation: rotation,
             border: border,
             placedBy: placedBy?.toEntity() ?? .unknown,
+            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
             createdAt: nil
         )
     }
@@ -168,5 +170,15 @@ private extension ToppingBorderStyle {
             return
         }
         self = .solid(colorHex: colorHex, width: width)
+    }
+}
+
+private extension ToppingOwnerType {
+    init(serverValue: String?) {
+        switch serverValue {
+        case "ME": self = .currentUser
+        case "OTHER": self = .other
+        default: self = .unknown
+        }
     }
 }
