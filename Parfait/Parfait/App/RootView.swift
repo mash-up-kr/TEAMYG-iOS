@@ -85,6 +85,7 @@ struct RootView: View {
                 ),
                 makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
                 toppingUseCase: diContainer.makeToppingUseCase(),
+                imageUploadRepository: diContainer.makeImageUploadRepository(),
                 recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
                 toppingRenderer: diContainer.makeCanvasToppingRenderer()
             )

@@ -80,6 +80,17 @@ extension ToppingPlacement {
     }
 }
 
+extension ToppingPlacement {
+    init(_ canvasImage: CanvasStore.CanvasImage) {
+        self.init(
+            positionX: canvasImage.positionX,
+            positionY: canvasImage.positionY,
+            scale: canvasImage.scale,
+            rotationDegrees: canvasImage.rotation
+        )
+    }
+}
+
 struct ToppingPlacementEditor: Equatable, Sendable {
     private(set) var placement = ToppingPlacement()
     private(set) var canvasSize: CGSize = .zero

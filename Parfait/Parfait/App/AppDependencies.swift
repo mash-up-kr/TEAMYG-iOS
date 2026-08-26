@@ -86,6 +86,10 @@ struct AppDependencies {
         )
     }
 
+    func makeImageUploadRepository() -> ImageUploadRepositoryImpl {
+        ImageUploadRepositoryImpl(networkClient: networkClient)
+    }
+
     func makeSettingStore() -> SettingStore {
         SettingStore(
             memberUseCase: makeMemberUseCase(),

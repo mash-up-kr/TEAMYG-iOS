@@ -11,6 +11,15 @@ import UIComponent
 
 struct CanvasContentView: View {
     let content: CanvasStore.CanvasContent
+    var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
+
+    init(
+        content: CanvasStore.CanvasContent,
+        onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil
+    ) {
+        self.content = content
+        self.onImageTap = onImageTap
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -18,12 +27,21 @@ struct CanvasContentView: View {
                 background
 
                 ForEach(content.images) { canvasImage in
-                    CanvasPlacedImage(canvasImage: canvasImage, canvasSize: proxy.size)
+                    CanvasPlacedImage(
+                        canvasImage: canvasImage,
+                        canvasSize: proxy.size,
+                        onTap: imageTapAction(for: canvasImage)
+                    )
                         .zIndex(canvasImage.positionZ)
                 }
             }
         }
         .clipped()
+    }
+
+    private func imageTapAction(for canvasImage: CanvasStore.CanvasImage) -> (() -> Void)? {
+        guard let onImageTap else { return nil }
+        return { onImageTap(canvasImage) }
     }
 
     @ViewBuilder
@@ -48,15 +66,53 @@ struct CanvasContentView: View {
                     Color.gray100
                 }
             }
+
+        case .imageData(let imageData):
+            LocalCanvasBackgroundImage(imageData: imageData)
         }
+    }
+}
+
+private struct LocalCanvasBackgroundImage: View {
+    let imageData: Data
+
+    @Environment(\.displayScale) private var displayScale
+    @State private var image: CGImage?
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let image {
+                    Image(decorative: image, scale: 1)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.gray100
+                }
+            }
+            .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
+                let maxPixelSize = proxy.size.longEdgePixelSize(scale: displayScale)
+                image = await Task.detached(priority: .userInitiated) {
+                    ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+                }.value
+            }
+        }
+    }
+
+    private struct DecodeRequest: Equatable {
+        let size: CGSize
+        let displayScale: CGFloat
     }
 }
 
 /// 테두리는 이미지에 굽지 않고 색·굵기로만 저장되므로(확정 규약), 알파 실루엣을 떠서 토핑 뒤에 깐다.
 /// C-105·C-106 미리보기와 같은 `ToppingBorderRenderer` 를 타야 저장 전후 모습이 같다.
-private struct CanvasPlacedImage: View {
+struct CanvasPlacedImage: View {
     let canvasImage: CanvasStore.CanvasImage
     let canvasSize: CGSize
+    var isSelected = false
+    var onTap: (() -> Void)?
+    var onToppingLoaded: ((CGSize) -> Void)?
 
     @Environment(\.canvasToppingRenderer) private var renderer
     @State private var topping: CGImage?
@@ -65,9 +121,12 @@ private struct CanvasPlacedImage: View {
 
     var body: some View {
         content
+            .contentShape(.rect)
+            .onTapGesture { onTap?() }
+            .allowsHitTesting(onTap != nil)
             .rotationEffect(.degrees(canvasImage.rotation))
             .position(center)
-            .task(id: canvasImage) { await load() }
+            .task(id: LoadKey(canvasImage)) { await load() }
     }
 
     @ViewBuilder
@@ -85,6 +144,12 @@ private struct CanvasPlacedImage: View {
                     .resizable()
             }
             .frame(width: renderedSize.width, height: renderedSize.height)
+            .overlay {
+                if isSelected {
+                    Rectangle()
+                        .strokeBorder(.whiteFixed, lineWidth: 2)
+                }
+            }
         } else if isLoading {
             ProgressView()
                 .tint(.gray500)
@@ -98,6 +163,9 @@ private struct CanvasPlacedImage: View {
         let loaded = await renderer.topping(at: canvasImage.imageURL)
         guard !Task.isCancelled else { return }
         topping = loaded
+        if let loaded {
+            onToppingLoaded?(CGSize(width: loaded.width, height: loaded.height))
+        }
 
         guard let loaded, let border = canvasImage.border, border.width > 0 else {
             silhouette = nil
@@ -126,5 +194,15 @@ private struct CanvasPlacedImage: View {
             x: CGFloat(canvasImage.positionX) * canvasSize.width,
             y: CGFloat(canvasImage.positionY) * canvasSize.height
         )
+    }
+
+    private struct LoadKey: Equatable {
+        let imageURL: URL
+        let border: CanvasStore.CanvasImageBorder?
+
+        init(_ canvasImage: CanvasStore.CanvasImage) {
+            imageURL = canvasImage.imageURL
+            border = canvasImage.border
+        }
     }
 }

@@ -33,6 +33,7 @@ public extension Image {
     static let icClose = Image("Ic_Close", bundle: .module)
     static let icCloseRound = Image("Ic_Close_Round", bundle: .module)
     static let icCopy = Image("Ic_Copy", bundle: .module)
+    static let icEdit = Image("Ic_Edit", bundle: .module)
     static let icEnter = Image("Ic_Enter", bundle: .module)
     static let icGallery = Image("Ic_Gallery", bundle: .module)
     static let icHamburger = Image("Ic_Hamburger", bundle: .module)
@@ -79,6 +80,7 @@ public extension UIImage {
     static var icClose: UIImage { UIImage(resource: ImageResource(name: "Ic_Close", bundle: .module)) }
     static var icCloseRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Close_Round", bundle: .module)) }
     static var icCopy: UIImage { UIImage(resource: ImageResource(name: "Ic_Copy", bundle: .module)) }
+    static var icEdit: UIImage { UIImage(resource: ImageResource(name: "Ic_Edit", bundle: .module)) }
     static var icEnter: UIImage { UIImage(resource: ImageResource(name: "Ic_Enter", bundle: .module)) }
     static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
     static var icHamburger: UIImage { UIImage(resource: ImageResource(name: "Ic_Hamburger", bundle: .module)) }

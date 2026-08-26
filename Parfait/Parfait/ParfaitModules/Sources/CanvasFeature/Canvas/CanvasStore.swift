@@ -31,6 +31,8 @@ public final class CanvasStore: MVIStore {
 
     /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
     public var groupID: Int { dependencies.groupID }
+    /// 캔버스 하위 편집 Store 조립에 같은 UseCase 인스턴스를 전달한다.
+    var canvasUseCase: any CanvasUseCase { dependencies.canvasUseCase }
 
     public func send(_ intent: Intent) {
         switch intent {
@@ -40,10 +42,10 @@ public final class CanvasStore: MVIStore {
         case .screenDisappeared:
             cancelTasks()
 
-        case .canvasEditTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            // 캔버스 편집 화면이 확정되면 일회성 라우팅 이벤트를 연결한다.
+        case .canvasEditTapped,
+             .canvasEditFlowDismissed,
+             .canvasEditSaved:
+            handleCanvasEditIntent(intent)
 
         case .toppingAddTapped:
             state.calendar.close()
@@ -106,6 +108,23 @@ public final class CanvasStore: MVIStore {
             if state.calendar.selectDate(date) {
                 loadCanvas(for: date)
             }
+        default:
+            break
+        }
+    }
+
+    private func handleCanvasEditIntent(_ intent: Intent) {
+        switch intent {
+        case .canvasEditTapped:
+            state.calendar.close()
+            state.menuState = .collapsed
+            guard state.parfaitID != nil, state.canvasContent != nil else { return }
+            state.canvasEditDestination = .background
+        case .canvasEditFlowDismissed:
+            state.canvasEditDestination = nil
+        case .canvasEditSaved:
+            state.canvasEditDestination = nil
+            loadCanvas(for: state.calendar.selectedDate)
         default:
             break
         }
@@ -232,6 +251,7 @@ public extension CanvasStore {
         public var menuState: MenuState
         public var calendar: CalendarState
         public var toppingAddSource: ToppingAddSource?
+        var canvasEditDestination: CanvasEditDestination?
         /// 현재 그려진 캔버스의 서버 ID. 토핑 배치·편집이 이 값을 쓴다.
         public var parfaitID: Int?
         public var status: ParfaitStatus?
@@ -254,6 +274,7 @@ public extension CanvasStore {
             self.menuState = menuState
             self.calendar = calendar
             self.toppingAddSource = toppingAddSource
+            canvasEditDestination = nil
         }
 
         public var dateText: String {
@@ -308,6 +329,8 @@ public extension CanvasStore {
     enum CanvasBackground: Equatable, Sendable {
         case color(hex: String)
         case image(url: URL)
+        /// 배경 편집에서 아직 서버에 저장하지 않은 JPEG 초안.
+        case imageData(Data)
     }
 
     struct CanvasImage: Equatable, Identifiable, Sendable {
@@ -319,6 +342,7 @@ public extension CanvasStore {
         public let scale: Double
         public let rotation: Double
         public let border: CanvasImageBorder?
+        public let isMine: Bool
 
         public init(
             id: Int,
@@ -328,7 +352,8 @@ public extension CanvasStore {
             positionZ: Double,
             scale: Double = 1,
             rotation: Double = 0,
-            border: CanvasImageBorder? = nil
+            border: CanvasImageBorder? = nil,
+            isMine: Bool = false
         ) {
             self.id = id
             self.imageURL = imageURL
@@ -338,16 +363,7 @@ public extension CanvasStore {
             self.scale = scale
             self.rotation = rotation
             self.border = border
-        }
-    }
-
-    struct CanvasImageBorder: Equatable, Sendable {
-        public let colorHex: String
-        public let width: Double
-
-        public init(colorHex: String, width: Double) {
-            self.colorHex = colorHex
-            self.width = width
+            self.isMine = isMine
         }
     }
 
@@ -356,17 +372,12 @@ public extension CanvasStore {
         case sourceOptions
     }
 
-    enum ToppingAddSource: Hashable, Identifiable, Sendable {
-        case camera(canvasDate: CalendarDate)
-        case gallery(canvasDate: CalendarDate)
-
-        public var id: Self { self }
-    }
-
     enum Intent {
         case screenAppeared
         case screenDisappeared
         case canvasEditTapped
+        case canvasEditFlowDismissed
+        case canvasEditSaved
         case toppingAddTapped
         case cameraOptionTapped
         case galleryOptionTapped

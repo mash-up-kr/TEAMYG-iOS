@@ -33,6 +33,11 @@ public struct ImageUpload: Equatable, Sendable {
     public static func topping(pngData: Data, fileName: String = "\(UUID().uuidString).png") -> Self {
         Self(imageData: pngData, fileName: fileName, contentType: "image/png", kind: .topping)
     }
+
+    /// 배경 편집에서 방향·크기를 정규화한 JPEG 한 장.
+    public static func background(jpegData: Data, fileName: String = "\(UUID().uuidString).jpg") -> Self {
+        Self(imageData: jpegData, fileName: fileName, contentType: "image/jpeg", kind: .background)
+    }
 }
 
 /// 업로드가 끝나 배치·배경 지정에 쓸 수 있는 이미지.

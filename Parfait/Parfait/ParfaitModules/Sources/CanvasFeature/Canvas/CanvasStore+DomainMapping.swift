@@ -8,6 +8,18 @@
 import CanvasDomain
 import UIComponent
 
+public extension CanvasStore {
+    struct CanvasImageBorder: Equatable, Sendable {
+        public let colorHex: String
+        public let width: Double
+
+        public init(colorHex: String, width: Double) {
+            self.colorHex = colorHex
+            self.width = width
+        }
+    }
+}
+
 extension CalendarDate {
     init(_ date: ParfaitDate) {
         self.init(year: date.year, month: date.month, day: date.day)
@@ -57,7 +69,8 @@ extension CanvasStore.CanvasImage {
             positionZ: Double(topping.positionZ),
             scale: topping.scale,
             rotation: topping.rotation,
-            border: CanvasStore.CanvasImageBorder(topping.border)
+            border: CanvasStore.CanvasImageBorder(topping.border),
+            isMine: topping.ownerType == .currentUser
         )
     }
 }

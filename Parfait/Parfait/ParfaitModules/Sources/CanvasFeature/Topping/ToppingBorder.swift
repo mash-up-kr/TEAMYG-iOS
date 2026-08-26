@@ -47,6 +47,16 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
     var needsChipOutline: Bool {
         self == .none || self == .white
     }
+
+    init?(hex: String) {
+        let normalizedHex = hex.uppercased()
+        if normalizedHex == "#F9F9AB" {
+            self = .yellow
+            return
+        }
+        guard let color = Self.allCases.first(where: { $0.hex == normalizedHex }) else { return nil }
+        self = color
+    }
 }
 
 struct ToppingBorder: Equatable, Sendable {
@@ -62,9 +72,34 @@ struct ToppingBorder: Equatable, Sendable {
 }
 
 extension ToppingBorder {
+    init(_ style: ToppingBorderStyle) {
+        switch style {
+        case .none:
+            self.init()
+        case .solid(let colorHex, let width):
+            self.init(color: ToppingBorderColor(hex: colorHex) ?? .none, width: width)
+        }
+    }
+
+    init(_ border: CanvasStore.CanvasImageBorder?) {
+        guard let border else {
+            self.init()
+            return
+        }
+        self.init(
+            color: ToppingBorderColor(hex: border.colorHex) ?? .none,
+            width: border.width
+        )
+    }
+
     var style: ToppingBorderStyle {
         guard let hex = color.hex else { return .none }
         return .solid(colorHex: hex, width: width)
+    }
+
+    var canvasImageBorder: CanvasStore.CanvasImageBorder? {
+        guard let hex = color.hex else { return nil }
+        return CanvasStore.CanvasImageBorder(colorHex: hex, width: width)
     }
 }
 
@@ -83,6 +118,10 @@ struct ToppingBorderEditor: Equatable, Sendable {
 
     var canUndo: Bool { history.canUndo }
     var canRedo: Bool { history.canRedo }
+
+    init(border: ToppingBorder = ToppingBorder()) {
+        self.border = border
+    }
 
     mutating func changeWidth(_ width: Double) {
         border.width = width
