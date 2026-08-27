@@ -23,6 +23,12 @@ struct RootView: View {
     var body: some View {
         if isPlayingSplash {
             SplashView { isPlayingSplash = false }
+                .task {
+                    // 자동로그인: 스플래시 재생 동안 저장된 토큰을 확인해 루트를 미리 결정한다.
+                    if await diContainer.hasStoredAccessToken() {
+                        router.replaceStack(with: .group)
+                    }
+                }
         } else {
             mainFlow
         }
@@ -30,7 +36,7 @@ struct RootView: View {
 
     private var mainFlow: some View {
         NavigationStack(path: $router.path) {
-            root
+            destination(for: router.rootRoute)
                 .navigationDestination(for: AppRoute.self) { route in
                     destination(for: route)
                 }
@@ -43,27 +49,6 @@ struct RootView: View {
         }
         // 화면 위 어떤 프레젠테이션보다 위 레이어 — 스택 전환과 무관하게 마지막(바깥쪽)에 선언한다.
         .ygToastOverlay($toasts)
-    }
-
-    @ViewBuilder
-    private var root: some View {
-        if let rootRoute = router.rootRoute {
-            destination(for: rootRoute)
-        } else {
-            startScreen
-        }
-    }
-
-    /// 최초 진입 시작 화면 — 로그인.
-    private var startScreen: some View {
-        destination(for: .login)
-            .task {
-                // 자동로그인: 저장된 토큰이 있으면 로그인 화면을 건너뛴다.
-                // 세션 만료로 돌아온 로그인(rootRoute == .login)에는 붙지 않는다 — 최초 진입 전용.
-                if await diContainer.hasStoredAccessToken() {
-                    router.replaceStack(with: .group)
-                }
-            }
     }
 
     /// 피처 간 이동 목적지(AppRoute) → 화면 조립. 실제 플로우: 로그인 → 약관 동의 → 그룹.
