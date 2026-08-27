@@ -228,8 +228,6 @@ public extension CanvasStore {
             }
         }
 
-        /// 앱을 켠 채 새벽 3시 경계를 넘기면 State 생성 시점에 고정된 `today` 가 실제 오늘과 어긋난다
-        /// (`canvas-policy.md` §4.1). 옛 오늘을 보고 있었다면 선택도 새 오늘로 따라 옮긴다.
         @discardableResult
         mutating func updateToday(_ newToday: CalendarDate) -> Bool {
             guard newToday != today else { return false }

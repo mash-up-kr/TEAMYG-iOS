@@ -133,7 +133,6 @@ public struct CanvasView: View {
 
     @ViewBuilder
     private var canvasEditFlow: some View {
-        // 토핑이 없는 캔버스도 배경은 편집할 수 있다 — 조회 전 배경 기준값으로 연다.
         if let parfaitID = store.state.parfaitID {
             CanvasEditView(
                 store: CanvasEditStore(

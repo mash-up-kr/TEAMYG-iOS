@@ -159,7 +159,6 @@ public final class CanvasStore: MVIStore {
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
             state.menuState = .collapsed
-            // 토핑이 없어도 배경은 편집할 수 있다 — 캔버스 조회만 끝나 있으면 진입시킨다.
             guard state.parfaitID != nil else {
                 eventChannel.send(.canvasNotReady)
                 return
@@ -209,7 +208,6 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    /// 앱을 켠 채 새벽 3시 경계를 넘기면 조회해 둔 캔버스가 어제 것이 된다 (`canvas-policy.md` §4.1).
     private func reloadIfDayChanged() {
         let today = CalendarDate(canvasDayContaining: dependencies.now())
         guard today != state.calendar.today else { return }

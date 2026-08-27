@@ -41,7 +41,6 @@ extension NametagChip {
 }
 
 extension CanvasStore.CanvasContent {
-    /// 배경도 토핑도 없는 캔버스. 토핑 없이 배경만 편집할 때의 기준값이다.
     static let empty = CanvasStore.CanvasContent(background: .unset)
 
     init(_ parfait: Parfait) {

@@ -162,8 +162,6 @@ final class CanvasEditStore: MVIStore {
         state.screen = .toppings
     }
 
-    /// 배경·토핑 탭 어느 쪽이든, 변경 유무와 관계없이 X 는 항상 확인 팝업(C-304-Toast)을 거친다
-    /// (`canvas-policy.md` §6.3·§6.4.5). 테두리 편집(C-306)의 X 는 팝업 없이 토핑 탭으로 돌아간다 (§6.5).
     private func closeEditor() {
         guard state.saveState != .saving else { return }
         switch state.screen {
@@ -191,8 +189,6 @@ extension CanvasEditStore {
         }
 
         state.saveState = .saving
-        // 화면 수명과 분리한다 — 저장 중 스와이프 백으로 빠져나가도 "배경만 바뀌고 삭제는 안 된"
-        // 절반 상태가 서버에 남지 않게, 시작한 순서를 끝까지 밀어 준다.
         Task { [self] in
             do {
                 try await saveBackgroundIfNeeded()
