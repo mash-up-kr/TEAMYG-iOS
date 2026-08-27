@@ -10,7 +10,7 @@ import Photos
 import UIKit
 
 enum BackgroundImageLoader {
-    private static let maximumLongEdge = 4_096
+    private static let maximumLongEdge = 2_048
     private static let jpegCompressionQuality = 0.9
 
     static func cameraJPEG(
