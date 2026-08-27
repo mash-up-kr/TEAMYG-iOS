@@ -248,51 +248,88 @@ extension CanvasEditStore {
     }
 
     private func savePlacementChanges() async throws {
-        let toppingIDs = state.toppings
-            .filter { !$0.isDeleted && $0.hasPlacementChanges }
-            .map(\.id)
+        let updates = Dictionary(
+            uniqueKeysWithValues: state.toppings
+                .filter { !$0.isDeleted && $0.hasPlacementChanges }
+                .map { ($0.id, $0.placementUpdate) }
+        )
 
-        for toppingID in toppingIDs {
-            guard let topping = state.toppings.first(where: { $0.id == toppingID }) else { continue }
+        try await saveConcurrently(Array(updates.keys)) { [dependencies] toppingID in
+            guard let update = updates[toppingID] else { return }
             _ = try await dependencies.toppingUseCase.updatePlacement(
-                topping.placementUpdate,
+                update,
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            try Task.checkCancellation()
+        } promote: { toppingID in
             updateTopping(toppingID) { $0.savedPlacement = $0.placement }
         }
     }
 
     private func saveBorderChanges() async throws {
-        let toppingIDs = state.toppings
-            .filter { !$0.isDeleted && $0.hasBorderChanges }
-            .map(\.id)
+        let styles = Dictionary(
+            uniqueKeysWithValues: state.toppings
+                .filter { !$0.isDeleted && $0.hasBorderChanges }
+                .map { ($0.id, $0.border.style) }
+        )
 
-        for toppingID in toppingIDs {
-            guard let topping = state.toppings.first(where: { $0.id == toppingID }) else { continue }
+        try await saveConcurrently(Array(styles.keys)) { [dependencies] toppingID in
+            guard let style = styles[toppingID] else { return }
             _ = try await dependencies.toppingUseCase.updateBorder(
-                topping.border.style,
+                style,
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            try Task.checkCancellation()
+        } promote: { toppingID in
             updateTopping(toppingID) { $0.savedBorder = $0.border }
         }
     }
 
     private func saveDeletions() async throws {
-        let toppingIDs = state.toppings.filter(\.isDeleted).map(\.id)
-        for toppingID in toppingIDs {
+        try await saveConcurrently(state.toppings.filter(\.isDeleted).map(\.id)) { [dependencies] toppingID in
             try await dependencies.toppingUseCase.delete(
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            try Task.checkCancellation()
+        } promote: { toppingID in
             state.toppings.removeAll { $0.id == toppingID }
         }
     }
+
+    private func saveConcurrently(
+        _ toppingIDs: [Int],
+        request: @escaping @Sendable (Int) async throws -> Void,
+        promote: (Int) -> Void
+    ) async throws {
+        guard !toppingIDs.isEmpty else { return }
+
+        let savedIDs = await withTaskGroup(of: Int?.self) { group in
+            for toppingID in toppingIDs {
+                group.addTask {
+                    do {
+                        try await request(toppingID)
+                        return toppingID
+                    } catch {
+                        return nil
+                    }
+                }
+            }
+
+            var succeeded: [Int] = []
+            for await toppingID in group {
+                if let toppingID { succeeded.append(toppingID) }
+            }
+            return succeeded
+        }
+
+        savedIDs.forEach(promote)
+        guard savedIDs.count == toppingIDs.count else { throw SaveFailure.someRequestsFailed }
+    }
+}
+
+private enum SaveFailure: Error {
+    case someRequestsFailed
 }
