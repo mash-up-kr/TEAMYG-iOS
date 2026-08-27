@@ -208,12 +208,7 @@ struct CanvasEditView: View {
 
 private extension CanvasEditView {
     var editTabSelection: Binding<Int> {
-        Binding(
-            get: { store.state.screen == .background ? 0 : 1 },
-            set: { selection in
-                store.send(selection == 0 ? .backgroundTabTapped : .toppingTabTapped)
-            }
-        )
+        store.binding(\.editTabIndex) { $0 == 0 ? .backgroundTabTapped : .toppingTabTapped }
     }
 
     var exitPopupBinding: Binding<Bool> {

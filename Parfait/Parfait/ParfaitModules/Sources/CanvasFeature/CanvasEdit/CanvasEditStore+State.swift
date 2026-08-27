@@ -48,6 +48,10 @@ extension CanvasEditStore {
             }
         }
 
+        var editTabIndex: Int {
+            screen == .background ? 0 : 1
+        }
+
         var activeToppings: [EditableTopping] {
             toppings.filter { !$0.isDeleted }
         }

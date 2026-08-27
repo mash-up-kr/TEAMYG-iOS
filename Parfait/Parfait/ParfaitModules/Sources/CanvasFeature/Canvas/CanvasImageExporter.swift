@@ -135,7 +135,7 @@ private struct PreparedTopping: Identifiable {
 }
 
 /// 저장본 한 장. 이미지를 모두 받아 둔 뒤에 그리므로 `CanvasContentView` 와 달리 비동기 로딩이 없다 —
-/// `ImageRenderer` 는 `task` 를 기다려 주지 않는다. 배치 규칙은 `CanvasPlacedImage` 와 같아야 한다.
+/// `ImageRenderer` 는 `task` 를 기다려 주지 않는다.
 private struct CanvasSnapshotView: View {
     let background: PreparedBackground
     let toppings: [PreparedTopping]

@@ -71,10 +71,11 @@ final class BackgroundImagePickerStore: MVIStore {
         case .processing:
             state.isPreparingImage = true
         case .ready(_, let photoData):
+            let viewFinderRegion = state.capturedViewFinderRegion
             prepareImage(source: .camera) {
                 await BackgroundImageLoader.cameraJPEG(
                     photoData: photoData,
-                    viewFinderRegion: self.state.capturedViewFinderRegion
+                    viewFinderRegion: viewFinderRegion
                 )
             }
         case .idle:

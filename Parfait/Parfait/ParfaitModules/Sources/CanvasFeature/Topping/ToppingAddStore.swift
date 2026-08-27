@@ -272,8 +272,6 @@ final class ToppingAddStore: MVIStore {
     }
 }
 
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
 extension ToppingAddStore {
     struct Dependencies: Sendable {
         let groupID: Int
@@ -306,7 +304,7 @@ extension ToppingAddStore {
 
 /// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
 private extension ToppingAddStore {
-    private func handleCutoutResultIntent(_ intent: Intent) {
+    func handleCutoutResultIntent(_ intent: Intent) {
         switch intent {
         case .cutoutResultClosed:
             releaseExtractedTopping()
@@ -399,7 +397,7 @@ private extension ToppingAddStore {
 
 /// 카메라 세션 켜기·끄기와 촬영. `cameraGeneration` 으로 뒤늦게 도착한 옛 요청을 걸러낸다.
 private extension ToppingAddStore {
-    private func handleCameraIntent(_ intent: Intent) {
+    func handleCameraIntent(_ intent: Intent) {
         switch intent {
         case .screenAppeared, .sceneBecameActive:
             resumeCameraIfNeeded()
@@ -423,12 +421,12 @@ private extension ToppingAddStore {
         }
     }
 
-    private func resumeCameraIfNeeded() {
+    func resumeCameraIfNeeded() {
         guard state.screen.needsRunningCamera else { return }
         prepareCamera()
     }
 
-    private func prepareCamera() {
+    func prepareCamera() {
         cameraSetupTask?.cancel()
         let generation = nextCameraGeneration()
         state.cameraPhase = .preparing
@@ -439,7 +437,7 @@ private extension ToppingAddStore {
         }
     }
 
-    private func resolveAuthorization() async -> Bool {
+    func resolveAuthorization() async -> Bool {
         let isAuthorized = switch CameraPermission.current() {
         case .authorized: true
         case .notDetermined: await CameraPermission.request()
@@ -455,7 +453,7 @@ private extension ToppingAddStore {
         return true
     }
 
-    private func startCamera(generation: Int) async {
+    func startCamera(generation: Int) async {
         let didStart = await cameraSession.start(generation: generation)
         guard isLatestRequest(generation) else { return }
 
@@ -470,7 +468,7 @@ private extension ToppingAddStore {
         }
     }
 
-    private func suspendCamera() {
+    func suspendCamera() {
         cancelCameraTasks()
         if case .processing = state.photoCapturePhase {
             state.photoCapturePhase = .idle
@@ -486,7 +484,7 @@ private extension ToppingAddStore {
         }
     }
 
-    private func switchCamera() {
+    func switchCamera() {
         guard state.isCameraReady else { return }
         state.isSwitchingCamera = true
         cameraSwitchTask = Task { [weak self, cameraSession] in
@@ -503,7 +501,7 @@ private extension ToppingAddStore {
         }
     }
 
-    private func capturePhoto(viewFinderRegion: ViewFinderRegion?) {
+    func capturePhoto(viewFinderRegion: ViewFinderRegion?) {
         guard state.isCameraReady else { return }
 
         let captureGeneration = nextCameraGeneration()
@@ -546,14 +544,14 @@ private extension ToppingAddStore {
 }
 
 private extension ToppingAddStore {
-    private func releaseCapturedPreviewFrame() {
+    func releaseCapturedPreviewFrame() {
         guard case .ready(let previewFrame, let photoData) = state.photoCapturePhase, previewFrame != nil else {
             return
         }
         state.photoCapturePhase = .ready(previewFrame: nil, photoData: photoData)
     }
 
-    private func retakePhoto() {
+    func retakePhoto() {
         guard state.isRetakeEnabled else { return }
         photoCaptureTask?.cancel()
         photoCaptureTask = nil
@@ -563,7 +561,7 @@ private extension ToppingAddStore {
         prepareCamera()
     }
 
-    private func openSystemSettings() {
+    func openSystemSettings() {
         Task {
             guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
             await UIApplication.shared.open(settingsURL)
@@ -571,16 +569,16 @@ private extension ToppingAddStore {
     }
 
     /// 켜기/끄기 요청에 붙일 새 일련번호. 뒤늦게 도착한 옛 요청은 `CameraSession` 이 무시한다.
-    private func nextCameraGeneration() -> Int {
+    func nextCameraGeneration() -> Int {
         cameraGeneration += 1
         return cameraGeneration
     }
 
-    private func isLatestRequest(_ generation: Int) -> Bool {
+    func isLatestRequest(_ generation: Int) -> Bool {
         !Task.isCancelled && generation == cameraGeneration
     }
 
-    private func cancelCameraTasks() {
+    func cancelCameraTasks() {
         cameraSetupTask?.cancel()
         cameraSwitchTask?.cancel()
         photoCaptureTask?.cancel()
@@ -593,7 +591,7 @@ private extension ToppingAddStore {
 
 /// C-106 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
 private extension ToppingAddStore {
-    private func handlePlacementIntent(_ intent: Intent) {
+    func handlePlacementIntent(_ intent: Intent) {
         switch intent {
         case .placementClosed:
             guard state.saveState != .saving else { break }
@@ -608,7 +606,7 @@ private extension ToppingAddStore {
     }
 
     /// 누끼를 PNG 로 굽고 업로드·배치까지 맡긴 뒤, 성공하면 최근 업로드에 남기고 캔버스로 돌아간다.
-    private func saveTopping() {
+    func saveTopping() {
         guard state.saveState != .saving,
               let topping = state.extractedTopping,
               let parfaitID = dependencies.parfaitID
@@ -650,7 +648,7 @@ private extension ToppingAddStore {
     }
 
     /// 새 토핑은 항상 맨 위에 얹는다.
-    private var nextZOrder: Int {
+    var nextZOrder: Int {
         let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
         return Int(highest.rounded()) + 1
     }

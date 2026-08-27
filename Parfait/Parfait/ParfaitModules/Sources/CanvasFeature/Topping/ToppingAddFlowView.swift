@@ -45,9 +45,6 @@ struct ToppingAddFlowView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
-        // `.inactive` 는 권한 다이얼로그·알림 배너·앱 스위처 등에서도 흔히 발생한다.
-        // 여기서 세션을 끄면 껐다 켜기가 잦아져 최초 권한 요청 플로우가 끊기므로 `.background` 만 처리한다.
-        // (백그라운드 진입 시엔 iOS 가 캡처 세션을 어차피 중단시킨다.)
         .ygToastOverlay($toasts)
         .onChange(of: store.state.saveState) { _, saveState in
             guard saveState == .failed else { return }
@@ -56,6 +53,9 @@ struct ToppingAddFlowView: View {
             )
             store.send(.saveErrorDismissed)
         }
+        // `.inactive` 는 권한 다이얼로그·알림 배너·앱 스위처 등에서도 흔히 발생한다.
+        // 여기서 세션을 끄면 껐다 켜기가 잦아져 최초 권한 요청 플로우가 끊기므로 `.background` 만 처리한다.
+        // (백그라운드 진입 시엔 iOS 가 캡처 세션을 어차피 중단시킨다.)
         .onChange(of: scenePhase) { _, newScenePhase in
             switch newScenePhase {
             case .active:
