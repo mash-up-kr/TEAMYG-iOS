@@ -83,6 +83,9 @@ public final class CanvasStore: MVIStore {
         case .todayParfaitTapped:
             openTodayCanvas()
 
+        case .pastParfaitNudgeTapped:
+            openPastParfaitNudgeTarget()
+
         case .moreMenuTapped:
             // 후속 화면 정책 확정 전까지 외형과 Intent 경계만 제공한다.
             break
@@ -218,6 +221,33 @@ public final class CanvasStore: MVIStore {
         loadCanvas(for: today)
     }
 
+    /// SY-001-New `보러가기` — 안내된 날짜의 과거 캔버스로 이동한다 (`canvas-policy.md` §7.1).
+    /// 안내 날짜가 다른 해면 그 해 목록을 먼저 받아 `parfaitID` 매핑을 채운다.
+    private func openPastParfaitNudgeTarget() {
+        guard let date = state.pastParfaitNudge?.date else { return }
+        state.menuState = .collapsed
+
+        if parfaitIDsByDate[date] != nil {
+            openPastParfait(on: date)
+            return
+        }
+
+        recordedDatesLoadTask?.cancel()
+        recordedDatesLoadTask = Task { [weak self] in
+            await self?.refreshRecordedDates(for: date.year)
+            guard !Task.isCancelled, let self else { return }
+            openPastParfait(on: date)
+        }
+    }
+
+    private func openPastParfait(on date: CalendarDate) {
+        guard state.calendar.selectDate(date) else {
+            eventChannel.send(.canvasNotReady)
+            return
+        }
+        loadCanvas(for: date)
+    }
+
     private func loadCanvas(for date: CalendarDate) {
         canvasLoadTask?.cancel()
 
@@ -268,8 +298,10 @@ public final class CanvasStore: MVIStore {
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
     }
+}
 
-    private func loadInitialDataIfNeeded() {
+private extension CanvasStore {
+    func loadInitialDataIfNeeded() {
         guard !didLoadInitialData else { return }
         didLoadInitialData = true
 
@@ -284,26 +316,30 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    private func loadRecordedDates(for year: Int) {
+    func loadRecordedDates(for year: Int) {
         recordedDatesLoadTask?.cancel()
-        recordedDatesLoadTask = Task { [weak self, dependencies] in
-            let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
-                groupID: dependencies.groupID,
-                year: year
-            )
-            guard !Task.isCancelled, let self, let summaries else { return }
-
-            for summary in summaries {
-                parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
-            }
-            state.calendar.replaceRecordedDates(
-                Set(summaries.map { CalendarDate($0.date) }),
-                for: year
-            )
+        recordedDatesLoadTask = Task { [weak self] in
+            await self?.refreshRecordedDates(for: year)
         }
     }
 
-    private func cancelTasks() {
+    func refreshRecordedDates(for year: Int) async {
+        let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
+            groupID: dependencies.groupID,
+            year: year
+        )
+        guard !Task.isCancelled, let summaries else { return }
+
+        for summary in summaries {
+            parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
+        }
+        state.calendar.replaceRecordedDates(
+            Set(summaries.filter { $0.toppingCount > 0 }.map { CalendarDate($0.date) }),
+            for: year
+        )
+    }
+
+    func cancelTasks() {
         // 저장 태스크를 취소하면 완료 클로저가 상태를 되돌리지 못한다 — 여기서 직접 풀어 준다.
         state.gallerySave = .idle
         if state.contentState == .loading { didLoadInitialData = false }

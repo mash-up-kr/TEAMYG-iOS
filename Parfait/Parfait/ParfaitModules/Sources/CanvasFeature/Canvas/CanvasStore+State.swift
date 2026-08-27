@@ -78,6 +78,31 @@ public extension CanvasStore {
         var isClosedCanvas: Bool {
             calendar.selectedDate != calendar.today
         }
+
+        /// SY-001-New 안내 — 오늘 캔버스가 아직 비어 있는 동안만 최근 완성 캔버스를 알린다.
+        var pastParfaitNudge: PastParfaitNudge? {
+            guard !isClosedCanvas,
+                  contentState != .loading,
+                  contentState != .failed,
+                  canvasContent?.images.isEmpty ?? true,
+                  let lastClosedDate
+            else { return nil }
+
+            return PastParfaitNudge(date: lastClosedDate, friendCount: members.count)
+        }
+    }
+
+    struct PastParfaitNudge: Equatable, Sendable {
+        let date: CalendarDate
+        let friendCount: Int
+
+        var titleText: String {
+            "\(date.koreanDateText)의 파르페 완성"
+        }
+
+        var descriptionText: String {
+            "\(friendCount)명의 친구들과 함께했어요"
+        }
     }
 
     enum GallerySavePhase: Equatable, Sendable {
@@ -192,6 +217,7 @@ public extension CanvasStore {
         case calendarDateSelected(CalendarDate)
         case saveToGalleryTapped
         case todayParfaitTapped
+        case pastParfaitNudgeTapped
         case moreMenuTapped
     }
 

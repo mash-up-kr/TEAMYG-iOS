@@ -42,6 +42,13 @@ struct CanvasContainer: View {
             .padding(.horizontal, .padding7)
             .padding(.vertical, .padding6)
 
+            if let pastParfaitNudge = state.pastParfaitNudge {
+                CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
+                    send(.pastParfaitNudgeTapped)
+                }
+                .padding(.top, .padding6)
+            }
+
             if state.calendar.presentation != .closed {
                 calendarLayer
             }

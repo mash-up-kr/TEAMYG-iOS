@@ -53,6 +53,7 @@ public struct CanvasView: View {
                     state: store.state,
                     send: { store.send($0) }
                 )
+                .ygToastOverlay($toasts)
             }
         }
         .task {
@@ -96,7 +97,6 @@ public struct CanvasView: View {
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
-        .ygToastOverlay($toasts)
     }
 
     private func toppingAddFlow(
