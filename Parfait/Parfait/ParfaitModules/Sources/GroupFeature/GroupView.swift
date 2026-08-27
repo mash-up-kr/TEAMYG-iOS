@@ -13,7 +13,7 @@ import UIComponent
 /// 그룹 목록 화면 (G-001). 소속 그룹을 파르페 위 토핑으로 지그재그 배치한다.
 public struct GroupView: View {
     @State private var store: GroupStore
-    /// 캔버스(C-001)로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
+    /// 캔버스(C-001)·설정(S-001)으로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
     private let router: any Router
     private let makeInviteCodeStore: () -> InviteCodeStore
     private let makeCreateGroupStore: () -> CreateGroupStore
@@ -92,8 +92,7 @@ public struct GroupView: View {
     private var topBar: some View {
         YGTopBar(
             .default,
-            // ponytail: 사이드 메뉴(S-10n) 미구현 — 화면 생기면 연결.
-            onLeadingTap: {},
+            onLeadingTap: { router.push(.setting) },
             onNewGroupTap: { store.send(.addGroupTapped) }
         )
         .background(Color.white75.ignoresSafeArea(edges: .top))

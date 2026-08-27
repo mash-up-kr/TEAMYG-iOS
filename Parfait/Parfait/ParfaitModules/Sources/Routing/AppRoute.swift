@@ -7,6 +7,8 @@ public enum AppRoute: Hashable {
     /// 약관 동의 — 로그인이 `.signupRequired` 로 돌려준 가입 토큰을 들고 간다.
     case terms(registrationToken: String)
     case group
+    /// 설정(S-001) — 그룹 목록(G-001) 상단 바 햄버거로 진입한다.
+    case setting
     /// 캔버스(C-001) — 어느 그룹의 파르페인지 들고 간다.
     ///
     /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id` 다.
