@@ -21,6 +21,7 @@ public struct YGToast: View {
         /// 유저명 색은 정책상 유저의 Nametag 타입에 **강제 매핑**되므로 색을 직접 받지 않고
         /// `nametagType` 을 받아 ``YGNametagChip/NametagType/toastNicknameColor`` 로 파생한다.
         case alert(username: String, nametagType: YGNametagChip.NametagType)
+        case normal
         case warning
         case error
         case success
@@ -41,6 +42,10 @@ public struct YGToast: View {
                 Text(username)
                     .suit(.body02SemiBold)
                     .foregroundStyle(nametagType.toastNicknameColor)
+                Text(message)
+                    .suit(.body02Regular)
+                    .foregroundStyle(.gray100)
+            case .normal:
                 Text(message)
                     .suit(.body02Regular)
                     .foregroundStyle(.gray100)
@@ -71,6 +76,7 @@ public struct YGToast: View {
 #Preview("타입") {
     VStack(spacing: .gap5) {
         YGToast(.alert(username: "WWWWWWWWWW", nametagType: .type11), message: "님이 59분 전에 쌓았어요")
+        YGToast(.normal, message: "알 수 없음 님이 오래 전에 쌓았어요")
         YGToast(.warning, message: "내 토핑만 편집할 수 있어요")
         YGToast(.error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
         YGToast(.success, message: "초대 코드를 복사했어요")

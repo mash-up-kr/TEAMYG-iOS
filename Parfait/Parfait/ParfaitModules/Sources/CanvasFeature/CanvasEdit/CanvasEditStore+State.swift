@@ -27,13 +27,17 @@ extension CanvasEditStore {
         init(
             dateText: String,
             weekdayText: String,
-            canvasContent: CanvasStore.CanvasContent
+            canvasContent: CanvasStore.CanvasContent,
+            screen: Screen = .background,
+            selectedToppingID: Int? = nil
         ) {
             self.dateText = dateText
             self.weekdayText = weekdayText
             savedBackground = canvasContent.background
             background = canvasContent.background
             toppings = canvasContent.images.map(EditableTopping.init)
+            self.screen = screen
+            self.selectedToppingID = toppings.first { $0.id == selectedToppingID && $0.isMine }?.id
         }
 
         var selectedColorHex: String? {

@@ -21,8 +21,11 @@ struct CanvasContainer: View {
                         weekdayText: state.weekdayText,
                         contentState: state.contentState,
                         canvasContent: state.canvasContent,
+                        spotlightedToppingID: state.spotlightedToppingID,
                         isDimmed: state.menuState == .sourceOptions,
-                        onCalendarTap: { send(.calendarTapped) }
+                        onCalendarTap: { send(.calendarTapped) },
+                        onToppingTap: { send(.toppingTapped($0)) },
+                        onSpotlightDismiss: { send(.spotlightDismissed) }
                     )
                     .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
                     .overlay(alignment: .bottom) {
@@ -105,8 +108,11 @@ private struct CanvasBoard: View {
     let weekdayText: String
     let contentState: CanvasStore.ContentState
     let canvasContent: CanvasStore.CanvasContent?
+    let spotlightedToppingID: Int?
     let isDimmed: Bool
     let onCalendarTap: () -> Void
+    let onToppingTap: (Int) -> Void
+    let onSpotlightDismiss: () -> Void
 
     var body: some View {
         ZStack {
@@ -132,7 +138,12 @@ private struct CanvasBoard: View {
 
                 case .filled:
                     if let canvasContent {
-                        CanvasContentView(content: canvasContent)
+                        CanvasContentView(
+                            content: canvasContent,
+                            spotlightedToppingID: spotlightedToppingID,
+                            onImageTap: { onToppingTap($0.id) },
+                            onDimTap: onSpotlightDismiss
+                        )
                     } else {
                         Color.clear
                     }

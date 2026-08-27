@@ -46,6 +46,8 @@ public extension CanvasStore {
         var gallerySave: GallerySavePhase = .idle
         /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
         public var lastClosedDate: CalendarDate?
+        /// C-202 Spotlight 로 강조된 타인의 토핑 (`canvas-policy.md` §4.2).
+        var spotlightedToppingID: Int?
 
         public init(
             groupName: String = "그룹이름",
@@ -200,6 +202,8 @@ public extension CanvasStore {
         case screenAppeared
         case sceneBecameActive
         case screenDisappeared
+        case toppingTapped(Int)
+        case spotlightDismissed
         case canvasEditTapped
         case canvasEditFlowDismissed
         case canvasEditSaved
@@ -225,5 +229,6 @@ public extension CanvasStore {
         case gallerySaveSucceeded(dateText: String)
         case gallerySaveFailed
         case canvasNotReady
+        case toppingSpotlighted(SpotlightToast)
     }
 }

@@ -10,15 +10,25 @@ import SwiftUI
 import UIComponent
 
 struct CanvasContentView: View {
+    /// Spotlight 우선순위: 강조 토핑 → Dim → 나머지 토핑 → 배경 (`canvas-policy.md` §4.2).
+    private static let dimZIndex: Double = 5_000
+    private static let spotlightZIndex: Double = 10_000
+
     let content: CanvasStore.CanvasContent
+    var spotlightedToppingID: Int?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
+    var onDimTap: (() -> Void)?
 
     init(
         content: CanvasStore.CanvasContent,
-        onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil
+        spotlightedToppingID: Int? = nil,
+        onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
+        onDimTap: (() -> Void)? = nil
     ) {
         self.content = content
+        self.spotlightedToppingID = spotlightedToppingID
         self.onImageTap = onImageTap
+        self.onDimTap = onDimTap
     }
 
     var body: some View {
@@ -26,17 +36,28 @@ struct CanvasContentView: View {
             ZStack {
                 background
 
+                if spotlightedToppingID != nil {
+                    Color.black50
+                        .contentShape(.rect)
+                        .onTapGesture { onDimTap?() }
+                        .zIndex(Self.dimZIndex)
+                }
+
                 ForEach(content.images) { canvasImage in
                     CanvasPlacedImage(
                         canvasImage: canvasImage,
                         canvasSize: proxy.size,
                         onTap: imageTapAction(for: canvasImage)
                     )
-                        .zIndex(canvasImage.positionZ)
+                        .zIndex(zIndex(for: canvasImage))
                 }
             }
         }
         .clipped()
+    }
+
+    private func zIndex(for canvasImage: CanvasStore.CanvasImage) -> Double {
+        canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : canvasImage.positionZ
     }
 
     private func imageTapAction(for canvasImage: CanvasStore.CanvasImage) -> (() -> Void)? {

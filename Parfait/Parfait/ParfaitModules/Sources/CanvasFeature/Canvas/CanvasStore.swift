@@ -25,6 +25,8 @@ public final class CanvasStore: MVIStore {
     private var didLoadInitialData = false
     /// 과거 캔버스는 `parfaitID` 로만 조회할 수 있다. 목록 응답에서 받은 매핑을 들고 있는다.
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
+    /// Spotlight Toast 문구에만 쓰는 작성자 정보 — 렌더링 모델(`CanvasImage`)과 분리해 둔다.
+    private var toppingAuthorsByID: [Int: ToppingAuthor] = [:]
 
     public init(
         state: State = State(),
@@ -46,15 +48,16 @@ public final class CanvasStore: MVIStore {
 
     public func send(_ intent: Intent) {
         switch intent {
-        case .screenAppeared:
-            state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
-            loadInitialDataIfNeeded()
+        case .screenAppeared,
+             .sceneBecameActive,
+             .screenDisappeared:
+            handleLifecycleIntent(intent)
 
-        case .sceneBecameActive:
-            reloadIfDayChanged()
+        case .toppingTapped(let toppingID):
+            handleToppingTap(toppingID)
 
-        case .screenDisappeared:
-            cancelTasks()
+        case .spotlightDismissed:
+            state.spotlightedToppingID = nil
 
         case .canvasEditTapped,
              .canvasEditFlowDismissed,
@@ -253,6 +256,8 @@ public final class CanvasStore: MVIStore {
 
         state.contentState = .loading
         state.canvasContent = nil
+        state.spotlightedToppingID = nil
+        toppingAuthorsByID = [:]
 
         let parfaitID = date == state.calendar.today ? nil : parfaitIDsByDate[date]
         canvasLoadTask = Task { [weak self, dependencies] in
@@ -297,10 +302,47 @@ public final class CanvasStore: MVIStore {
         }
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
+        toppingAuthorsByID = Dictionary(
+            uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) }
+        )
     }
 }
 
 private extension CanvasStore {
+    func handleLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared:
+            state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
+            loadInitialDataIfNeeded()
+        case .sceneBecameActive:
+            state.spotlightedToppingID = nil
+            reloadIfDayChanged()
+        case .screenDisappeared:
+            cancelTasks()
+        default:
+            break
+        }
+    }
+
+    /// 내 토핑은 C-305 로, 타인의 토핑은 Spotlight 로 간다 (`canvas-policy.md` §4.2).
+    func handleToppingTap(_ toppingID: Int) {
+        guard let topping = state.tappableTopping(toppingID) else { return }
+        state.calendar.close()
+        state.menuState = .collapsed
+
+        if topping.isMine {
+            guard state.parfaitID != nil else {
+                eventChannel.send(.canvasNotReady)
+                return
+            }
+            state.canvasEditDestination = .toppings(selectedToppingID: toppingID)
+        } else {
+            state.spotlightedToppingID = toppingID
+            guard let author = toppingAuthorsByID[toppingID] else { return }
+            eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
+        }
+    }
+
     func loadInitialDataIfNeeded() {
         guard !didLoadInitialData else { return }
         didLoadInitialData = true

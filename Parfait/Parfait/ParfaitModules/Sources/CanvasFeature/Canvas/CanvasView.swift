@@ -74,6 +74,9 @@ public struct CanvasView: View {
                     toasts.append(
                         YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
                     )
+                case .toppingSpotlighted(let spotlightToast):
+                    // Spotlight 를 옮길 때마다 앞선 작성자 Toast 는 즉시 걷어낸다.
+                    toasts = [spotlightToast.toastItem]
                 }
             }
         }
@@ -92,8 +95,8 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
             }
         }
-        .navigationDestination(item: canvasEditDestinationBinding) { _ in
-            canvasEditFlow
+        .navigationDestination(item: canvasEditDestinationBinding) { destination in
+            canvasEditFlow(destination)
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
@@ -133,14 +136,16 @@ public struct CanvasView: View {
     }
 
     @ViewBuilder
-    private var canvasEditFlow: some View {
+    private func canvasEditFlow(_ destination: CanvasStore.CanvasEditDestination) -> some View {
         if let parfaitID = store.state.parfaitID {
             CanvasEditView(
                 store: CanvasEditStore(
                     state: .init(
                         dateText: store.state.dateText,
                         weekdayText: store.state.weekdayText,
-                        canvasContent: store.state.canvasContent ?? .empty
+                        canvasContent: store.state.canvasContent ?? .empty,
+                        screen: destination.editScreen,
+                        selectedToppingID: destination.selectedToppingID
                     ),
                     dependencies: .init(
                         groupID: store.groupID,
