@@ -13,6 +13,7 @@ public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingUseCase: any ToppingUseCase
@@ -68,8 +69,16 @@ public struct CanvasView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
                     )
+                case .canvasNotReady:
+                    toasts.append(
+                        YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                    )
                 }
             }
+        }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            guard newScenePhase == .active else { return }
+            store.send(.sceneBecameActive)
         }
         .onDisappear {
             store.send(.screenDisappeared)
@@ -124,14 +133,14 @@ public struct CanvasView: View {
 
     @ViewBuilder
     private var canvasEditFlow: some View {
-        if let parfaitID = store.state.parfaitID,
-           let canvasContent = store.state.canvasContent {
+        // 토핑이 없는 캔버스도 배경은 편집할 수 있다 — 조회 전 배경 기준값으로 연다.
+        if let parfaitID = store.state.parfaitID {
             CanvasEditView(
                 store: CanvasEditStore(
                     state: .init(
                         dateText: store.state.dateText,
                         weekdayText: store.state.weekdayText,
-                        canvasContent: canvasContent
+                        canvasContent: store.state.canvasContent ?? .empty
                     ),
                     dependencies: .init(
                         groupID: store.groupID,

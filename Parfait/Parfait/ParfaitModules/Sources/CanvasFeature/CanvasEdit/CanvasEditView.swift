@@ -81,9 +81,6 @@ struct CanvasEditView: View {
         .task(id: borderPreviewKey) {
             await loadBorderPreview()
         }
-        .onDisappear {
-            store.send(.screenDisappeared)
-        }
     }
 
     private var backgroundEditor: some View {

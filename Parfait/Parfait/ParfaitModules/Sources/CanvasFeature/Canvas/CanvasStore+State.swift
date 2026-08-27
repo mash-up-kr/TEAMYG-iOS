@@ -173,6 +173,7 @@ public extension CanvasStore {
 
     enum Intent {
         case screenAppeared
+        case sceneBecameActive
         case screenDisappeared
         case canvasEditTapped
         case canvasEditFlowDismissed
@@ -197,5 +198,7 @@ public extension CanvasStore {
     enum Event: Equatable, Sendable {
         case gallerySaveSucceeded(dateText: String)
         case gallerySaveFailed
+        /// 캔버스 조회가 끝나기 전(또는 실패한 뒤) 토핑 추가·편집을 누른 경우.
+        case canvasNotReady
     }
 }

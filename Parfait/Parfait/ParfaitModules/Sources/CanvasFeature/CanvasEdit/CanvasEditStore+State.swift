@@ -167,6 +167,5 @@ extension CanvasEditStore {
         case discardTapped
         case confirmTapped
         case saveErrorDismissed
-        case screenDisappeared
     }
 }

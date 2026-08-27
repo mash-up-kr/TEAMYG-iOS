@@ -18,7 +18,6 @@ final class CanvasEditStore: MVIStore {
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
-    @ObservationIgnored private var saveTask: Task<Void, Never>?
 
     init(state: State, dependencies: Dependencies) {
         self.state = state
@@ -47,9 +46,6 @@ final class CanvasEditStore: MVIStore {
             saveChanges()
         case .saveErrorDismissed:
             state.saveState = .idle
-        case .screenDisappeared:
-            saveTask?.cancel()
-            saveTask = nil
         }
     }
 
@@ -166,13 +162,13 @@ final class CanvasEditStore: MVIStore {
         state.screen = .toppings
     }
 
+    /// 배경·토핑 탭 어느 쪽이든, 변경 유무와 관계없이 X 는 항상 확인 팝업(C-304-Toast)을 거친다
+    /// (`canvas-policy.md` §6.3·§6.4.5). 테두리 편집(C-306)의 X 는 팝업 없이 토핑 탭으로 돌아간다 (§6.5).
     private func closeEditor() {
         guard state.saveState != .saving else { return }
         switch state.screen {
-        case .background:
+        case .background, .toppings:
             state.showsExitPopup = true
-        case .toppings:
-            dependencies.onDismiss()
         case .border:
             state.screen = .toppings
         }
@@ -195,20 +191,19 @@ extension CanvasEditStore {
         }
 
         state.saveState = .saving
-        saveTask = Task { [weak self] in
-            guard let self else { return }
+        // 화면 수명과 분리한다 — 저장 중 스와이프 백으로 빠져나가도 "배경만 바뀌고 삭제는 안 된"
+        // 절반 상태가 서버에 남지 않게, 시작한 순서를 끝까지 밀어 준다.
+        Task { [self] in
             do {
                 try await saveBackgroundIfNeeded()
                 try await savePlacementChanges()
                 try await saveBorderChanges()
                 try await saveDeletions()
-                guard !Task.isCancelled else { return }
                 state.saveState = .idle
                 dependencies.onSaved()
             } catch is CancellationError {
                 return
             } catch {
-                guard !Task.isCancelled else { return }
                 state.saveState = .failed
             }
         }
@@ -231,16 +226,16 @@ extension CanvasEditStore {
                 uploadedImage = try await dependencies.imageUploadRepository.upload(
                     .background(jpegData: jpegData)
                 )
-                guard !Task.isCancelled else { return }
+                try Task.checkCancellation()
                 state.pendingUploadedBackground = uploadedImage
             }
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             _ = try await dependencies.canvasUseCase.changeBackground(
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID,
                 to: .image(imageID: uploadedImage.id)
             )
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             state.background = .image(url: uploadedImage.url)
             state.savedBackground = state.background
             state.pendingUploadedBackground = nil
@@ -252,7 +247,7 @@ extension CanvasEditStore {
             parfaitID: dependencies.parfaitID,
             to: change
         )
-        guard !Task.isCancelled else { return }
+        try Task.checkCancellation()
         state.savedBackground = state.background
     }
 
@@ -269,7 +264,7 @@ extension CanvasEditStore {
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             updateTopping(toppingID) { $0.savedPlacement = $0.placement }
         }
     }
@@ -287,7 +282,7 @@ extension CanvasEditStore {
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             updateTopping(toppingID) { $0.savedBorder = $0.border }
         }
     }
@@ -300,7 +295,7 @@ extension CanvasEditStore {
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             state.toppings.removeAll { $0.id == toppingID }
         }
     }
