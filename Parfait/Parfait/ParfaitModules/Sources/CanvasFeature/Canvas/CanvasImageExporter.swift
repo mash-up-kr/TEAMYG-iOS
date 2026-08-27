@@ -32,15 +32,34 @@ public struct CanvasImageExporter: Sendable {
     }
 
     func image(of content: CanvasStore.CanvasContent) async -> UIImage? {
-        guard let background = await preparedBackground(content.background) else { return nil }
+        async let loadedBackground = preparedBackground(content.background)
+        async let loadedToppings = preparedToppings(content.images)
 
-        var toppings: [PreparedTopping] = []
-        for canvasImage in content.images {
-            guard let topping = await preparedTopping(canvasImage) else { return nil }
-            toppings.append(topping)
-        }
+        guard let background = await loadedBackground,
+              let toppings = await loadedToppings
+        else { return nil }
 
         return await render(background: background, toppings: toppings)
+    }
+
+    private func preparedToppings(
+        _ canvasImages: [CanvasStore.CanvasImage]
+    ) async -> [PreparedTopping]? {
+        await withTaskGroup(of: PreparedTopping?.self) { group in
+            for canvasImage in canvasImages {
+                group.addTask { await self.preparedTopping(canvasImage) }
+            }
+
+            var prepared: [PreparedTopping] = []
+            for await topping in group {
+                guard let topping else {
+                    group.cancelAll()
+                    return nil
+                }
+                prepared.append(topping)
+            }
+            return prepared.sorted { $0.canvasImage.positionZ < $1.canvasImage.positionZ }
+        }
     }
 
     @MainActor
