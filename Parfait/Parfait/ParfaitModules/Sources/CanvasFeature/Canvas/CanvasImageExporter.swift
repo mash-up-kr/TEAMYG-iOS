@@ -83,10 +83,7 @@ public struct CanvasImageExporter: Sendable {
 
     private func preparedTopping(_ canvasImage: CanvasStore.CanvasImage) async -> PreparedTopping? {
         // 저장본에 그려질 크기로만 받는다 — 화면과 같은 식이되 배율이 `renderScale` 이다.
-        let neededLongEdge = Self.canvasSize.width
-            * CanvasArea.toppingBaseLongSideRatio
-            * CGFloat(canvasImage.scale)
-            * Self.renderScale
+        let neededLongEdge = ToppingPlacement(canvasImage).longSide(in: Self.canvasSize) * Self.renderScale
         guard let image = await toppingRenderer.topping(
             at: canvasImage.imageURL,
             neededLongEdge: neededLongEdge
@@ -154,35 +151,12 @@ private struct CanvasSnapshotView: View {
     }
 
     private func toppingLayer(_ topping: PreparedTopping) -> some View {
-        let renderedSize = renderedSize(of: topping)
-
-        return ZStack {
-            if let silhouette = topping.silhouette, let border = topping.canvasImage.border {
-                Image(decorative: silhouette, scale: 1, orientation: .up)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(Color(hex: border.colorHex))
-            }
-
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
-        }
-        .frame(width: renderedSize.width, height: renderedSize.height)
-        .rotationEffect(.degrees(topping.canvasImage.rotation))
-        .position(
-            x: CGFloat(topping.canvasImage.positionX) * canvasSize.width,
-            y: CGFloat(topping.canvasImage.positionY) * canvasSize.height
-        )
-    }
-
-    private func renderedSize(of topping: PreparedTopping) -> CGSize {
-        let longSide = canvasSize.width
-            * CanvasArea.toppingBaseLongSideRatio
-            * CGFloat(topping.canvasImage.scale)
-
-        return CanvasArea.toppingSize(
-            pixelSize: CGSize(width: topping.image.width, height: topping.image.height),
-            longSide: longSide
+        CanvasToppingLayer(
+            topping: topping.image,
+            silhouette: topping.silhouette,
+            borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
+            placement: ToppingPlacement(topping.canvasImage),
+            canvasSize: canvasSize
         )
     }
 }

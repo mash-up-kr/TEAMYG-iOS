@@ -84,6 +84,46 @@ extension ToppingPlacement {
 }
 
 extension ToppingPlacement {
+    func handleCenter(
+        horizontal: CGFloat,
+        vertical: CGFloat,
+        renderedSize: CGSize,
+        cornerOffset: CGFloat,
+        in canvasSize: CGSize
+    ) -> CGPoint {
+        let corner = CGSize(
+            width: horizontal * (renderedSize.width / 2 + cornerOffset),
+            height: vertical * (renderedSize.height / 2 + cornerOffset)
+        )
+        let radians = rotationDegrees * .pi / 180
+        let placementCenter = center(in: canvasSize)
+
+        return CGPoint(
+            x: placementCenter.x + corner.width * cos(radians) - corner.height * sin(radians),
+            y: placementCenter.y + corner.width * sin(radians) + corner.height * cos(radians)
+        )
+    }
+
+    func magnification(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
+        let placementCenter = center(in: canvasSize)
+        let startDistance = hypot(startLocation.x - placementCenter.x, startLocation.y - placementCenter.y)
+        let currentDistance = hypot(location.x - placementCenter.x, location.y - placementCenter.y)
+        guard startDistance > 0 else { return 1 }
+
+        return Double(currentDistance / startDistance)
+    }
+
+    func rotation(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
+        let placementCenter = center(in: canvasSize)
+        let startAngle = atan2(startLocation.y - placementCenter.y, startLocation.x - placementCenter.x)
+        let currentAngle = atan2(location.y - placementCenter.y, location.x - placementCenter.x)
+        let degrees = Double(currentAngle - startAngle) * 180 / .pi
+
+        return remainder(degrees, 360)
+    }
+}
+
+extension ToppingPlacement {
     init(_ canvasImage: CanvasStore.CanvasImage) {
         self.init(
             positionX: canvasImage.positionX,
@@ -108,14 +148,6 @@ struct ToppingPlacementEditor: Equatable, Sendable {
 
     mutating func reset() {
         self = Self()
-    }
-
-    var renderedSize: CGSize {
-        placement.renderedSize(toppingPixelSize: toppingPixelSize, canvasSize: canvasSize)
-    }
-
-    var center: CGPoint {
-        placement.center(in: canvasSize)
     }
 
     mutating func apply(_ intent: ToppingAddStore.Intent) {

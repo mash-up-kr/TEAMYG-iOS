@@ -122,38 +122,25 @@ struct CanvasPlacedImage: View {
 
     var body: some View {
         content
-            .contentShape(.rect)
-            .onTapGesture { onTap?() }
-            .allowsHitTesting(onTap != nil)
-            .rotationEffect(.degrees(canvasImage.rotation))
-            .position(center)
             .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge)) { await load() }
     }
 
     @ViewBuilder
     private var content: some View {
         if let topping {
-            ZStack {
-                if let silhouette, let border = canvasImage.border {
-                    Image(decorative: silhouette, scale: 1, orientation: .up)
-                        .resizable()
-                        .renderingMode(.template)
-                        .foregroundStyle(Color(hex: border.colorHex))
-                }
-
-                Image(decorative: topping, scale: 1, orientation: .up)
-                    .resizable()
-            }
-            .frame(width: renderedSize.width, height: renderedSize.height)
-            .overlay {
-                if isSelected {
-                    Rectangle()
-                        .strokeBorder(.whiteFixed, lineWidth: 2)
-                }
-            }
+            CanvasToppingLayer(
+                topping: topping,
+                silhouette: silhouette,
+                borderColor: canvasImage.border.map { Color(hex: $0.colorHex) },
+                placement: placement,
+                canvasSize: canvasSize,
+                isSelected: isSelected,
+                onTap: onTap
+            )
         } else if isLoading {
             ProgressView()
                 .tint(.gray500)
+                .position(placement.center(in: canvasSize))
         }
     }
 
@@ -184,8 +171,12 @@ struct CanvasPlacedImage: View {
         silhouette = rendered
     }
 
+    private var placement: ToppingPlacement {
+        ToppingPlacement(canvasImage)
+    }
+
     private var longSide: CGFloat {
-        canvasSize.width * CanvasArea.toppingBaseLongSideRatio * CGFloat(canvasImage.scale)
+        placement.longSide(in: canvasSize)
     }
 
     /// 화면에 그려질 긴 변의 픽셀 수. 짧은 변은 원본 비율을 따라가므로 이 값만으로 필요 해상도가 정해진다 —
@@ -196,22 +187,6 @@ struct CanvasPlacedImage: View {
 
     private var decodeLongEdge: CGFloat {
         ToppingDecodeBucket.longEdge(covering: neededLongEdgePixels)
-    }
-
-    private var renderedSize: CGSize {
-        guard let topping else { return CGSize(width: longSide, height: longSide) }
-
-        return CanvasArea.toppingSize(
-            pixelSize: CGSize(width: topping.width, height: topping.height),
-            longSide: longSide
-        )
-    }
-
-    private var center: CGPoint {
-        CGPoint(
-            x: CGFloat(canvasImage.positionX) * canvasSize.width,
-            y: CGFloat(canvasImage.positionY) * canvasSize.height
-        )
     }
 
     /// 확대해서 버킷이 올라가면 다시 받아야 하므로 해상도도 키에 넣는다.

@@ -112,8 +112,6 @@ struct CanvasEditView: View {
         editorSurface {
             GeometryReader { proxy in
                 CanvasToppingEditBoard(
-                    dateText: store.state.dateText,
-                    weekdayText: store.state.weekdayText,
                     background: store.state.background,
                     toppings: store.state.activeToppings,
                     selectedToppingID: store.state.selectedToppingID,
@@ -193,11 +191,6 @@ struct CanvasEditView: View {
                     images: store.state.activeToppings.map(\.canvasImage)
                 )
             )
-
-            VStack(spacing: 0) {
-                editDateHeader
-                Spacer(minLength: 0)
-            }
         }
         .clipped()
         .overlay {
@@ -205,32 +198,6 @@ struct CanvasEditView: View {
                 .strokeBorder(.gray500, lineWidth: 1)
         }
     }
-
-    private var editDateHeader: some View {
-        HStack(spacing: .gap1) {
-            Text(store.state.dateText)
-                .foregroundStyle(.gray800)
-            Text(store.state.weekdayText)
-                .foregroundStyle(.gray300)
-
-            Spacer(minLength: 0)
-
-            Image.icCalendar
-                .frame(width: 16, height: 16)
-                .frame(width: 44, height: 44)
-        }
-        .suit(.body02Regular)
-        .padding(.leading, .padding6)
-        .frame(maxWidth: .infinity)
-        .frame(height: 44)
-        .background(.white75)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(.gray500)
-                .frame(height: 1)
-        }
-    }
-
 }
 
 private extension CanvasEditView {
