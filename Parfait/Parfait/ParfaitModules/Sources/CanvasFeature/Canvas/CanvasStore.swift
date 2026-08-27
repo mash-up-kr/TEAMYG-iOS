@@ -306,6 +306,7 @@ public final class CanvasStore: MVIStore {
     private func cancelTasks() {
         // 저장 태스크를 취소하면 완료 클로저가 상태를 되돌리지 못한다 — 여기서 직접 풀어 준다.
         state.gallerySave = .idle
+        if state.contentState == .loading { didLoadInitialData = false }
         canvasLoadTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
@@ -314,6 +315,5 @@ public final class CanvasStore: MVIStore {
         canvasLoadTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
-        didLoadInitialData = false
     }
 }
