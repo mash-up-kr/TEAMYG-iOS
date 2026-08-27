@@ -6,22 +6,10 @@
 //
 
 import SwiftUI
-import SwiftData
 import AuthData
 
 @main
 struct ParfaitApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema()
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
     init() {
         KakaoAuthConfigurator.initialize(
             appKey: Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String ?? ""
@@ -35,6 +23,5 @@ struct ParfaitApp: App {
                     KakaoAuthConfigurator.handleOpenURL(url)
                 }
         }
-        .modelContainer(sharedModelContainer)
     }
 }

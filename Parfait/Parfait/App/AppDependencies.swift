@@ -7,18 +7,13 @@
 
 import AuthData
 import AuthDomain
-import CanvasData
 import CanvasDomain
 import CanvasFeature
 import Core
-import Foundation
 import GroupData
 import GroupDomain
 import GroupFeature
 import LoginFeature
-import MemberData
-import MemberDomain
-import SettingFeature
 
 /// 앱 시작 시 1회 조립하는 의존성 그래프. 싱글톤 아님 — 앱 루트가 소유.
 struct AppDependencies {
@@ -72,10 +67,6 @@ struct AppDependencies {
         CreateGroupStore(groupUseCase: makeGroupUseCase())
     }
 
-    func makeGroupSideMenuStore(groupID: String, groupName: String) -> GroupSideMenuStore {
-        GroupSideMenuStore(groupID: groupID, groupName: groupName, groupUseCase: makeGroupUseCase())
-    }
-
     private func makeGroupUseCase() -> GroupUseCaseImpl {
         GroupUseCaseImpl(groupRepository: GroupRepositoryImpl(networkClient: networkClient))
     }
@@ -94,34 +85,6 @@ struct AppDependencies {
                 loadRecordedDates: { _ in [] },
                 loadRecordedYears: { [] }
             )
-        )
-    }
-
-    func makeSettingStore() -> SettingStore {
-        SettingStore(
-            memberUseCase: makeMemberUseCase(),
-            authUseCase: makeAuthUseCase(),
-            state: .init(appVersion: "1.0v")
-        )
-    }
-
-    func makeAccountInfoStore(nickname: String) -> AccountInfoStore {
-        AccountInfoStore(state: .init(nickname: nickname), memberUseCase: makeMemberUseCase())
-    }
-
-    private func makeMemberUseCase() -> MemberUseCaseImpl {
-        MemberUseCaseImpl(
-            memberRepository: MemberRepositoryImpl(
-                networkClient: networkClient,
-                tokenManager: tokenManager
-            )
-        )
-    }
-
-    func makeAlbumPickerStore(isLimited: Bool) -> AlbumPickerStore {
-        AlbumPickerStore(
-            isLimited: isLimited,
-            recentUploadsRepository: RecentUploadsRepositoryImpl()
         )
     }
 }

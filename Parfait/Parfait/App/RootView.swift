@@ -6,7 +6,6 @@ import Routing
 import LoginFeature
 import GroupFeature
 import CanvasFeature
-import SettingFeature
 import UIComponent
 
 /// 앱 루트 뷰 — 실제 플로우만 조립한다. 스플래시 후 시작 화면은 로그인이고,
