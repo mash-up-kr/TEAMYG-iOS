@@ -5,6 +5,8 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+// swiftlint:disable file_length
+
 import CanvasDomain
 import CoreGraphics
 import Foundation

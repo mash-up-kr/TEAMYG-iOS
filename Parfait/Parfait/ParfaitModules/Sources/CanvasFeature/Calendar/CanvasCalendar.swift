@@ -105,7 +105,7 @@ private struct CanvasCalendarHeaderButton: View {
     let title: String
     let action: () -> Void
     let color: Color
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
