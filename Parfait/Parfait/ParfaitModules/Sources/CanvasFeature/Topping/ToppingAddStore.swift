@@ -16,11 +16,11 @@ import UIComponent
 final class ToppingAddStore: MVIStore {
     private(set) var state: State
 
-    private let cameraSession = CameraSession()
+    @ObservationIgnored private lazy var cameraSession = CameraSession()
     private let dependencies: Dependencies
-    private let objectExtractor: any ObjectExtracting
-    private let borderRenderer = ToppingBorderRenderer()
-    private let maskRenderer = ToppingMaskRenderer()
+    @ObservationIgnored private lazy var objectExtractor: any ObjectExtracting = ObjectExtractor()
+    @ObservationIgnored private lazy var borderRenderer = ToppingBorderRenderer()
+    @ObservationIgnored private lazy var maskRenderer = ToppingMaskRenderer()
     /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
     private var baseMask: CGImage?
     private var cameraSetupTask: Task<Void, Never>?
@@ -39,11 +39,13 @@ final class ToppingAddStore: MVIStore {
         photoSource: PhotoSource,
         canvasContent: CanvasStore.CanvasContent? = nil,
         dependencies: Dependencies,
-        objectExtractor: any ObjectExtracting = ObjectExtractor()
+        objectExtractor: (any ObjectExtracting)? = nil
     ) {
         state = State(canvasDate: canvasDate, photoSource: photoSource, canvasContent: canvasContent)
         self.dependencies = dependencies
-        self.objectExtractor = objectExtractor
+        if let objectExtractor {
+            self.objectExtractor = objectExtractor
+        }
     }
 
     func send(_ intent: Intent) {
@@ -473,6 +475,8 @@ private extension ToppingAddStore {
             state.capturedViewFinderRegion = nil
             state.screen = .camera
         }
+        guard state.cameraPhase != .idle else { return }
+
         let generation = nextCameraGeneration()
         state.cameraPhase = .idle
         Task { [cameraSession] in

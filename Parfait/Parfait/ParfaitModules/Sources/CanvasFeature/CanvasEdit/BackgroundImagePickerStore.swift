@@ -18,7 +18,7 @@ final class BackgroundImagePickerStore: MVIStore {
     /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
-    private let cameraSession = CameraSession()
+    @ObservationIgnored private lazy var cameraSession = CameraSession()
     private let dependencies: Dependencies
     @ObservationIgnored private var cameraSetupTask: Task<Void, Never>?
     @ObservationIgnored private var cameraSwitchTask: Task<Void, Never>?
@@ -203,6 +203,8 @@ private extension BackgroundImagePickerStore {
             state.capturedViewFinderRegion = nil
             state.screen = .camera
         }
+        guard state.cameraPhase != .idle else { return }
+
         let generation = nextCameraGeneration()
         state.cameraPhase = .idle
         Task { [cameraSession] in
