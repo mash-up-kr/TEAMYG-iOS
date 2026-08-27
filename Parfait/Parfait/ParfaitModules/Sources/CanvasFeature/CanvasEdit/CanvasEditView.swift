@@ -16,12 +16,17 @@ struct CanvasEditView: View {
     @State private var toasts: [YGToastItem] = []
     @State private var borderTopping: CGImage?
     @State private var borderSilhouette: CGImage?
-    @Environment(\.canvasToppingRenderer) private var toppingRenderer
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
+    private let toppingRenderer: CanvasToppingRenderer
 
-    init(store: CanvasEditStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
+    init(
+        store: CanvasEditStore,
+        makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
+        toppingRenderer: CanvasToppingRenderer
+    ) {
         _store = State(initialValue: store)
         self.makeAlbumPickerStore = makeAlbumPickerStore
+        self.toppingRenderer = toppingRenderer
     }
 
     var body: some View {
@@ -36,6 +41,7 @@ struct CanvasEditView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .environment(\.canvasToppingRenderer, toppingRenderer)
         .navigationDestination(item: backgroundImageSourceBinding) { source in
             BackgroundImagePickerView(
                 store: BackgroundImagePickerStore(
@@ -252,7 +258,7 @@ private extension CanvasEditView {
     }
 
     func loadBorderPreview() async {
-        guard let key = borderPreviewKey, let toppingRenderer else {
+        guard let key = borderPreviewKey else {
             borderTopping = nil
             borderSilhouette = nil
             return

@@ -116,7 +116,8 @@ public struct CanvasView: View {
                     onSaved: { store.send(.toppingSaved) }
                 )
             ),
-            makeAlbumPickerStore: makeAlbumPickerStore
+            makeAlbumPickerStore: makeAlbumPickerStore,
+            toppingRenderer: toppingRenderer
         )
     }
 
@@ -151,7 +152,8 @@ public struct CanvasView: View {
                         onSaved: { store.send(.canvasEditSaved) }
                     )
                 ),
-                makeAlbumPickerStore: makeAlbumPickerStore
+                makeAlbumPickerStore: makeAlbumPickerStore,
+                toppingRenderer: toppingRenderer
             )
         }
     }

@@ -16,10 +16,16 @@ struct ToppingAddFlowView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
+    private let toppingRenderer: CanvasToppingRenderer
 
-    init(store: ToppingAddStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
+    init(
+        store: ToppingAddStore,
+        makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
+        toppingRenderer: CanvasToppingRenderer
+    ) {
         _store = State(initialValue: store)
         self.makeAlbumPickerStore = makeAlbumPickerStore
+        self.toppingRenderer = toppingRenderer
     }
 
     var body: some View {
@@ -32,6 +38,7 @@ struct ToppingAddFlowView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .environment(\.canvasToppingRenderer, toppingRenderer)
         .task {
             store.send(.screenAppeared)
         }
