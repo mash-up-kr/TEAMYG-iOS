@@ -40,6 +40,8 @@ TextField("name", text: store.binding(\.name, Intent.rename))
 ## 부수효과·이벤트
 
 - 비동기는 `send` 가 `Task` 로 실행하고 Store 가 핸들 보유 → **화면 이탈 시 취소**. 진행 중 작업은 재진입 시 중복 실행 금지.
+- 단, 서버를 여러 단계로 바꾸는 쓰기는 취소하지 않는다 — 절반만 반영된 상태가 서버에 남는다. 화면 수명과 분리해 끝까지 보내고 중복 실행만 시작 전 가드로 막는다(push 화면은 스와이프 백을 막을 수 없다). 예: `CanvasEditStore.saveChanges()`.
+- 취소 확인은 `try Task.checkCancellation()`. `guard !Task.isCancelled else { return }` 는 호출부의 다음 단계를 못 막는다.
 - 일회성 이벤트(네비게이션·토스트·햅틱)는 `state` 가 아니라 **별도 이벤트 채널**(`AsyncStream` 등)로. state 에 넣으면 재진입 시 재발화됨.
 - 로딩/에러는 흩어진 bool 말고 `enum Phase { idle, loading, loaded(T), failed(E) }` 로 표현.
 
