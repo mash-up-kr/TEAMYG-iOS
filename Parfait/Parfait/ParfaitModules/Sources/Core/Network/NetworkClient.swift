@@ -24,11 +24,15 @@ public final class NetworkClientImpl: NetworkClient {
     }()
 
     /// - Parameters:
-    ///   - session: 기본값은 로거만 붙은 세션.
+    ///   - session: 기본값은 로거 + 요청 타임아웃 10초 세션.
     ///   - interceptor: 인증 헤더·401 재시도용. `requiresAuth == false` 인 엔드포인트에는 적용되지 않는다.
     ///     토큰 갱신(refresh) 전용 클라이언트는 nil 로 만들어 재귀를 방지한다.
     public init(
-        session: Session = Session(eventMonitors: [NetworkLogger()]),
+        session: Session = {
+            let configuration = URLSessionConfiguration.af.default
+            configuration.timeoutIntervalForRequest = 10
+            return Session(configuration: configuration, eventMonitors: [NetworkLogger()])
+        }(),
         interceptor: RequestInterceptor? = nil
     ) {
         self.session = session
