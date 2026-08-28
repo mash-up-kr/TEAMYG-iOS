@@ -95,8 +95,10 @@ struct CanvasEditView: View {
                 VStack(spacing: 0) {
                     backgroundCanvasBoard
                         .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                        .frame(width: backgroundContentWidth(fitting: proxy.size))
 
                     CanvasBackgroundPalette(
+                        background: store.state.background,
                         selectedColorHex: store.state.selectedColorHex,
                         selectedImageSource: store.state.isImageSelected
                             ? store.state.selectedBackgroundImageSource ?? .gallery
@@ -105,7 +107,6 @@ struct CanvasEditView: View {
                         onImageSourceSelect: { store.send(.backgroundImageSourceTapped($0)) }
                     )
                 }
-                .frame(width: backgroundContentWidth(fitting: proxy.size))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }

@@ -44,10 +44,6 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
         strokeColor ?? Color(hex: "#FAFAFA")
     }
 
-    var needsChipOutline: Bool {
-        self == .none || self == .white
-    }
-
     init?(hex: String) {
         let normalizedHex = hex.uppercased()
         guard let color = Self.allCases.first(where: { $0.hex == normalizedHex }) else { return nil }

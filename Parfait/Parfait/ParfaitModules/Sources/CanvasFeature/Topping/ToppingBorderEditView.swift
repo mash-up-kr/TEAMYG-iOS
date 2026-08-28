@@ -167,12 +167,12 @@ struct ToppingBorderEditView: View {
     }
 
     private var palette: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: .gap3) {
             ForEach(ToppingBorderColor.allCases) { color in
                 paletteChip(color)
-                    .frame(maxWidth: .infinity)
             }
         }
+        .padding(.vertical, .padding2)
     }
 
     private func paletteChip(_ color: ToppingBorderColor) -> some View {
@@ -183,24 +183,23 @@ struct ToppingBorderEditView: View {
                 .fill(color.chipColor)
                 .frame(width: Self.chipLength, height: Self.chipLength)
                 .overlay {
-                    if color.needsChipOutline {
-                        Circle().strokeBorder(.gray300, lineWidth: 1)
-                    }
+                    Circle()
+                        .strokeBorder(chipOutlineColor(for: color), lineWidth: 1)
                 }
                 .overlay {
                     if color == .none {
-                        chipSlash
+                        chipSlash(isSelected: color == border.color)
                     }
                 }
                 .overlay {
-                    if color == border.color {
+                    if color == border.color, color != .none {
                         Circle()
-                            .fill(.black50)
+                            .fill(.black25)
                             .overlay {
                                 Image.icCheck
                                     .renderingMode(.template)
                                     .resizable()
-                                    .frame(width: 18, height: 18)
+                                    .frame(width: 24, height: 24)
                                     .foregroundStyle(.whiteFixed)
                             }
                     }
@@ -209,11 +208,15 @@ struct ToppingBorderEditView: View {
         .buttonStyle(.plain)
     }
 
-    private var chipSlash: some View {
+    private func chipOutlineColor(for color: ToppingBorderColor) -> Color {
+        color == .none && color == border.color ? .gray850 : .black5
+    }
+
+    private func chipSlash(isSelected: Bool) -> some View {
         Path { path in
-            path.move(to: CGPoint(x: Self.chipLength * 0.24, y: Self.chipLength * 0.76))
-            path.addLine(to: CGPoint(x: Self.chipLength * 0.76, y: Self.chipLength * 0.24))
+            path.move(to: CGPoint(x: Self.chipLength * 0.15, y: Self.chipLength * 0.85))
+            path.addLine(to: CGPoint(x: Self.chipLength * 0.85, y: Self.chipLength * 0.15))
         }
-        .stroke(.gray500, lineWidth: 1)
+        .stroke(isSelected ? Color.gray850 : .gray100, lineWidth: 1)
     }
 }
