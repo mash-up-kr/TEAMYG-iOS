@@ -13,6 +13,9 @@ import UIComponent
 /// 선택 사진 확인 화면 (Figma C-102-Confirm). 그리드 셀에서 matched geometry 로 확대되어 나타난다.
 /// 우상단 닫기 버튼은 컨테이너(AlbumView) 소유 — 이 화면 위에 그대로 떠 있다.
 struct PhotoConfirmView: View {
+    /// 플로팅 닫기 버튼 영역(60) 아래로 사진을 시작한다.
+    private static let contentTopInset: CGFloat = 60 + .padding4
+
     let photo: AlbumPickerStore.SelectedPhoto
     let zoomNamespace: Namespace.ID
     let onReselect: () -> Void
@@ -49,7 +52,7 @@ struct PhotoConfirmView: View {
             }
         }
         .padding(.horizontal, .padding7)
-        .padding(.top, 70) // 플로팅 닫기 버튼 영역(60) + 10
+        .padding(.top, Self.contentTopInset)
         .padding(.bottom, .padding6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.whiteFixed.ignoresSafeArea())

@@ -236,7 +236,7 @@ private extension ObjectExtractor {
                 image: croppedPhoto.image.downscaled(longEdge: ObjectExtractionPolicy.analysisLongEdge)
             )
         case .galleryAsset(let identifier):
-            guard let original = await galleryOriginal(assetIdentifier: identifier) else {
+            guard let original = await PhotoLibraryImageSource.originalData(assetIdentifier: identifier) else {
                 throw ObjectExtractionError.photoUnavailable
             }
             return try uprightPhoto(
@@ -283,35 +283,6 @@ private extension ObjectExtractor {
               let croppedImage = viewFinderRegion.croppedImage(from: photo.image)
         else { return photo }
         return NormalizedPhoto(image: croppedImage)
-    }
-
-    private func galleryOriginal(
-        assetIdentifier: String
-    ) async -> (photoData: Data, orientation: CGImagePropertyOrientation)? {
-        guard let asset = PHAsset.fetchAssets(
-            withLocalIdentifiers: [assetIdentifier],
-            options: nil
-        ).firstObject else {
-            return nil
-        }
-
-        let options = PHImageRequestOptions()
-        options.isNetworkAccessAllowed = true
-        options.deliveryMode = .highQualityFormat
-        options.resizeMode = .none
-
-        return await withCheckedContinuation { continuation in
-            PHImageManager.default().requestImageDataAndOrientation(
-                for: asset,
-                options: options
-            ) { photoData, _, orientation, _ in
-                guard let photoData else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                continuation.resume(returning: (photoData, orientation))
-            }
-        }
     }
 }
 

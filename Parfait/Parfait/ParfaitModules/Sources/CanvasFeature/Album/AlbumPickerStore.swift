@@ -13,6 +13,7 @@ import UIComponent
 
 public typealias AlbumPickerStoreFactory = (
     _ isLimited: Bool,
+    _ showsRecentUploads: Bool,
     _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
     _ onRecentUploadConfirmed: @escaping (StoredImage) -> Void
 ) -> AlbumPickerStore
@@ -29,6 +30,7 @@ public final class AlbumPickerStore: MVIStore {
 
     public init(
         isLimited: Bool,
+        showsRecentUploads: Bool = true,
         recentUploadsRepository: any RecentUploadsRepository,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
         onRecentUploadConfirmed: @escaping (StoredImage) -> Void
@@ -36,7 +38,7 @@ public final class AlbumPickerStore: MVIStore {
         self.recentUploadsRepository = recentUploadsRepository
         self.onPhotoConfirmed = onPhotoConfirmed
         self.onRecentUploadConfirmed = onRecentUploadConfirmed
-        state = State(isLimited: isLimited)
+        state = State(isLimited: isLimited, showsRecentUploads: showsRecentUploads)
     }
 
     public func send(_ intent: Intent) {
@@ -70,6 +72,7 @@ public final class AlbumPickerStore: MVIStore {
 
     /// 최근 업로드 기록 로드 — 정책 창(03:00~다음날 02:59) 안의 기록만, 비면 뷰가 섹션을 숨긴다.
     private func loadRecentUploads() {
+        guard state.showsRecentUploads else { return }
         recentUploadsTask?.cancel()
         recentUploadsTask = Task { [weak self, recentUploadsRepository] in
             let uploads = await recentUploadsRepository.loadRecent(
@@ -145,6 +148,9 @@ public final class AlbumPickerStore: MVIStore {
 
     public struct State: Equatable {
         public var isLimited: Bool
+        /// 최근 업로드(알파 누끼) 섹션 노출 여부. 캔버스 **배경** 편집에서는 감춘다 —
+        /// 배경은 JPEG 으로 저장돼 누끼의 투명 영역이 검정으로 굳는다.
+        public var showsRecentUploads: Bool
         public var recentUploads: [StoredImage] = []
         public var sections: [PhotoDaySection] = []
         var selectedPhoto: SelectedPhoto?

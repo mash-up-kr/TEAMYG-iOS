@@ -17,7 +17,10 @@ public struct AlbumPickerView: View {
     @State private var toasts: [YGToastItem] = []
     private let showsSelectionGuide: Bool
 
-    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+    /// 플로팅 닫기 버튼 영역(60) 아래로 목록을 시작한다.
+    private static let contentTopInset: CGFloat = 60 + .padding6
+
+    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .gap4), count: 3)
 
     public init(store: AlbumPickerStore, showsSelectionGuide: Bool = true) {
         _store = State(initialValue: store)
@@ -27,7 +30,7 @@ public struct AlbumPickerView: View {
     public var body: some View {
         ZStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: .gap7) {
                     if !store.state.recentUploads.isEmpty {
                         recentUploadsSection
                     }
@@ -36,8 +39,8 @@ public struct AlbumPickerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 20)
-                .padding(.top, 76) // 플로팅 닫기 버튼 영역(60) + 16
+                .padding(.horizontal, .padding7)
+                .padding(.top, Self.contentTopInset)
             }
             .background(Color.whiteFixed)
             .overlay {
@@ -50,7 +53,7 @@ public struct AlbumPickerView: View {
                     YGButton("사진 재선택", variant: .mediumPrimary) {
                         store.send(.reselectTapped)
                     }
-                    .padding(.vertical, 16)
+                    .padding(.vertical, .padding6)
                     .frame(maxWidth: .infinity)
                     .background(Color.whiteFixed)
                 }
@@ -84,7 +87,7 @@ public struct AlbumPickerView: View {
 
     /// 빈 상태 (Figma C-102-Empty) — 최근 업로드·앨범 사진이 모두 없을 때 중앙 표시.
     private var emptyView: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: .gap1) {
             Image.imageGalleryEmpty
             Text("오늘 찍은 사진이 없어요\n사진을 찍고 토핑을 추가해 보세요")
                 .suit(.body02Regular)
@@ -95,11 +98,11 @@ public struct AlbumPickerView: View {
     }
 
     private var recentUploadsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: .gap4) {
             Text("최근 업로드한 사진")
                 .suit(.body02Regular)
                 .foregroundStyle(Color.gray900)
-            LazyVGrid(columns: gridColumns, spacing: 12) {
+            LazyVGrid(columns: gridColumns, spacing: .gap4) {
                 ForEach(store.state.recentUploads) { upload in
                     RecentUploadCell(
                         upload: upload,
@@ -116,8 +119,8 @@ public struct AlbumPickerView: View {
     }
 
     private func daySection(_ section: PhotoDaySection) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: .gap4) {
+            HStack(spacing: .gap1) {
                 Text(section.dayTitle)
                     .suit(.body02Regular)
                     .foregroundStyle(Color.gray900)
@@ -125,7 +128,7 @@ public struct AlbumPickerView: View {
                     .suit(.body02Regular)
                     .foregroundStyle(Color.gray300)
             }
-            LazyVGrid(columns: gridColumns, spacing: 12) {
+            LazyVGrid(columns: gridColumns, spacing: .gap4) {
                 ForEach(section.assets, id: \.localIdentifier) { asset in
                     PhotoAssetCell(
                         asset: asset,
