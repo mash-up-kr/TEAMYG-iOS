@@ -154,7 +154,7 @@ struct ToppingPlacementEditor: Equatable, Sendable {
         switch intent {
         case .placementCanvasResized(let canvasSize): resize(to: canvasSize)
         case .placementMoved(let translation): placement = placement.moved(by: translation, in: canvasSize)
-        case .placementScaled(let factor): placement = magnifying(by: factor)
+        case .placementScaled(let factor): placement = placement.magnified(by: factor)
         case .placementRotated(let degrees): placement = placement.rotated(by: degrees)
         default: break
         }
@@ -168,10 +168,6 @@ struct ToppingPlacementEditor: Equatable, Sendable {
             scale: placement.scale,
             rotation: placement.rotationDegrees
         )
-    }
-
-    func magnifying(by factor: Double) -> ToppingPlacement {
-        placement.magnified(by: factor)
     }
 
     /// 캔버스 크기가 정해질 때 첫 배치를 잡는다. 이미 잡혀 있으면 `scale` 은 캔버스 대비 비율이라 손댈 게 없다.

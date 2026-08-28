@@ -142,14 +142,16 @@ extension CanvasEditStore {
         case border(toppingID: Int)
     }
 
+    /// 저장 진행 상태. **실패는 여기 담지 않는다** — 일회성 알림이라 이벤트 채널로 보낸다
+    /// (`docs/mvi.md` 부수효과·이벤트 절).
     enum SaveState: Equatable, Sendable {
         case idle
         case saving
-        case failed
     }
 
     enum Event: Sendable {
         case otherToppingSelected
+        case saveFailed
     }
 
     enum Intent {
@@ -174,6 +176,5 @@ extension CanvasEditStore {
         case continueEditingTapped
         case discardTapped
         case confirmTapped
-        case saveErrorDismissed
     }
 }

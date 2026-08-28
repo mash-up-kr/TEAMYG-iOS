@@ -11,8 +11,12 @@ import UIComponent
 
 struct CanvasContentView: View {
     /// Spotlight 우선순위: 강조 토핑 → Dim → 나머지 토핑 → 배경 (`canvas-policy.md` §4.2).
-    private static let dimZIndex: Double = 5_000
-    private static let spotlightZIndex: Double = 10_000
+    ///
+    /// 토핑은 서버 `positionZ` 값이 아니라 **정렬된 배열 순서**로 쌓는다 — `positionZ` 는
+    /// 클라이언트가 매기는 값이라 범위가 정해져 있지 않고, dim/Spotlight 상수와 같은 축을 쓰면
+    /// 값이 커졌을 때 순서가 뒤집힌다.
+    private static let dimZIndex: Double = 1_000_000
+    private static let spotlightZIndex: Double = 2_000_000
 
     let content: CanvasStore.CanvasContent
     var spotlightedToppingID: Int?
@@ -43,21 +47,22 @@ struct CanvasContentView: View {
                         .zIndex(Self.dimZIndex)
                 }
 
-                ForEach(content.images) { canvasImage in
+                ForEach(Array(content.images.enumerated()), id: \.element.id) { order, canvasImage in
                     CanvasPlacedImage(
                         canvasImage: canvasImage,
                         canvasSize: proxy.size,
                         onTap: imageTapAction(for: canvasImage)
                     )
-                        .zIndex(zIndex(for: canvasImage))
+                        .zIndex(zIndex(for: canvasImage, order: order))
                 }
             }
         }
         .clipped()
     }
 
-    private func zIndex(for canvasImage: CanvasStore.CanvasImage) -> Double {
-        canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : canvasImage.positionZ
+    /// `content.images` 는 `positionZ` 오름차순으로 정렬돼 있다 — 배열 순서가 곧 쌓임 순서다.
+    private func zIndex(for canvasImage: CanvasStore.CanvasImage, order: Int) -> Double {
+        canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : Double(order)
     }
 
     private func imageTapAction(for canvasImage: CanvasStore.CanvasImage) -> (() -> Void)? {

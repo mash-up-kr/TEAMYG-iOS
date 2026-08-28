@@ -44,8 +44,6 @@ final class CanvasEditStore: MVIStore {
             handleBorderIntent(intent)
         case .confirmTapped:
             saveChanges()
-        case .saveErrorDismissed:
-            state.saveState = .idle
         }
     }
 
@@ -200,7 +198,8 @@ extension CanvasEditStore {
             } catch is CancellationError {
                 return
             } catch {
-                state.saveState = .failed
+                state.saveState = .idle
+                eventChannel.send(.saveFailed)
             }
         }
     }
@@ -213,6 +212,9 @@ extension CanvasEditStore {
         case .color(let hex):
             change = .color(hex: hex)
         case .image:
+            // 이미지 URL 배경은 업로드 성공 경로에서만 만들어지고 그 자리에서 savedBackground 로
+            // 승격된다. 여기 도달했다면 "변경이 있는데 아무것도 안 보내고 성공" 이 되므로 알린다.
+            assertionFailure("이미지 URL 배경은 업로드 경로에서만 만들어진다")
             return
         case .imageData(let jpegData):
             let uploadedImage: UploadedImage

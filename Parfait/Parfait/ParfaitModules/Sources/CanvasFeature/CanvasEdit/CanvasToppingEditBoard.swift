@@ -11,6 +11,8 @@ import UIComponent
 
 struct CanvasToppingEditBoard: View {
     private static let canvasSpace = "CanvasToppingEditBoard"
+    /// 선택된 토핑은 항상 맨 위. 나머지는 배열 순서로 쌓는다(서버 `positionZ` 값과 축을 섞지 않는다).
+    private static let selectedZIndex: Double = 1_000_000
 
     let background: CanvasStore.CanvasBackground
     let toppings: [CanvasEditStore.EditableTopping]
@@ -34,7 +36,7 @@ struct CanvasToppingEditBoard: View {
                 Color.black25
                     .allowsHitTesting(false)
 
-                ForEach(toppings.filter(\.isMine)) { topping in
+                ForEach(Array(toppings.filter(\.isMine).enumerated()), id: \.element.id) { order, topping in
                     CanvasEditableTopping(
                         topping: topping,
                         canvasSize: proxy.size,
@@ -45,7 +47,7 @@ struct CanvasToppingEditBoard: View {
                         onDeleteTap: { onDeleteTap(topping.id) },
                         onBorderEditTap: { onBorderEditTap(topping.id) }
                     )
-                    .zIndex(topping.id == selectedToppingID ? 10_000 : 1_000 + topping.positionZ)
+                    .zIndex(topping.id == selectedToppingID ? Self.selectedZIndex : Double(order))
                 }
             }
             .coordinateSpace(.named(Self.canvasSpace))
@@ -71,9 +73,7 @@ private struct CanvasEditableTopping: View {
     let onBorderEditTap: () -> Void
 
     @State private var toppingPixelSize: CGSize = .zero
-    @State private var dragTranslation: CGSize = .zero
-    @State private var scaleFactor: Double = 1
-    @State private var rotationDelta: Double = 0
+    @State private var draft = ToppingTransformDraft()
 
     var body: some View {
         ZStack {
@@ -134,10 +134,7 @@ private struct CanvasEditableTopping: View {
 
 private extension CanvasEditableTopping {
     var previewPlacement: ToppingPlacement {
-        topping.placement
-            .magnified(by: scaleFactor)
-            .moved(by: dragTranslation, in: canvasSize)
-            .rotated(by: rotationDelta)
+        draft.applied(to: topping.placement, in: canvasSize)
     }
 
     var renderedSize: CGSize {
@@ -163,28 +160,29 @@ private extension CanvasEditableTopping {
 
     var moveGesture: some Gesture {
         DragGesture(coordinateSpace: .named(coordinateSpace))
-            .onChanged { dragTranslation = $0.translation }
+            .onChanged { draft.translation = $0.translation }
             .onEnded { value in
                 onPlacementChange(topping.placement.moved(by: value.translation, in: canvasSize))
-                dragTranslation = .zero
+                draft.reset()
             }
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { scaleFactor = magnification(for: $0) }
+            .onChanged { draft.scaleFactor = magnification(for: $0) }
             .onEnded { value in
                 onPlacementChange(topping.placement.magnified(by: magnification(for: value)))
-                scaleFactor = 1
+                draft.reset()
             }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { rotationDelta = rotation(for: $0) }
+            .onChanged { draft.accumulateRotation(rawDegrees: rotation(for: $0)) }
             .onEnded { value in
-                onPlacementChange(topping.placement.rotated(by: rotation(for: value)))
-                rotationDelta = 0
+                draft.accumulateRotation(rawDegrees: rotation(for: value))
+                onPlacementChange(topping.placement.rotated(by: draft.rotationDegrees))
+                draft.reset()
             }
     }
 

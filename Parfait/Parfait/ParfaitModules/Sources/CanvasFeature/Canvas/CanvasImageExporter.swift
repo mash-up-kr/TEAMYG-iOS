@@ -145,9 +145,10 @@ private struct CanvasSnapshotView: View {
         ZStack {
             backgroundLayer
 
-            ForEach(toppings) { topping in
+            // 이미 positionZ 오름차순으로 정렬해 넘긴다 — 배열 순서가 곧 쌓임 순서다.
+            ForEach(Array(toppings.enumerated()), id: \.element.id) { order, topping in
                 toppingLayer(topping)
-                    .zIndex(topping.canvasImage.positionZ)
+                    .zIndex(Double(order))
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)

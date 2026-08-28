@@ -27,9 +27,7 @@ struct ToppingPlacementView: View {
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
 
-    @State private var dragTranslation: CGSize = .zero
-    @State private var scaleFactor: Double = 1
-    @State private var rotationDelta: Double = 0
+    @State private var draft = ToppingTransformDraft()
 
     var body: some View {
         ZStack {
@@ -126,9 +124,7 @@ struct ToppingPlacementView: View {
 
 private extension ToppingPlacementView {
     var previewPlacement: ToppingPlacement {
-        editor.magnifying(by: scaleFactor)
-            .moved(by: dragTranslation, in: editor.canvasSize)
-            .rotated(by: rotationDelta)
+        draft.applied(to: editor.placement, in: editor.canvasSize)
     }
 
     var previewCenter: CGPoint {
@@ -152,35 +148,30 @@ private extension ToppingPlacementView {
 
     var moveGesture: some Gesture {
         DragGesture(coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                dragTranslation = value.translation
-            }
+            .onChanged { draft.translation = $0.translation }
             .onEnded { value in
-                dragTranslation = .zero
+                draft.reset()
                 onMove(value.translation)
             }
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                scaleFactor = magnification(for: value)
-            }
+            .onChanged { draft.scaleFactor = magnification(for: $0) }
             .onEnded { value in
                 let factor = magnification(for: value)
-                scaleFactor = 1
+                draft.reset()
                 onScale(factor)
             }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                rotationDelta = rotation(for: value)
-            }
+            .onChanged { draft.accumulateRotation(rawDegrees: rotation(for: $0)) }
             .onEnded { value in
-                let degrees = rotation(for: value)
-                rotationDelta = 0
+                draft.accumulateRotation(rawDegrees: rotation(for: value))
+                let degrees = draft.rotationDegrees
+                draft.reset()
                 onRotate(degrees)
             }
     }
