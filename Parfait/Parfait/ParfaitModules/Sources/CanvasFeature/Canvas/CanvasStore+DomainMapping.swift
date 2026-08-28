@@ -52,8 +52,10 @@ extension CanvasStore.CanvasContent {
 }
 
 extension CanvasStore.CanvasBackground {
-    /// 배경을 설정하지 않은 캔버스의 바닥은 흰색이다 (확정 규약).
-    static let unset = CanvasStore.CanvasBackground.color(hex: "#FFFFFF")
+    /// 배경을 설정하지 않은 캔버스의 바닥은 흰색이다 (확정 규약, `canvas_progress.md` §7).
+    /// 팔레트의 흰색과 **같은 HEX** 여야 C-304-ing 에서 현재 배경색 칩이 선택 상태로 보인다
+    /// (`canvas-policy.md` §6.3).
+    static let unset = CanvasStore.CanvasBackground.color(hex: CanvasPalette.white)
 
     init(_ background: ParfaitBackground) {
         switch background {

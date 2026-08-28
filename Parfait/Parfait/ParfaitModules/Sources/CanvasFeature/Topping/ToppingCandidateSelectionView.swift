@@ -126,9 +126,10 @@ struct ToppingCandidateSelectionView: View {
             shape.addPath(Path(rect(of: candidate, in: imageSize)))
         }
 
+        // dim 은 `black25` — C-101·C-103-Selected·C-106 공통 확정 규약 (`canvas_progress.md` §7).
         return Path(imageRect)
             .subtracting(candidateShape)
-            .fill(.black75)
+            .fill(.black25)
     }
 
     private func rect(of candidate: ExtractionCandidate, in imageSize: CGSize) -> CGRect {

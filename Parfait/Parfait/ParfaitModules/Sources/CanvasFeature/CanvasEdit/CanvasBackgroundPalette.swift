@@ -10,16 +10,9 @@ import SwiftUI
 import UIComponent
 
 struct CanvasBackgroundPalette: View {
-    private static let colors = [
-        "#FAFAFA",
-        "#0E0E0E",
-        "#FCC2CC",
-        "#FCE7C2",
-        "#F9F9AB",
-        "#C5FFD7",
-        "#C2E4FC",
-        "#DCC2FC"
-    ]
+    static let height: CGFloat = 60
+
+    private static let colors = CanvasPalette.all
 
     let background: CanvasStore.CanvasBackground
     let selectedColorHex: String?
@@ -42,7 +35,7 @@ struct CanvasBackgroundPalette: View {
             .padding(.top, .padding6)
         }
         .scrollIndicators(.hidden)
-        .frame(height: 60)
+        .frame(height: Self.height)
         .background(.whiteFixed)
     }
 
@@ -95,7 +88,7 @@ struct CanvasBackgroundPalette: View {
                         .strokeBorder(.black5, lineWidth: 1)
                 }
                 .overlay {
-                    if selectedColorHex == hex {
+                    if CanvasPalette.matches(selectedColorHex, hex) {
                         Circle()
                             .fill(.black25)
                         Image.icCheck
