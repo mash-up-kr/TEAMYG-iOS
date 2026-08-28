@@ -43,14 +43,15 @@ public final class CanvasStore: MVIStore {
 
     /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
     public var groupID: Int { dependencies.groupID }
-    /// 캔버스 하위 편집 Store 조립에 같은 UseCase 인스턴스를 전달한다.
+    /// 캔버스 하위 편집 Store 조립에 같은 UseCase 를 전달한다.
     var canvasUseCase: any CanvasUseCase { dependencies.canvasUseCase }
 
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared,
              .sceneBecameActive,
-             .screenDisappeared:
+             .screenDisappeared,
+             .refreshRequested:
             handleLifecycleIntent(intent)
 
         case .toppingTapped(let toppingID):
@@ -58,13 +59,13 @@ public final class CanvasStore: MVIStore {
 
         case .spotlightDismissed:
             state.spotlightedToppingID = nil
-
         case .canvasEditTapped,
              .canvasEditFlowDismissed,
              .canvasEditSaved:
             handleCanvasEditIntent(intent)
 
         case .toppingAddTapped,
+             .menuDimTapped,
              .cameraOptionTapped,
              .galleryOptionTapped,
              .toppingAddFlowDismissed,
@@ -106,16 +107,15 @@ public final class CanvasStore: MVIStore {
                 return
             }
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
-
+        case .menuDimTapped:
+            // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
+            state.menuState = .collapsed
         case .cameraOptionTapped:
             openToppingAddFlow { .camera(canvasDate: $0) }
-
         case .galleryOptionTapped:
             openToppingAddFlow { .gallery(canvasDate: $0) }
-
         case .toppingAddFlowDismissed:
             state.toppingAddSource = nil
-
         case .toppingSaved:
             state.toppingAddSource = nil
             loadCanvas(for: state.calendar.selectedDate)
@@ -180,48 +180,18 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    /// SY-001-Closed `오늘의 파르페 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
-    private func openTodayCanvas() {
+    /// Pull-to-Refresh — Spotlight 를 먼저 해제하고 Default 상태에서 새로고침한다 (`canvas-policy.md` §4.2).
+    private func refreshCanvas() {
+        state.spotlightedToppingID = nil
         state.menuState = .collapsed
-        guard state.calendar.selectDate(state.calendar.today) else { return }
-        loadCanvas(for: state.calendar.today)
-    }
-
-    /// SY-001-Closed `갤러리에 저장` — 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다.
-    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패 Toast 로 수렴한다.
-    private func saveCanvasToGallery() {
-        guard state.gallerySave != .saving else { return }
         state.calendar.close()
-
-        guard let canvasContent = state.canvasContent else {
-            eventChannel.send(.gallerySaveFailed)
-            return
-        }
-
-        state.gallerySave = .saving
-        let savedDate = state.calendar.selectedDate
-        gallerySaveTask = Task { [weak self, dependencies] in
-            var isSaved = false
-            if let canvasImage = await dependencies.canvasImageExporter.image(of: canvasContent) {
-                isSaved = await CanvasGallerySaver.save(canvasImage)
-            }
-
-            guard !Task.isCancelled, let self else { return }
-            state.gallerySave = .idle
-            eventChannel.send(
-                isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
-            )
-        }
+        reload(state.calendar.selectedDate)
     }
 
-    private func reloadIfDayChanged() {
-        let today = CalendarDate(canvasDayContaining: dependencies.now())
-        guard today != state.calendar.today else { return }
-
-        let didFollowToday = state.calendar.updateToday(today)
-        loadRecordedDates(for: today.year)
-        guard didFollowToday else { return }
-        loadCanvas(for: today)
+    /// 해당 날짜의 캔버스와 그 해 기록을 함께 다시 받는다.
+    private func reload(_ date: CalendarDate) {
+        loadRecordedDates(for: date.year)
+        loadCanvas(for: date)
     }
 
     /// SY-001-New `보러가기` — 안내된 날짜의 과거 캔버스로 이동한다 (`canvas-policy.md` §7.1).
@@ -243,12 +213,52 @@ public final class CanvasStore: MVIStore {
         }
     }
 
+    /// 서버가 완성이라고 알려준 날짜라 캘린더 선택 규칙(토핑 1장 이상)과 무관하게 연다.
     private func openPastParfait(on date: CalendarDate) {
-        guard state.calendar.selectDate(date) else {
-            eventChannel.send(.canvasNotReady)
+        guard state.calendar.openKnownPastDate(date) else { return }
+        loadCanvas(for: date)
+    }
+
+    /// SY-001-Closed `오늘의 파르페 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
+    private func openTodayCanvas() {
+        state.menuState = .collapsed
+        guard state.calendar.selectDate(state.calendar.today) else { return }
+        loadCanvas(for: state.calendar.today)
+    }
+
+    /// SY-001-Closed `갤러리에 저장` — 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다.
+    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패 Toast 로 수렴한다.
+    private func saveCanvasToGallery() {
+        guard state.gallerySave != .saving else { return }
+        state.calendar.close()
+
+        guard let canvasContent = state.canvasContent else {
+            eventChannel.send(.gallerySaveFailed)
             return
         }
-        loadCanvas(for: date)
+
+        state.gallerySave = .saving
+        let savedDate = state.calendar.selectedDate
+        gallerySaveTask = Task { [weak self, dependencies] in
+            let isSaved = await dependencies.saveToGallery(canvasContent)
+            guard !Task.isCancelled, let self else { return }
+            state.gallerySave = .idle
+            eventChannel.send(
+                isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
+            )
+        }
+    }
+
+    private func reloadIfDayChanged() {
+        let today = CalendarDate(canvasDayContaining: dependencies.now())
+        guard today != state.calendar.today else { return }
+
+        let didFollowToday = state.calendar.updateToday(today)
+        guard didFollowToday else {
+            loadRecordedDates(for: today.year)
+            return
+        }
+        reload(today)
     }
 
     private func loadCanvas(for date: CalendarDate) {
@@ -258,11 +268,16 @@ public final class CanvasStore: MVIStore {
         state.canvasContent = nil
         state.spotlightedToppingID = nil
         toppingAuthorsByID = [:]
+        // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
+        // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
+        state.parfaitID = nil
+        state.status = nil
 
-        let parfaitID = date == state.calendar.today ? nil : parfaitIDsByDate[date]
+        let isToday = date == state.calendar.today
+        let parfaitID = parfaitIDsByDate[date]
         canvasLoadTask = Task { [weak self, dependencies] in
             do {
-                let parfait = try await Self.fetchParfait(parfaitID: parfaitID, dependencies: dependencies)
+                let parfait = try await dependencies.fetchParfait(isToday: isToday, parfaitID: parfaitID)
                 guard !Task.isCancelled, let self else { return }
                 apply(parfait)
             } catch is CancellationError {
@@ -270,22 +285,9 @@ public final class CanvasStore: MVIStore {
             } catch {
                 guard !Task.isCancelled, let self else { return }
                 state.contentState = .failed
+                eventChannel.send(.canvasLoadFailed)
             }
         }
-    }
-
-    /// 오늘은 전용 조회를, 과거는 목록에서 받아 둔 `parfaitID` 를 쓴다.
-    private static func fetchParfait(
-        parfaitID: Int?,
-        dependencies: Dependencies
-    ) async throws -> Parfait {
-        guard let parfaitID else {
-            return try await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
-        }
-        return try await dependencies.canvasUseCase.fetchParfait(
-            groupID: dependencies.groupID,
-            parfaitID: parfaitID
-        )
     }
 
     private func apply(_ parfait: Parfait) {
@@ -302,13 +304,28 @@ public final class CanvasStore: MVIStore {
         }
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
-        toppingAuthorsByID = Dictionary(
-            uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) }
-        )
+        toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
     }
 }
 
 private extension CanvasStore {
+    /// 캘린더 인디케이터와 날짜 → `parfaitID` 매핑을 한 해 단위로 갱신한다.
+    func refreshRecordedDates(for year: Int) async {
+        let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
+            groupID: dependencies.groupID,
+            year: year
+        )
+        guard !Task.isCancelled, let summaries else { return }
+
+        for summary in summaries {
+            parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
+        }
+        state.calendar.replaceRecordedDates(
+            Set(summaries.filter { $0.toppingCount > 0 }.map { CalendarDate($0.date) }),
+            for: year
+        )
+    }
+
     func handleLifecycleIntent(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
@@ -319,6 +336,8 @@ private extension CanvasStore {
             reloadIfDayChanged()
         case .screenDisappeared:
             cancelTasks()
+        case .refreshRequested:
+            refreshCanvas()
         default:
             break
         }
@@ -363,22 +382,6 @@ private extension CanvasStore {
         recordedDatesLoadTask = Task { [weak self] in
             await self?.refreshRecordedDates(for: year)
         }
-    }
-
-    func refreshRecordedDates(for year: Int) async {
-        let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
-            groupID: dependencies.groupID,
-            year: year
-        )
-        guard !Task.isCancelled, let summaries else { return }
-
-        for summary in summaries {
-            parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
-        }
-        state.calendar.replaceRecordedDates(
-            Set(summaries.filter { $0.toppingCount > 0 }.map { CalendarDate($0.date) }),
-            for: year
-        )
     }
 
     func cancelTasks() {

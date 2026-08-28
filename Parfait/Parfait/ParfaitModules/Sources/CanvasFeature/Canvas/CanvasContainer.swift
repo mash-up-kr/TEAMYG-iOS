@@ -15,32 +15,41 @@ struct CanvasContainer: View {
     var body: some View {
         ZStack(alignment: .top) {
             GeometryReader { proxy in
-                VStack(spacing: -1) {
-                    CanvasBoard(
-                        dateText: state.dateText,
-                        weekdayText: state.weekdayText,
-                        contentState: state.contentState,
-                        canvasContent: state.canvasContent,
-                        spotlightedToppingID: state.spotlightedToppingID,
-                        isDimmed: state.menuState == .sourceOptions,
-                        onCalendarTap: { send(.calendarTapped) },
-                        onToppingTap: { send(.toppingTapped($0)) },
-                        onSpotlightDismiss: { send(.spotlightDismissed) }
-                    )
-                    .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
-                    .overlay(alignment: .bottom) {
-                        if state.menuState == .sourceOptions {
-                            CanvasMenuSourceOptions(
-                                onCameraOptionTap: { send(.cameraOptionTapped) },
-                                onGalleryOptionTap: { send(.galleryOptionTapped) }
-                            )
+                // Pull-to-Refresh 를 걸기 위한 스크롤 컨테이너. 내용 높이를 뷰포트에 맞춰
+                // 실제 스크롤은 일어나지 않고 당겨서 새로고침만 동작한다
+                // (`canvas-policy.md` §4.2 — 다른 그룹원의 토핑을 받아오는 유일한 경로).
+                ScrollView {
+                    VStack(spacing: -1) {
+                        CanvasBoard(
+                            dateText: state.dateText,
+                            weekdayText: state.weekdayText,
+                            contentState: state.contentState,
+                            canvasContent: state.canvasContent,
+                            spotlightedToppingID: state.spotlightedToppingID,
+                            isDimmed: state.menuState == .sourceOptions,
+                            onCalendarTap: { send(.calendarTapped) },
+                            onToppingTap: { send(.toppingTapped($0)) },
+                            onSpotlightDismiss: { send(.spotlightDismissed) },
+                            onDimTap: { send(.menuDimTapped) }
+                        )
+                        .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                        .overlay(alignment: .bottom) {
+                            if state.menuState == .sourceOptions {
+                                CanvasMenuSourceOptions(
+                                    onCameraOptionTap: { send(.cameraOptionTapped) },
+                                    onGalleryOptionTap: { send(.galleryOptionTapped) }
+                                )
+                            }
                         }
-                    }
 
-                    menuBar
+                        menuBar
+                    }
+                    .frame(width: CanvasArea.width(fitting: proxy.size))
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
-                .frame(width: CanvasArea.width(fitting: proxy.size))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.always)
+                .refreshable { send(.refreshRequested) }
             }
             .padding(.horizontal, .padding7)
             .padding(.vertical, .padding6)
@@ -99,7 +108,7 @@ struct CanvasContainer: View {
             )
             .padding(.horizontal, .padding7 + 1)
         }
-        .padding(.top, .padding6 + 44)
+        .padding(.top, .padding6 + CanvasDateHeader.height)
     }
 }
 
@@ -113,6 +122,7 @@ private struct CanvasBoard: View {
     let onCalendarTap: () -> Void
     let onToppingTap: (Int) -> Void
     let onSpotlightDismiss: () -> Void
+    let onDimTap: () -> Void
 
     var body: some View {
         ZStack {
@@ -121,20 +131,18 @@ private struct CanvasBoard: View {
 
             Group {
                 switch contentState {
-                case .empty, .failed:
-                    VStack(spacing: 0) {
-                        Text("아직 캔버스가 비어 있어요")
-                        Text("첫번째 토핑을 올려 캔버스를 채워보세요")
-                    }
-                    .suit(.caption01Medium)
-                    .foregroundStyle(.gray500)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 44)
+                case .empty:
+                    message("아직 캔버스가 비어 있어요", "첫번째 토핑을 올려 캔버스를 채워보세요")
+
+                // 네트워크 실패를 빈 캔버스로 보여주면 "우리 캔버스가 비었다" 고 오해한다.
+                // 전용 시안이 없어(`canvas-policy.md` §8) 문구만 구분하고 재시도는 Pull-to-Refresh 로 받는다.
+                case .failed:
+                    message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")
 
                 case .loading:
                     ProgressView()
                         .tint(.gray500)
-                        .padding(.top, 44)
+                        .padding(.top, CanvasDateHeader.height)
 
                 case .filled:
                     if let canvasContent {
@@ -162,9 +170,12 @@ private struct CanvasBoard: View {
             }
 
             if isDimmed {
-                CanvasPanelShape()
-                    .fill(Color.black25)
-                    .allowsHitTesting(false)
+                Button(action: onDimTap) {
+                    CanvasPanelShape()
+                        .fill(Color.black25)
+                        .contentShape(CanvasPanelShape())
+                }
+                .buttonStyle(.plain)
             }
         }
         .clipShape(CanvasPanelShape())
@@ -173,9 +184,22 @@ private struct CanvasBoard: View {
                 .stroke(Color.gray500, lineWidth: 1)
         }
     }
+
+    private func message(_ title: String, _ description: String) -> some View {
+        VStack(spacing: 0) {
+            Text(title)
+            Text(description)
+        }
+        .suit(.caption01Medium)
+        .foregroundStyle(.gray500)
+        .multilineTextAlignment(.center)
+        .padding(.top, CanvasDateHeader.height)
+    }
 }
 
 struct CanvasDateHeader: View {
+    static let height: CGFloat = 44
+
     let dateText: String
     let weekdayText: String
     let onCalendarTap: () -> Void
@@ -200,7 +224,7 @@ struct CanvasDateHeader: View {
         .suit(.body02Regular)
         .padding(.leading, .padding6)
         .frame(maxWidth: .infinity)
-        .frame(height: 44)
+        .frame(height: Self.height)
         .background(.white75)
         .overlay(alignment: .bottom) {
             Rectangle()
