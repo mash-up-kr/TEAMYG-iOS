@@ -10,7 +10,7 @@ import SwiftUI
 import UIComponent
 
 struct ToppingBorderEditView: View {
-    private static let historyButtonLength: CGFloat = 42
+    private static let historyBarInset: CGFloat = 18
     private static let chipLength: CGFloat = 36
 
     let topping: CGImage?
@@ -101,27 +101,14 @@ struct ToppingBorderEditView: View {
     }
 
     private var historyBar: some View {
-        HStack(spacing: .gap3) {
-            historyButton(.icArrowLeft, isEnabled: canUndo, action: onUndoTap)
-            historyButton(.icArrowRight, isEnabled: canRedo, action: onRedoTap)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
+        ToppingHistoryBar(
+            canUndo: canUndo,
+            canRedo: canRedo,
+            onUndoTap: onUndoTap,
+            onRedoTap: onRedoTap
+        )
+        .padding(.horizontal, Self.historyBarInset)
         .padding(.top, .padding3)
-    }
-
-    private func historyButton(_ icon: Image, isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            icon
-                .renderingMode(.template)
-                .resizable()
-                .frame(width: 24, height: 24)
-                .foregroundStyle(isEnabled ? Color.gray900 : .gray300)
-                .frame(width: Self.historyButtonLength, height: Self.historyButtonLength)
-                .background(.gray100, in: .circle)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
     }
 
     private var preview: some View {

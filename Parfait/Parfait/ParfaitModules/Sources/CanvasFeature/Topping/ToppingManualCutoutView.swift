@@ -10,9 +10,7 @@ import SwiftUI
 import UIComponent
 
 struct ToppingManualCutoutView: View {
-    static let historyButtonLength: CGFloat = 42
-    static let historyCircleLength: CGFloat = 38
-    static let historyIconLength: CGFloat = 22
+    static let historyBarInset: CGFloat = 18
     static let modeButtonHeight: CGFloat = 40
     static let modeIconLength: CGFloat = 24
     static let backgroundGuideOpacity: Double = 0.5
@@ -68,33 +66,14 @@ struct ToppingManualCutoutView: View {
     }
 
     private var historyBar: some View {
-        HStack(spacing: 2) {
-            historyButton(.icArrowLeft, isEnabled: canUndo, action: onUndoTap)
-            historyButton(.icArrowRight, isEnabled: canRedo, action: onRedoTap)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
+        ToppingHistoryBar(
+            canUndo: canUndo,
+            canRedo: canRedo,
+            onUndoTap: onUndoTap,
+            onRedoTap: onRedoTap
+        )
+        .padding(.horizontal, Self.historyBarInset)
         .padding(.top, .padding7)
-    }
-
-    private func historyButton(_ icon: Image, isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            icon
-                .renderingMode(.template)
-                .resizable()
-                .frame(width: Self.historyIconLength, height: Self.historyIconLength)
-                .foregroundStyle(isEnabled ? Color.whiteFixed : .gray200)
-                .frame(width: Self.historyCircleLength, height: Self.historyCircleLength)
-                .background(isEnabled ? Color.black50 : .black5, in: .circle)
-                .overlay {
-                    Circle()
-                        .strokeBorder(.whiteFixed, lineWidth: 1.5)
-                }
-                .frame(width: Self.historyButtonLength, height: Self.historyButtonLength)
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
     }
 
     private var viewport: some View {

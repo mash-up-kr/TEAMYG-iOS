@@ -17,11 +17,6 @@ enum CanvasArea {
         return min(available.width, heightForBoard * aspectRatio)
     }
 
-    static func size(fitting available: CGSize) -> CGSize {
-        let width = width(fitting: available)
-        return CGSize(width: width, height: width / aspectRatio)
-    }
-
     /// 긴 변을 `longSide` 에 맞추고 짧은 변은 원본 비율대로 — 정규화 `scale` 규약(`canvas-policy.md` §5.7)의 역산이다.
     static func toppingSize(pixelSize: CGSize, longSide: CGFloat) -> CGSize {
         let pixelLongSide = max(pixelSize.width, pixelSize.height)

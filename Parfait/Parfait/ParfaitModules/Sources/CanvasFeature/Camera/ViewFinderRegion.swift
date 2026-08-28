@@ -20,7 +20,7 @@ struct ViewFinderRegion: Equatable, Sendable {
         frame = viewFinderFrame.offsetBy(dx: -previewFrame.minX, dy: -previewFrame.minY)
     }
 
-    func normalizedRect(inSourceOfSize sourceSize: CGSize) -> CGRect? {
+    private func normalizedRect(inSourceOfSize sourceSize: CGSize) -> CGRect? {
         guard sourceSize.width > 0, sourceSize.height > 0 else { return nil }
 
         let fillScale = max(previewSize.width / sourceSize.width, previewSize.height / sourceSize.height)
