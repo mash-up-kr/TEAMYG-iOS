@@ -81,12 +81,11 @@ public extension CanvasStore {
             calendar.selectedDate != calendar.today
         }
 
-        /// SY-001-New 안내 — 오늘 캔버스가 아직 비어 있는 동안만 최근 완성 캔버스를 알린다.
+        /// SY-001-New 안내 — 오늘 캔버스가 아직 발급만 되고 비어 있을 때만 최근 완성 캔버스를 알린다.
         var pastParfaitNudge: PastParfaitNudge? {
             guard !isClosedCanvas,
                   contentState != .loading,
-                  contentState != .failed,
-                  canvasContent?.images.isEmpty ?? true,
+                  status == .empty,
                   let lastClosedDate
             else { return nil }
 

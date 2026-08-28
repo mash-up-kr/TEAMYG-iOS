@@ -43,11 +43,11 @@ public struct Parfait: Identifiable, Equatable, Sendable {
 }
 
 public enum ParfaitStatus: Sendable, Equatable {
-    /// 오늘의 캔버스 — 토핑을 쌓을 수 있다.
+    /// 내용이 있는 캔버스.
     case active
-    /// 마감된 캔버스 — 토핑이 하나 이상 있다.
+    /// 오전 3시를 넘겨 편집이 닫힌 캔버스.
     case closed
-    /// 마감됐지만 토핑이 없던 캔버스.
+    /// 발급만 되고 아직 비어 있는 캔버스. SY-001-New 안내 노출 조건이다.
     case empty
 }
 
