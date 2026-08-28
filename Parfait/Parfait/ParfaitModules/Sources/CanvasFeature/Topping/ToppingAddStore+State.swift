@@ -15,11 +15,6 @@ extension ToppingAddStore {
         let photoSource: PhotoSource
         let canvasContent: CanvasStore.CanvasContent?
         var screen: Screen
-        var cameraPhase: CameraPhase = .idle
-        var flashMode: CameraFlashMode = .off
-        var cameraPosition: CameraPosition = .back
-        var photoCapturePhase: PhotoCapturePhase = .idle
-        var capturedViewFinderRegion: ViewFinderRegion?
         var galleryAssetIdentifier: String?
         var analysis: PhotoAnalysis?
         var extractedTopping: ExtractedTopping?
@@ -29,7 +24,6 @@ extension ToppingAddStore {
         var placementEditor = ToppingPlacementEditor()
         var cutoutPath: CutoutPath = .automatic
         var showsToast = true
-        var isSwitchingCamera = false
         var saveState: SaveState = .idle
 
         init(
@@ -43,42 +37,12 @@ extension ToppingAddStore {
             screen = photoSource.entryScreen
         }
 
-        var isCameraReady: Bool {
-            cameraPhase == .running && !isSwitchingCamera && photoCapturePhase == .idle
-        }
-
-        var isFlashControlEnabled: Bool {
-            cameraPosition == .back
-        }
-
         var canvasDateText: String {
             "\(canvasDate.monthName) \(canvasDate.day)"
         }
 
         var canvasWeekdayText: String {
             "(\(canvasDate.weekdayName))"
-        }
-
-        var capturedPhotoData: Data? {
-            guard case .ready(_, let photoData) = photoCapturePhase else { return nil }
-            return photoData
-        }
-
-        var cameraPreviewFrame: CameraPreviewFrame? {
-            switch photoCapturePhase {
-            case .processing(let previewFrame), .ready(let previewFrame, _):
-                previewFrame
-            case .idle:
-                nil
-            }
-        }
-
-        var isRetakeEnabled: Bool {
-            if case .ready = photoCapturePhase { true } else { false }
-        }
-
-        var isNextEnabled: Bool {
-            photoCapturePhase != .idle
         }
     }
 
@@ -119,13 +83,16 @@ extension ToppingAddStore {
         case maskRedoTapped
         case manualCutoutClosed
         case manualCutoutConfirmed
-        case saveErrorDismissed
         case placementCanvasResized(CGSize)
         case placementMoved(translation: CGSize)
         case placementScaled(factor: Double)
         case placementRotated(degrees: Double)
         case placementClosed
         case placementConfirmed
+    }
+
+    enum Event: Sendable {
+        case saveFailed
     }
 
     /// 누끼를 어떻게 만들었는지. C-105 의 X 목적지와 `영역` 탭 제공 여부가 갈린다
@@ -187,27 +154,13 @@ extension ToppingAddStore {
             }
         }
     }
-
-    enum CameraPhase: Equatable, Sendable {
-        case idle
-        case preparing
-        case running
-        case permissionDenied
-        case unavailable
-    }
-
-    enum PhotoCapturePhase: Equatable, Sendable {
-        case idle
-        case processing(previewFrame: CameraPreviewFrame?)
-        case ready(previewFrame: CameraPreviewFrame?, photoData: Data)
-    }
 }
 
 extension ToppingAddStore {
     /// 배치 확정 후 업로드·저장 진행 상태. 실패 화면 시안이 없어 토스트로 알리고 배치 화면에 머문다.
+    /// **실패는 여기 담지 않는다** — 일회성 알림이라 이벤트 채널로 보낸다 (`docs/mvi.md`).
     enum SaveState: Equatable, Sendable {
         case idle
         case saving
-        case failed
     }
 }
