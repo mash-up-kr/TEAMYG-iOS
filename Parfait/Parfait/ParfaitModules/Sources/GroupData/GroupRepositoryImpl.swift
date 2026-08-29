@@ -15,9 +15,19 @@ public struct GroupRepositoryImpl: GroupRepository {
         self.networkClient = networkClient
     }
 
+    /// 초대코드로 그룹 참여 (`POST /api/parfait-groups/join`).
+    ///
+    /// 응답 본문(`groupId`·`groupName`)은 버린다 — 참여 직후 화면은 목록으로 돌아가고
+    /// 목록을 서버에서 다시 받아오므로 쓸 자리가 없다.
     public func join(inviteCode: String) async throws {
-        // ponytail: 서버 API 스펙 미정 — 확정 시 URLSession 호출 + 에러 응답→JoinGroupError 매핑 채움.
-        print("초대코드 참여 스텁: length=\(inviteCode.count)")
+        do {
+            let _: EmptyDTO = try await request(JoinGroupEndpoint(inviteCode: inviteCode))
+        } catch is CancellationError {
+            // 화면 이탈로 취소된 요청은 실패가 아니다 — Store 의 `catch is CancellationError` 로 보낸다.
+            throw CancellationError()
+        } catch {
+            throw Self.serverMessage(from: error).map(JoinGroupError.server) ?? .unknown
+        }
     }
 
     /// 내가 속한 그룹 목록 (`GET /api/parfait-groups`).
@@ -41,25 +51,24 @@ public struct GroupRepositoryImpl: GroupRepository {
             // `catch is CancellationError` 를 못 타고 실패 알럿 경로로 빠진다.
             throw CancellationError()
         } catch {
-            throw Self.createError(from: error)
+            throw Self.serverMessage(from: error).map(CreateGroupError.server) ?? .unknown
         }
     }
 
-    /// 서버 에러를 Domain 실패 사유로 옮긴다.
+    /// 서버가 내려준 실패 문구 — 서버 에러가 아니거나 문구가 없으면 `nil`.
     ///
-    /// 에러 코드를 사유별 케이스로 쪼개지 않는다. 그룹명·인원수는 화면과 UseCase 가 두 겹으로
-    /// 먼저 막으므로, 서버 검증에 걸리는 건 클라이언트와 서버 규칙이 어긋났을 때뿐이다.
-    /// 그때 필요한 건 무엇이 어긋났는지인데 그건 서버 문구가 가장 정확하다.
+    /// 에러 코드를 사유별 도메인 케이스로 쪼개지 않는다. 그룹명·인원수·초대코드는 화면과
+    /// UseCase 가 두 겹으로 먼저 막으므로, 서버 검증에 걸리는 건 클라이언트와 서버 규칙이
+    /// 어긋났을 때뿐이다. 그때 필요한 건 무엇이 어긋났는지인데 그건 서버 문구가 가장 정확하다.
     /// 도메인 케이스로 접으면 View 가 일반 문구로 뭉개 단서가 사라진다.
-    private static func createError(from error: any Error) -> CreateGroupError {
+    private static func serverMessage(from error: any Error) -> String? {
         guard
             let networkError = error as? NetworkError,
-            case .server(_, let message, _) = networkError,
-            let message
+            case .server(_, let message, _) = networkError
         else {
-            return .unknown
+            return nil
         }
-        return .server(message: message)
+        return message
     }
 
     /// 그룹 상세 (`GET /api/parfait-groups/{groupId}`) — 사이드메뉴(S-101)가 그리는 단위.
