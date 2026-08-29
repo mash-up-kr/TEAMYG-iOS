@@ -12,8 +12,8 @@ import Routing
 final class AppRouter: Router {
     var path = NavigationPath()
 
-    /// `replaceStack(with:)` 가 지정한 새 루트 화면. `nil` 이면 초기 루트를 쓴다.
-    private(set) var rootRoute: AppRoute?
+    /// 스택의 루트 화면. 최초 진입은 로그인이고, `replaceStack(with:)` 가 교체한다.
+    private(set) var rootRoute: AppRoute = .login
 
     func push(_ route: AppRoute) { path.append(route) }
     func pop() { if !path.isEmpty { path.removeLast() } }

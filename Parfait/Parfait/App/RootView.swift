@@ -9,12 +9,10 @@ import CanvasFeature
 import SettingFeature
 import UIComponent
 
-/// 앱 루트 뷰 — 실제 플로우만 조립한다. 시작 화면은 로그인이고,
+/// 앱 루트 뷰 — 실제 플로우만 조립한다. 스플래시 후 시작 화면은 로그인이고,
 /// 저장된 토큰이 있으면 자동로그인으로 바로 그룹 화면에서 시작한다.
 /// 로그인/회원가입 완료가 `replaceStack(with:)` 으로 스택을 재시작하면
 /// 그 목적지가 새 루트가 된다(뒤로가기 불가).
-/// DEBUG 에서는 자동로그인 없이 시작점 선택(`DevMenuView`)이 항상 먼저 뜬다 —
-/// 실제 로그인할지, 개발용 토큰으로 시작할지 매 실행 선택한다.
 struct RootView: View {
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
@@ -26,6 +24,12 @@ struct RootView: View {
     var body: some View {
         if isPlayingSplash {
             SplashView { isPlayingSplash = false }
+                .task {
+                    // 자동로그인: 스플래시 재생 동안 저장된 토큰을 확인해 루트를 미리 결정한다.
+                    if await diContainer.hasStoredAccessToken() {
+                        router.replaceStack(with: .group)
+                    }
+                }
         } else {
             mainFlow
         }
@@ -33,7 +37,7 @@ struct RootView: View {
 
     private var mainFlow: some View {
         NavigationStack(path: $router.path) {
-            root
+            destination(for: router.rootRoute)
                 .navigationDestination(for: AppRoute.self) { route in
                     destination(for: route)
                 }
@@ -46,34 +50,6 @@ struct RootView: View {
         }
         // 화면 위 어떤 프레젠테이션보다 위 레이어 — 스택 전환과 무관하게 마지막(바깥쪽)에 선언한다.
         .ygToastOverlay($toasts)
-    }
-
-    @ViewBuilder
-    private var root: some View {
-        if let rootRoute = router.rootRoute {
-            destination(for: rootRoute)
-        } else {
-            startScreen
-        }
-    }
-
-    /// 최초 진입 시작 화면.
-    /// DEBUG 는 시작점 선택(DevMenu)이 항상 먼저 — 자동로그인이 메뉴를 가리면
-    /// 토큰 삭제(자동로그인 해제)에 접근할 수 없으므로 DEBUG 는 자동로그인을 하지 않는다.
-    @ViewBuilder
-    private var startScreen: some View {
-        #if DEBUG
-        DevMenuView(router: router, diContainer: diContainer, toasts: $toasts)
-        #else
-        destination(for: .login)
-            .task {
-                // 자동로그인: 저장된 토큰이 있으면 로그인 화면을 건너뛴다.
-                // 세션 만료로 돌아온 로그인(rootRoute == .login)에는 붙지 않는다 — 최초 진입 전용.
-                if await diContainer.hasStoredAccessToken() {
-                    router.replaceStack(with: .group)
-                }
-            }
-        #endif
     }
 
     /// 피처 간 이동 목적지(AppRoute) → 화면 조립. 실제 플로우: 로그인 → 약관 동의 → 그룹.
@@ -93,6 +69,11 @@ struct RootView: View {
                 router: router,
                 makeInviteCodeStore: diContainer.makeInviteCodeStore,
                 makeCreateGroupStore: diContainer.makeCreateGroupStore
+            )
+        case .setting:
+            SettingView(
+                store: diContainer.makeSettingStore(),
+                makeAccountInfoStore: diContainer.makeAccountInfoStore
             )
         case .canvas:
             // ponytail: 캔버스가 서버에 붙으면 `groupID` 를 넘겨 그 그룹의 파르페를 조회한다 (#77).

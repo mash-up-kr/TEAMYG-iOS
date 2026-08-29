@@ -7,11 +7,9 @@
 
 import AuthData
 import AuthDomain
-import CanvasData
 import CanvasDomain
 import CanvasFeature
 import Core
-import Foundation
 import GroupData
 import GroupDomain
 import GroupFeature
@@ -47,23 +45,6 @@ struct AppDependencies {
         await tokenManager.sessionExpirations
     }
 
-    #if DEBUG
-    /// 개발용 토큰 로그인 — 고정 액세스 토큰(개발 서버 계정)을 저장해 로그인 없이 그룹 화면부터 쓴다.
-    /// 리프레시 토큰은 없으므로 액세스 토큰이 거절되면 세션 만료 → 로그인으로 돌아간다.
-    func storeDevelopmentToken() async {
-        await tokenManager.update(
-            // swiftlint:disable:next line_length
-            accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwidHlwZSI6IkFDQ0VTUyIsImlhdCI6MTc4NTY0MjAwMCwiZXhwIjoxODE3MTc4MDAwfQ.6PYljdcqu8YBYD9_HEU5smRbgZZWFhEnIyTTQ955Ni0",
-            refreshToken: ""
-        )
-    }
-
-    /// 저장된 토큰 삭제 — 다음 실행부터 자동로그인이 되지 않는다 (자동로그인 영구 해제).
-    func clearStoredTokens() async {
-        await tokenManager.clear()
-    }
-    #endif
-
     private func makeAuthUseCase() -> AuthUseCaseImpl {
         AuthUseCaseImpl(
             authRepository: AuthRepositoryImpl(
@@ -89,29 +70,8 @@ struct AppDependencies {
         CreateGroupStore(groupUseCase: makeGroupUseCase())
     }
 
-    func makeGroupSideMenuStore(groupID: String, groupName: String) -> GroupSideMenuStore {
-        GroupSideMenuStore(groupID: groupID, groupName: groupName, groupUseCase: makeGroupUseCase())
-    }
-
     private func makeGroupUseCase() -> GroupUseCaseImpl {
         GroupUseCaseImpl(groupRepository: GroupRepositoryImpl(networkClient: networkClient))
-    }
-
-    func makeTermsStore(registrationToken: String) -> TermsStore {
-        TermsStore(
-            registrationToken: registrationToken,
-            authUseCase: makeAuthUseCase()
-        )
-    }
-
-    func makeCanvasStore() -> CanvasStore {
-        CanvasStore(
-            dependencies: .init(
-                loadCanvas: { _ in .empty },
-                loadRecordedDates: { _ in [] },
-                loadRecordedYears: { [] }
-            )
-        )
     }
 
     func makeSettingStore() -> SettingStore {
@@ -135,10 +95,20 @@ struct AppDependencies {
         )
     }
 
-    func makeAlbumPickerStore(isLimited: Bool) -> AlbumPickerStore {
-        AlbumPickerStore(
-            isLimited: isLimited,
-            recentUploadsRepository: RecentUploadsRepositoryImpl()
+    func makeTermsStore(registrationToken: String) -> TermsStore {
+        TermsStore(
+            registrationToken: registrationToken,
+            authUseCase: makeAuthUseCase()
+        )
+    }
+
+    func makeCanvasStore() -> CanvasStore {
+        CanvasStore(
+            dependencies: .init(
+                loadCanvas: { _ in .empty },
+                loadRecordedDates: { _ in [] },
+                loadRecordedYears: { [] }
+            )
         )
     }
 }
