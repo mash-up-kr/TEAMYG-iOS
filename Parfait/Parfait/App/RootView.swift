@@ -8,6 +8,7 @@ import GroupFeature
 import CanvasFeature
 import SettingFeature
 import UIComponent
+import FirebaseAnalytics
 
 /// 앱 루트 뷰 — 실제 플로우만 조립한다. 스플래시 후 시작 화면은 로그인이고,
 /// 저장된 토큰이 있으면 자동로그인으로 바로 그룹 화면에서 시작한다.
@@ -26,6 +27,7 @@ struct RootView: View {
     var body: some View {
         if isPlayingSplash {
             SplashView { isPlayingSplash = false }
+                .analyticsScreen(name: "SplashView")
                 .task {
                     // 자동로그인: 스플래시 재생 동안 저장된 토큰을 확인해 루트를 미리 결정한다.
                     if await diContainer.hasStoredAccessToken() {
