@@ -10,6 +10,8 @@ import AuthData
 
 @main
 struct ParfaitApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         KakaoAuthConfigurator.initialize(
             appKey: Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String ?? ""
