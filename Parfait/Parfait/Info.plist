@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Firebase 스위즐링 비활성 — APNs 토큰 전달을 AppDelegate 가 직접 한다 (토큰 로그 확인용) -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 	<key>KAKAO_NATIVE_APP_KEY</key>
 	<string>$(KAKAO_NATIVE_APP_KEY)</string>
 	<!-- 서버 주소 — Secrets.xcconfig 의 BASE_URL 에서 주입 (Core 의 API.baseURL 이 읽는다) -->
