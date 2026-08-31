@@ -44,7 +44,7 @@ struct InviteCodeInputField: View {
             }
 
             // 터치 차단으로 시스템 롱프레스 붙여넣기는 막힘 — 붙여넣기는
-            // InviteCodeView 의 PasteButton("parfait <코드>" 형식)이 담당.
+            // InviteCodeView 의 PasteButton(공유 문구 끝 6자)이 담당.
             // 허용 문자(대문자+숫자) 필터·대문자화는 Store 의 inviteCodeChanged 에서 처리.
             TextField("", text: $inviteCode)
                 .keyboardType(.asciiCapable)

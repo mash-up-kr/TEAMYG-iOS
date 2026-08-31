@@ -12,6 +12,7 @@ import UIKit
 
 public struct InviteCodeView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
     @State private var store: InviteCodeStore
     /// 클립보드 문자열 존재 여부만으로 노출 결정 — 내용 형식 검사는 시스템
     /// 붙여넣기 허용 팝업을 띄우므로 하지 않고, 탭 이후 Store 가 검증한다.
@@ -81,6 +82,14 @@ public struct InviteCodeView: View {
             // 기본 확인 버튼만 사용
         } message: {
             Text("초대코드로 그룹에 참여했어요")
+        }
+        // 성공 알럿의 확인을 눌러 알럿이 닫히면 참여 플로우가 끝난다.
+        // ponytail: 캔버스(C-001) 가 붙으면 목록 대신 참여한 그룹으로 이어져야 한다.
+        //           그때까지는 목록으로 되돌려 그룹이 늘어난 걸 보여준다 (그룹 만들기와 같은 처리).
+        .onChange(of: store.state.isSuccessAlertPresented) { wasPresented, isPresented in
+            if wasPresented, !isPresented {
+                dismiss()
+            }
         }
         .ygTopBar(.detail(title: "그룹 참여하기"))
     }

@@ -77,12 +77,12 @@ public final class InviteCodeStore: MVIStore {
         rawString.uppercased().filter { ("A"..."Z").contains($0) || ("0"..."9").contains($0) }
     }
 
-    /// 클립보드 공유 형식 "parfait <코드>" 문자열에서 초대코드를 추출한다. 형식이 아니면 nil.
-    /// prefix 뒤 구분 문자(공백·괄호 등)는 무엇이든 허용하고, 남은 영숫자가 정확히 6자일 때만 인정.
+    /// 공유 문구("...체리 올리러 가볼까요? KS479J") 맨 뒤 6자를 초대코드로 본다.
+    /// 앞 문구 형식은 검사하지 않으므로 코드만 복사해 붙여넣어도 인정되고,
+    /// 마지막 6자에 영숫자가 아닌 문자가 섞이면 nil.
     private static func inviteCode(fromPastedString pastedString: String) -> String? {
         let trimmed = pastedString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.lowercased().hasPrefix("parfait") else { return nil }
-        let code = normalizedInviteCode(from: trimmed.dropFirst("parfait".count))
+        let code = normalizedInviteCode(from: trimmed.suffix(inviteCodeLength))
         return code.count == inviteCodeLength ? code : nil
     }
 
