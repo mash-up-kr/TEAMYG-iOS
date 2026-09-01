@@ -10,6 +10,7 @@ import AuthDomain
 import CanvasData
 import CanvasDomain
 import CanvasFeature
+import Common
 import Core
 import Foundation
 import GroupData
@@ -103,6 +104,16 @@ struct AppDependencies {
 
     func makeAccountInfoStore(nickname: String) -> AccountInfoStore {
         AccountInfoStore(state: .init(nickname: nickname), memberUseCase: makeMemberUseCase())
+    }
+
+    /// 기기(FCM) 토큰 등록/갱신 — 로그인·가입 완료와 토큰 로테이션 시점에 App 루트가 호출한다.
+    func registerDeviceToken(_ token: String) async {
+        do {
+            try await makeMemberUseCase().registerDeviceToken(token)
+        } catch {
+            // 실패해도 다음 로그인·토큰 로테이션 때 재등록되므로 로그만 남긴다
+            YGLogger.error("FCM 기기 토큰 등록 실패: \(error)")
+        }
     }
 
     private func makeMemberUseCase() -> MemberUseCaseImpl {

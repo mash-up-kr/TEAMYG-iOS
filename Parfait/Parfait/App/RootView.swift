@@ -17,12 +17,16 @@ import FirebaseAnalytics
 struct RootView: View {
     /// 푸시 탭 이동 목적지 스트림 (AppDelegate 발행). 콜드 스타트 탭도 버퍼링돼 여기서 소비된다.
     let notificationRoutes: AsyncStream<AppRoute>
+    /// FCM 등록 토큰 스트림 (AppDelegate 발행). 세션이 있을 때만 서버에 등록한다.
+    let fcmTokens: AsyncStream<String>
     @State private var diContainer = AppDependencies()
     @State private var router = AppRouter()
     /// 앱 전역 토스트 스택. 화면 전환 뒤에도 살아야 하는 토스트(예: 사이드메뉴 나가기 → G-001 확인)가 쌓인다.
     @State private var toasts: [YGToastItem] = []
     /// 스플래시(로고 애니메이션) 재생 중 — 끝나면 실제 시작 화면으로 교체한다.
     @State private var isPlayingSplash = true
+    /// 마지막으로 발급받은 FCM 토큰 — 로그인 전에 도착한 토큰을 로그인·가입 완료 시점에 등록하려고 보관.
+    @State private var fcmToken: String?
 
     var body: some View {
         if isPlayingSplash {
@@ -59,6 +63,20 @@ struct RootView: View {
                 guard router.rootRoute == .group else { continue }
                 router.push(route)
             }
+        }
+        .task {
+            // FCM 토큰 발급/갱신 → 세션이 있으면(루트가 그룹) 즉시 서버 등록, 없으면 보관만.
+            // 자동로그인 콜드 스타트도 여기서 처리된다(버퍼링된 토큰 소비 시점에 루트가 이미 그룹).
+            for await token in fcmTokens {
+                fcmToken = token
+                guard router.rootRoute == .group else { continue }
+                await diContainer.registerDeviceToken(token)
+            }
+        }
+        .onChange(of: router.rootRoute) {
+            // 로그인·회원가입 완료(루트가 그룹으로 교체) → 로그인 전에 보관해둔 FCM 토큰 등록.
+            guard router.rootRoute == .group, let fcmToken else { return }
+            Task { await diContainer.registerDeviceToken(fcmToken) }
         }
         // 화면 위 어떤 프레젠테이션보다 위 레이어 — 스택 전환과 무관하게 마지막(바깥쪽)에 선언한다.
         .ygToastOverlay($toasts)

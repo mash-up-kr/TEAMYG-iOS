@@ -20,7 +20,10 @@ struct ParfaitApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(notificationRoutes: appDelegate.notificationRoutes)
+            RootView(
+                notificationRoutes: appDelegate.notificationRoutes,
+                fcmTokens: appDelegate.fcmTokens
+            )
                 .onOpenURL { url in
                     KakaoAuthConfigurator.handleOpenURL(url)
                 }

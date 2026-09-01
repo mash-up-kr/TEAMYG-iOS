@@ -19,8 +19,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     let notificationRoutes: AsyncStream<AppRoute>
     private let notificationRouteContinuation: AsyncStream<AppRoute>.Continuation
 
+    /// FCM 등록 토큰 발급/갱신 스트림 — RootView 가 구독해 세션이 있을 때 서버에 등록한다.
+    /// 로그인 전(구독 전) 발급분도 버퍼링해 뒀다가 흘려보낸다. 최신 토큰만 유효하므로 1개만 유지.
+    let fcmTokens: AsyncStream<String>
+    private let fcmTokenContinuation: AsyncStream<String>.Continuation
+
     override init() {
         (notificationRoutes, notificationRouteContinuation) = AsyncStream.makeStream()
+        (fcmTokens, fcmTokenContinuation) = AsyncStream.makeStream(
+            bufferingPolicy: .bufferingNewest(1)
+        )
         super.init()
     }
 
@@ -65,7 +73,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
 extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // ponytail: 서버에 디바이스 토큰을 등록하는 API 가 생기면 여기서 올린다.
+        if let fcmToken {
+            fcmTokenContinuation.yield(fcmToken)
+        }
         #if DEBUG
         print("FCM registration token:", fcmToken ?? "nil")
         #endif

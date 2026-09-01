@@ -40,4 +40,8 @@ public struct MemberRepositoryImpl: MemberRepository {
         // 탈퇴 성공 = 토큰 무효 → 세션 종료 이벤트로 App 루트가 로그인 화면 복귀
         await tokenManager.expireSession()
     }
+
+    public func registerDeviceToken(_ token: String) async throws {
+        let _: EmptyDTO = try await networkClient.request(RegisterDeviceTokenEndpoint(token: token))
+    }
 }

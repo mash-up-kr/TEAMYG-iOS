@@ -19,6 +19,8 @@ struct PreviewMemberUseCase: MemberUseCase {
     }
 
     func withdraw() async throws {}
+
+    func registerDeviceToken(_ token: String) async throws {}
 }
 
 /// 프리뷰용 목 — 모든 인증 동작을 성공으로 흉내낸다.
