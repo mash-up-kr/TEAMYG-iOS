@@ -12,6 +12,7 @@ import CanvasDomain
 import CanvasFeature
 import Common
 import Core
+import FirebaseMessaging
 import Foundation
 import GroupData
 import GroupDomain
@@ -106,12 +107,16 @@ struct AppDependencies {
         AccountInfoStore(state: .init(nickname: nickname), memberUseCase: makeMemberUseCase())
     }
 
-    /// 기기(FCM) 토큰 등록/갱신 — 로그인·가입 완료와 토큰 로테이션 시점에 App 루트가 호출한다.
-    func registerDeviceToken(_ token: String) async {
+    /// 기기(FCM) 토큰 등록/갱신 — 세션이 생기는 시점(자동로그인·로그인·재로그인)에 App 루트가 호출한다.
+    /// 토큰은 호출 시점에 FCM 에서 직접 조회한다(APNs 토큰이 아직이면 여기서 대기).
+    func registerDeviceToken() async {
         do {
+            // token() 은 deprecated 지만 대체제 register() 는 FCM 토큰을 아예 발급하지 않는
+            // Installation ID 모델용이다 — 서버 계약이 토큰 기반인 동안은 이걸 쓴다.
+            let token = try await Messaging.messaging().token()
             try await makeMemberUseCase().registerDeviceToken(token)
         } catch {
-            // 실패해도 다음 로그인·토큰 로테이션 때 재등록되므로 로그만 남긴다
+            // 실패해도 다음 로그인·앱 실행 때 재등록되므로 로그만 남긴다
             YGLogger.error("FCM 기기 토큰 등록 실패: \(error)")
         }
     }
