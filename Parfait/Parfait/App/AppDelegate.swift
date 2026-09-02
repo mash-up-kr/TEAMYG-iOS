@@ -88,23 +88,36 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         YGLogger.log("푸시 탭 payload: \(userInfo)")
-        if let route = AppRoute(pushUserInfo: userInfo) {
+        if let route = PushPayload(userInfo: userInfo).appRoute {
             notificationRouteContinuation.yield(route)
         }
     }
 }
 
-/// 푸시 페이로드 → 이동 목적지 계약. 서버가 FCM data 에 `route` 키로 목적지를,
-/// 목적지별 부가 키를 담아 보낸다. 예: {"route": "canvas", "groupID": "42"} → 캔버스(C-001).
-/// 모르는 값이면 nil — 화면 이동 없이 앱만 열린다.
-private extension AppRoute {
-    init?(pushUserInfo userInfo: [AnyHashable: Any]) {
-        switch userInfo["route"] as? String {
+/// 서버 확정 FCM data 페이로드 (#103):
+/// {"type": "TOPPING", "route": "canvas", "groupId": "50", "date": "2026-09-01"}
+/// `type`(푸시 종류)·`date`(토핑 날짜)는 아직 화면 이동에 안 쓴다 —
+/// 캔버스가 서버에 붙으면(#77) Routing 컨펌 받아 `date` 를 AppRoute.canvas 로 넘긴다.
+private struct PushPayload {
+    let type: String?
+    let route: String?
+    let groupID: String?
+    let date: String?
+
+    init(userInfo: [AnyHashable: Any]) {
+        type = userInfo["type"] as? String
+        route = userInfo["route"] as? String
+        groupID = userInfo["groupId"] as? String
+        date = userInfo["date"] as? String
+    }
+
+    /// 페이로드 → 이동 목적지. 모르는 route 면 nil — 화면 이동 없이 앱만 열린다.
+    var appRoute: AppRoute? {
+        switch route {
         case "group":
-            self = .group
+            return .group
         case "canvas":
-            guard let groupID = userInfo["groupID"] as? String else { return nil }
-            self = .canvas(groupID: groupID)
+            return groupID.map { AppRoute.canvas(groupID: $0) }
         default:
             return nil
         }
