@@ -19,6 +19,7 @@ public extension Image {
     static let template04 = Image("Template04", bundle: .module)
     static let template05 = Image("Template05", bundle: .module)
     static let template06 = Image("Template06", bundle: .module)
+    static let icAddRound = Image("Ic_Add_Round", bundle: .module)
     static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
     static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
     static let icCalendar = Image("Ic_Calendar", bundle: .module)
@@ -36,9 +37,12 @@ public extension Image {
     static let icGallery = Image("Ic_Gallery", bundle: .module)
     static let icHamburger = Image("Ic_Hamburger", bundle: .module)
     static let icLightning = Image("Ic_Lightning", bundle: .module)
+    static let icMinusRound = Image("Ic_Minus_Round", bundle: .module)
     static let icNewgroup = Image("Ic_Newgroup", bundle: .module)
     static let icPlus = Image("Ic_Plus", bundle: .module)
     static let icReverse = Image("Ic_Reverse", bundle: .module)
+    static let icRotate = Image("Ic_Rotate", bundle: .module)
+    static let icScale = Image("Ic_Scale", bundle: .module)
     static let icSocialApple = Image("Ic_Social_Apple", bundle: .module)
     static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
     static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
@@ -61,6 +65,7 @@ public extension UIImage {
     static var template04: UIImage { UIImage(resource: ImageResource(name: "Template04", bundle: .module)) }
     static var template05: UIImage { UIImage(resource: ImageResource(name: "Template05", bundle: .module)) }
     static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
+    static var icAddRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Add_Round", bundle: .module)) }
     static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
     static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
     static var icCalendar: UIImage { UIImage(resource: ImageResource(name: "Ic_Calendar", bundle: .module)) }
@@ -78,9 +83,12 @@ public extension UIImage {
     static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
     static var icHamburger: UIImage { UIImage(resource: ImageResource(name: "Ic_Hamburger", bundle: .module)) }
     static var icLightning: UIImage { UIImage(resource: ImageResource(name: "Ic_Lightning", bundle: .module)) }
+    static var icMinusRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Minus_Round", bundle: .module)) }
     static var icNewgroup: UIImage { UIImage(resource: ImageResource(name: "Ic_Newgroup", bundle: .module)) }
     static var icPlus: UIImage { UIImage(resource: ImageResource(name: "Ic_Plus", bundle: .module)) }
     static var icReverse: UIImage { UIImage(resource: ImageResource(name: "Ic_Reverse", bundle: .module)) }
+    static var icRotate: UIImage { UIImage(resource: ImageResource(name: "Ic_Rotate", bundle: .module)) }
+    static var icScale: UIImage { UIImage(resource: ImageResource(name: "Ic_Scale", bundle: .module)) }
     static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Apple", bundle: .module)) }
     static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }
     static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }

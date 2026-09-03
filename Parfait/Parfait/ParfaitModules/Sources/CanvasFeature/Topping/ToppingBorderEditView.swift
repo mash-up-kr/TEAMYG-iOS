@@ -23,6 +23,7 @@ struct ToppingBorderEditView: View {
     let onWidthChange: (Double) -> Void
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
+    let onAreaTabTap: () -> Void
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
 
@@ -52,8 +53,11 @@ struct ToppingBorderEditView: View {
         Binding(
             get: { selectedTab },
             set: { newTab in
-                guard newTab == 1 else { return }
-                selectedTab = newTab
+                guard newTab == 0 else {
+                    selectedTab = newTab
+                    return
+                }
+                onAreaTabTap()
             }
         )
     }
@@ -108,7 +112,7 @@ struct ToppingBorderEditView: View {
                 .foregroundStyle(.gray800)
 
             YGSlider(
-                value: Binding(get: { border.width }, set: onWidthChange),
+                value: Binding(get: { border.width }, set: { onWidthChange($0) }),
                 in: ToppingBorder.widthRange,
                 onEditingChanged: onWidthEditingChange
             )

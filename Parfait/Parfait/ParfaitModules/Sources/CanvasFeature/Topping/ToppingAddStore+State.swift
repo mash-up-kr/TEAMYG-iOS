@@ -12,6 +12,7 @@ extension ToppingAddStore {
     struct State: Equatable, Sendable {
         let canvasDate: CalendarDate
         let photoSource: PhotoSource
+        let canvasContent: CanvasStore.CanvasContent?
         var screen: Screen
         var cameraPhase: CameraPhase = .idle
         var flashMode: CameraFlashMode = .off
@@ -23,12 +24,20 @@ extension ToppingAddStore {
         var extractedTopping: ExtractedTopping?
         var borderEditor = ToppingBorderEditor()
         var borderSilhouette: BorderSilhouette?
+        var maskEditor = ToppingMaskEditor()
+        var placementEditor = ToppingPlacementEditor()
+        var cutoutPath: CutoutPath = .automatic
         var showsToast = true
         var isSwitchingCamera = false
 
-        init(canvasDate: CalendarDate, photoSource: PhotoSource) {
+        init(
+            canvasDate: CalendarDate,
+            photoSource: PhotoSource,
+            canvasContent: CanvasStore.CanvasContent? = nil
+        ) {
             self.canvasDate = canvasDate
             self.photoSource = photoSource
+            self.canvasContent = canvasContent
             screen = photoSource.entryScreen
         }
 
@@ -98,7 +107,28 @@ extension ToppingAddStore {
         case borderUndoTapped
         case borderRedoTapped
         case borderEditClosed
+        case borderAreaTabTapped
         case borderConfirmed
+        case brushModeSelected(ToppingBrushMode)
+        case brushDiameterChanged(Double)
+        case brushStrokeEnded(ToppingBrushStroke)
+        case maskUndoTapped
+        case maskRedoTapped
+        case manualCutoutClosed
+        case manualCutoutConfirmed
+        case placementCanvasResized(CGSize)
+        case placementMoved(translation: CGSize)
+        case placementScaled(factor: Double)
+        case placementRotated(degrees: Double)
+        case placementClosed
+        case placementConfirmed
+    }
+
+    /// 누끼를 어떻게 만들었는지. C-105 의 X 목적지와 `영역` 탭 제공 여부가 갈린다
+    /// (`topping_ui.md` §7.3).
+    enum CutoutPath: Equatable, Sendable {
+        case automatic
+        case manual
     }
 
     enum PhotoSource: Equatable, Sendable {
@@ -130,7 +160,9 @@ extension ToppingAddStore {
         case analysisError
         case candidateSelection
         case cutoutResult
+        case manualCutout
         case borderEdit
+        case placement
 
         var isCameraError: Bool {
             self == .cameraPermissionError || self == .cameraUnavailable
@@ -142,7 +174,9 @@ extension ToppingAddStore {
 
         var isAnalysisScreen: Bool {
             switch self {
-            case .analysisLoading, .analysisError, .candidateSelection, .cutoutResult, .borderEdit: true
+            case .analysisLoading, .analysisError, .candidateSelection, .cutoutResult,
+                 .manualCutout, .borderEdit, .placement:
+                true
             default: false
             }
         }

@@ -152,6 +152,23 @@ struct ToppingAddFlowView: View {
                 )
             }
 
+        case .manualCutout:
+            if let extractedTopping = store.state.extractedTopping {
+                ToppingManualCutoutView(
+                    topping: extractedTopping,
+                    brush: store.state.maskEditor.brush,
+                    canUndo: store.state.maskEditor.canUndo,
+                    canRedo: store.state.maskEditor.canRedo,
+                    onUndoTap: { store.send(.maskUndoTapped) },
+                    onRedoTap: { store.send(.maskRedoTapped) },
+                    onBrushModeSelect: { store.send(.brushModeSelected($0)) },
+                    onBrushDiameterChange: { store.send(.brushDiameterChanged($0)) },
+                    onStrokeEnd: { store.send(.brushStrokeEnded($0)) },
+                    onCloseTap: { store.send(.manualCutoutClosed) },
+                    onConfirmTap: { store.send(.manualCutoutConfirmed) }
+                )
+            }
+
         case .borderEdit:
             if let extractedTopping = store.state.extractedTopping {
                 ToppingBorderEditView(
@@ -165,8 +182,29 @@ struct ToppingAddFlowView: View {
                     onWidthChange: { store.send(.borderWidthChanged($0)) },
                     onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                     onColorSelect: { store.send(.borderColorSelected($0)) },
+                    onAreaTabTap: { store.send(.borderAreaTabTapped) },
                     onCloseTap: { store.send(.borderEditClosed) },
                     onConfirmTap: { store.send(.borderConfirmed) }
+                )
+            }
+
+        case .placement:
+            if let extractedTopping = store.state.extractedTopping {
+                ToppingPlacementView(
+                    canvasContent: store.state.canvasContent,
+                    topping: extractedTopping,
+                    silhouette: store.state.borderSilhouette?.image,
+                    borderColor: store.state.borderEditor.border.color.strokeColor,
+                    editor: store.state.placementEditor,
+                    onCanvasResize: { store.send(.placementCanvasResized($0)) },
+                    onMove: { store.send(.placementMoved(translation: $0)) },
+                    onScale: { store.send(.placementScaled(factor: $0)) },
+                    onRotate: { store.send(.placementRotated(degrees: $0)) },
+                    onCloseTap: { store.send(.placementClosed) },
+                    onConfirmTap: {
+                        store.send(.placementConfirmed)
+                        dismiss()
+                    }
                 )
             }
 

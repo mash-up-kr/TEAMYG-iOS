@@ -58,7 +58,11 @@ public struct CanvasView: View {
         photoSource: ToppingAddStore.PhotoSource
     ) -> some View {
         ToppingAddFlowView(
-            store: ToppingAddStore(canvasDate: canvasDate, photoSource: photoSource),
+            store: ToppingAddStore(
+                canvasDate: canvasDate,
+                photoSource: photoSource,
+                canvasContent: store.state.canvasContent
+            ),
             makeAlbumPickerStore: makeAlbumPickerStore
         )
     }

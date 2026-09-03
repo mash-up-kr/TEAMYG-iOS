@@ -59,7 +59,7 @@ struct CanvasContainer: View {
             }
             .buttonStyle(.plain)
             .overlay {
-                Color.black25
+                Color.gray500
                     .padding(.horizontal, .padding7)
                     .padding(.bottom, .padding6)
                     .allowsHitTesting(false)
@@ -132,7 +132,7 @@ private struct CanvasBoard: View {
 
             if isDimmed {
                 CanvasPanelShape()
-                    .fill(Color.black25)
+                    .fill(Color.gray500)
                     .allowsHitTesting(false)
             }
         }
@@ -140,91 +140,6 @@ private struct CanvasBoard: View {
         .overlay {
             CanvasPanelShape()
                 .stroke(Color.gray500, lineWidth: 1)
-        }
-    }
-}
-
-private struct CanvasContentView: View {
-    let content: CanvasStore.CanvasContent
-
-    var body: some View {
-        ZStack {
-            background
-
-            ForEach(content.images) { canvasImage in
-                CanvasPlacedImage(canvasImage: canvasImage)
-                    .zIndex(canvasImage.positionZ)
-            }
-        }
-        .clipped()
-    }
-
-    @ViewBuilder
-    private var background: some View {
-        switch content.background {
-        case .color(let hex):
-            Color(hex: hex)
-
-        case .image(let url):
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                case .empty:
-                    ProgressView()
-                        .tint(.gray500)
-                case .failure:
-                    Color.gray100
-                @unknown default:
-                    Color.gray100
-                }
-            }
-        }
-    }
-}
-
-private struct CanvasPlacedImage: View {
-    let canvasImage: CanvasStore.CanvasImage
-
-    var body: some View {
-        AsyncImage(url: canvasImage.imageURL) { phase in
-            switch phase {
-            case .success(let image):
-                image
-                    .fixedSize()
-                    .modifier(CanvasImageBorderModifier(border: canvasImage.border))
-            case .empty:
-                ProgressView()
-                    .tint(.gray500)
-            case .failure:
-                EmptyView()
-            @unknown default:
-                EmptyView()
-            }
-        }
-        .scaleEffect(CGFloat(canvasImage.scale))
-        .rotationEffect(.degrees(canvasImage.rotation))
-        .position(x: CGFloat(canvasImage.positionX), y: CGFloat(canvasImage.positionY))
-    }
-}
-
-/// 실제 토핑 테두리는 누끼의 알파 실루엣을 따라 바깥으로 자라는 외곽선이다.
-/// 아래 사각 테두리는 캔버스 기본 화면을 먼저 완성하기 위한 자리표시자이며, 토핑 편집 작업에서 교체한다.
-private struct CanvasImageBorderModifier: ViewModifier {
-    let border: CanvasStore.CanvasImageBorder?
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if let border, border.width > 0 {
-            content
-                .overlay {
-                    Rectangle()
-                        .strokeBorder(Color(hex: border.colorHex), lineWidth: CGFloat(border.width))
-                }
-        } else {
-            content
         }
     }
 }
