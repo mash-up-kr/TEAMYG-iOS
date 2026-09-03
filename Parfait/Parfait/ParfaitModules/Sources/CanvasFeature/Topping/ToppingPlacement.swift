@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import CanvasDomain
 import CoreGraphics
 import Foundation
 
@@ -46,12 +47,7 @@ extension ToppingPlacement {
     }
 
     func renderedSize(toppingPixelSize: CGSize, canvasSize: CGSize) -> CGSize {
-        let longSide = longSide(in: canvasSize)
-        let shortSide = longSide * Self.shortSideRatio(of: toppingPixelSize)
-
-        return toppingPixelSize.width >= toppingPixelSize.height
-            ? CGSize(width: longSide, height: shortSide)
-            : CGSize(width: shortSide, height: longSide)
+        CanvasArea.toppingSize(pixelSize: toppingPixelSize, longSide: longSide(in: canvasSize))
     }
 
     func moved(by translation: CGSize, in canvasSize: CGSize) -> Self {
@@ -81,6 +77,17 @@ extension ToppingPlacement {
         let longSide = max(pixelSize.width, pixelSize.height)
         guard longSide > 0 else { return 1 }
         return min(pixelSize.width, pixelSize.height) / longSide
+    }
+}
+
+extension ToppingPlacement {
+    init(_ canvasImage: CanvasStore.CanvasImage) {
+        self.init(
+            positionX: canvasImage.positionX,
+            positionY: canvasImage.positionY,
+            scale: canvasImage.scale,
+            rotationDegrees: canvasImage.rotation
+        )
     }
 }
 
@@ -116,6 +123,16 @@ struct ToppingPlacementEditor: Equatable, Sendable {
         case .placementRotated(let degrees): placement = placement.rotated(by: degrees)
         default: break
         }
+    }
+
+    func placementValues(zOrder: Int) -> ToppingPlacementValues {
+        ToppingPlacementValues(
+            positionX: placement.positionX,
+            positionY: placement.positionY,
+            positionZ: zOrder,
+            scale: placement.scale,
+            rotation: placement.rotationDegrees
+        )
     }
 
     func magnifying(by factor: Double) -> ToppingPlacement {

@@ -13,7 +13,8 @@ import UIComponent
 
 public typealias AlbumPickerStoreFactory = (
     _ isLimited: Bool,
-    _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+    _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
+    _ onRecentUploadConfirmed: @escaping (StoredImage) -> Void
 ) -> AlbumPickerStore
 
 @Observable @MainActor
@@ -21,6 +22,7 @@ public final class AlbumPickerStore: MVIStore {
     public private(set) var state: State
     private let recentUploadsRepository: any RecentUploadsRepository
     private let onPhotoConfirmed: (_ assetIdentifier: String) -> Void
+    private let onRecentUploadConfirmed: (StoredImage) -> Void
     private var recentUploadsTask: Task<Void, Never>?
     private var limitedPickerTask: Task<Void, Never>?
     private var changeRelay: PhotoLibraryChangeRelay?
@@ -28,10 +30,12 @@ public final class AlbumPickerStore: MVIStore {
     public init(
         isLimited: Bool,
         recentUploadsRepository: any RecentUploadsRepository,
-        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
+        onRecentUploadConfirmed: @escaping (StoredImage) -> Void
     ) {
         self.recentUploadsRepository = recentUploadsRepository
         self.onPhotoConfirmed = onPhotoConfirmed
+        self.onRecentUploadConfirmed = onRecentUploadConfirmed
         state = State(isLimited: isLimited)
     }
 
@@ -54,13 +58,8 @@ public final class AlbumPickerStore: MVIStore {
                 upload: nil,
                 thumbnail: thumbnail
             )
-        case let .recentUploadTapped(upload, thumbnail):
-            state.selectedPhoto = SelectedPhoto(
-                id: upload.zoomIdentifier,
-                asset: nil,
-                upload: upload,
-                thumbnail: thumbnail
-            )
+        case let .recentUploadTapped(upload, _):
+            onRecentUploadConfirmed(upload)
         case .confirmReselectTapped:
             state.selectedPhoto = nil
         case .confirmNextTapped:

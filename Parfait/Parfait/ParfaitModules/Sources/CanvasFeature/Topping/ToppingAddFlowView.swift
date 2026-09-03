@@ -5,11 +5,13 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
 struct ToppingAddFlowView: View {
     @State private var store: ToppingAddStore
+    @State private var toasts: [YGToastItem] = []
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
 
@@ -39,6 +41,14 @@ struct ToppingAddFlowView: View {
         // `.inactive` 는 권한 다이얼로그·알림 배너·앱 스위처 등에서도 흔히 발생한다.
         // 여기서 세션을 끄면 껐다 켜기가 잦아져 최초 권한 요청 플로우가 끊기므로 `.background` 만 처리한다.
         // (백그라운드 진입 시엔 iOS 가 캡처 세션을 어차피 중단시킨다.)
+        .ygToastOverlay($toasts)
+        .onChange(of: store.state.saveState) { _, saveState in
+            guard saveState == .failed else { return }
+            toasts.append(
+                YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+            )
+            store.send(.saveErrorDismissed)
+        }
         .onChange(of: scenePhase) { _, newScenePhase in
             switch newScenePhase {
             case .active:
@@ -65,7 +75,10 @@ struct ToppingAddFlowView: View {
                 isCameraReady: store.state.isCameraReady,
                 showsToast: store.state.showsToast,
                 previewSource: store.previewSource,
-                send: { store.send($0) }
+                onToastDismissed: { store.send(.toastDismissed) },
+                onFlashTap: { store.send(.flashTapped) },
+                onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
+                onSwitchCameraTap: { store.send(.cameraPositionTapped) }
             )
 
         case .cameraConfirmation:
@@ -100,15 +113,22 @@ struct ToppingAddFlowView: View {
         }
     }
 
+    /// 일반 사진은 확인 화면(C-102-Confirm)을 거치고, 최근 업로드 누끼는 곧장 테두리 편집으로 간다.
+    private func albumPickerStore(isLimited: Bool) -> AlbumPickerStore {
+        makeAlbumPickerStore(isLimited, confirmGalleryPhoto, confirmRecentUpload)
+    }
+
+    private func confirmGalleryPhoto(_ assetIdentifier: String) {
+        store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
+    }
+
+    private func confirmRecentUpload(_ upload: StoredImage) {
+        store.send(.recentUploadConfirmed(upload))
+    }
+
     private var galleryFlow: some View {
         ZStack {
-            AlbumView(
-                makeAlbumPickerStore: { isLimited in
-                    makeAlbumPickerStore(isLimited) { assetIdentifier in
-                        store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
-                    }
-                }
-            )
+            AlbumView(makeAlbumPickerStore: albumPickerStore(isLimited:))
 
             if store.state.screen.isAnalysisScreen {
                 analysisFlow
@@ -172,7 +192,7 @@ struct ToppingAddFlowView: View {
         case .borderEdit:
             if let extractedTopping = store.state.extractedTopping {
                 ToppingBorderEditView(
-                    topping: extractedTopping,
+                    topping: extractedTopping.image,
                     silhouette: store.state.borderSilhouette?.image,
                     border: store.state.borderEditor.border,
                     canUndo: store.state.borderEditor.canUndo,
@@ -182,6 +202,7 @@ struct ToppingAddFlowView: View {
                     onWidthChange: { store.send(.borderWidthChanged($0)) },
                     onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                     onColorSelect: { store.send(.borderColorSelected($0)) },
+                    showsAreaTab: store.state.cutoutPath != .recentUpload,
                     onAreaTabTap: { store.send(.borderAreaTabTapped) },
                     onCloseTap: { store.send(.borderEditClosed) },
                     onConfirmTap: { store.send(.borderConfirmed) }
@@ -196,15 +217,13 @@ struct ToppingAddFlowView: View {
                     silhouette: store.state.borderSilhouette?.image,
                     borderColor: store.state.borderEditor.border.color.strokeColor,
                     editor: store.state.placementEditor,
+                    isSaving: store.state.saveState == .saving,
                     onCanvasResize: { store.send(.placementCanvasResized($0)) },
                     onMove: { store.send(.placementMoved(translation: $0)) },
                     onScale: { store.send(.placementScaled(factor: $0)) },
                     onRotate: { store.send(.placementRotated(degrees: $0)) },
                     onCloseTap: { store.send(.placementClosed) },
-                    onConfirmTap: {
-                        store.send(.placementConfirmed)
-                        dismiss()
-                    }
+                    onConfirmTap: { store.send(.placementConfirmed) }
                 )
             }
 

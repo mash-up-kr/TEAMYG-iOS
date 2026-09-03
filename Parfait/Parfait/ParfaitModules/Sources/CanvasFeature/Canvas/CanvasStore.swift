@@ -5,6 +5,7 @@
 //  Created by 박서연 on 7/30/26.
 //
 
+import CanvasDomain
 import Foundation
 import Observation
 import UIComponent
@@ -12,11 +13,19 @@ import UIComponent
 @Observable @MainActor
 public final class CanvasStore: MVIStore {
     public private(set) var state: State
+
+    /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
+    let events: AsyncStream<Event>
+    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+
     private let dependencies: Dependencies
     private var canvasLoadTask: Task<Void, Never>?
+    private var gallerySaveTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
+    /// 과거 캔버스는 `parfaitID` 로만 조회할 수 있다. 목록 응답에서 받은 매핑을 들고 있는다.
+    private var parfaitIDsByDate: [CalendarDate: Int] = [:]
 
     public init(
         state: State = State(),
@@ -24,7 +33,13 @@ public final class CanvasStore: MVIStore {
     ) {
         self.state = state
         self.dependencies = dependencies
+        (events, eventContinuation) = AsyncStream.makeStream()
     }
+
+    /// 토핑 추가 흐름이 저장 대상 캔버스를 지정할 때 쓴다.
+    public var groupID: Int { dependencies.groupID }
+    /// 캔버스 하위 편집 Store 조립에 같은 UseCase 인스턴스를 전달한다.
+    var canvasUseCase: any CanvasUseCase { dependencies.canvasUseCase }
 
     public func send(_ intent: Intent) {
         switch intent {
@@ -34,31 +49,17 @@ public final class CanvasStore: MVIStore {
         case .screenDisappeared:
             cancelTasks()
 
-        case .canvasEditTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            // 캔버스 편집 화면이 확정되면 일회성 라우팅 이벤트를 연결한다.
+        case .canvasEditTapped,
+             .canvasEditFlowDismissed,
+             .canvasEditSaved:
+            handleCanvasEditIntent(intent)
 
-        case .toppingAddTapped:
-            state.calendar.close()
-            state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
-
-        case .cameraOptionTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            state.toppingAddSource = .camera(
-                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
-            )
-
-        case .galleryOptionTapped:
-            state.calendar.close()
-            state.menuState = .collapsed
-            state.toppingAddSource = .gallery(
-                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
-            )
-
-        case .toppingAddFlowDismissed:
-            state.toppingAddSource = nil
+        case .toppingAddTapped,
+             .cameraOptionTapped,
+             .galleryOptionTapped,
+             .toppingAddFlowDismissed,
+             .toppingSaved:
+            handleToppingAddIntent(intent)
 
         case .calendarTapped,
              .calendarDimTapped,
@@ -69,10 +70,50 @@ public final class CanvasStore: MVIStore {
              .calendarDateSelected:
             handleCalendarIntent(intent)
 
+        case .saveToGalleryTapped:
+            saveCanvasToGallery()
+
+        case .todayParfaitTapped:
+            openTodayCanvas()
+
         case .moreMenuTapped:
             // 후속 화면 정책 확정 전까지 외형과 Intent 경계만 제공한다.
             break
         }
+    }
+
+    /// 과거 캔버스에서는 토핑을 올릴 수 없다 (`canvas-policy.md` §7.2).
+    private func handleToppingAddIntent(_ intent: Intent) {
+        switch intent {
+        case .toppingAddTapped:
+            guard !state.isClosedCanvas else { return }
+            state.calendar.close()
+            state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
+
+        case .cameraOptionTapped:
+            openToppingAddFlow { .camera(canvasDate: $0) }
+
+        case .galleryOptionTapped:
+            openToppingAddFlow { .gallery(canvasDate: $0) }
+
+        case .toppingAddFlowDismissed:
+            state.toppingAddSource = nil
+
+        case .toppingSaved:
+            state.toppingAddSource = nil
+            loadCanvas(for: state.calendar.selectedDate)
+
+        default:
+            break
+        }
+    }
+
+    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
+    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
+        guard !state.isClosedCanvas else { return }
+        state.calendar.close()
+        state.menuState = .collapsed
+        state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
     private func handleCalendarIntent(_ intent: Intent) {
@@ -101,24 +142,107 @@ public final class CanvasStore: MVIStore {
         }
     }
 
+    private func handleCanvasEditIntent(_ intent: Intent) {
+        switch intent {
+        case .canvasEditTapped:
+            guard !state.isClosedCanvas else { return }
+            state.calendar.close()
+            state.menuState = .collapsed
+            guard state.parfaitID != nil, state.canvasContent != nil else { return }
+            state.canvasEditDestination = .background
+        case .canvasEditFlowDismissed:
+            state.canvasEditDestination = nil
+        case .canvasEditSaved:
+            state.canvasEditDestination = nil
+            loadCanvas(for: state.calendar.selectedDate)
+        default:
+            break
+        }
+    }
+
+    /// SY-001-Closed `오늘의 파르페 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
+    private func openTodayCanvas() {
+        state.menuState = .collapsed
+        guard state.calendar.selectDate(state.calendar.today) else { return }
+        loadCanvas(for: state.calendar.today)
+    }
+
+    /// SY-001-Closed `갤러리에 저장` — 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다.
+    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패 Toast 로 수렴한다.
+    private func saveCanvasToGallery() {
+        guard state.gallerySave != .saving else { return }
+        state.calendar.close()
+
+        guard let canvasContent = state.canvasContent else {
+            eventContinuation.yield(.gallerySaveFailed)
+            return
+        }
+
+        state.gallerySave = .saving
+        let savedDate = state.calendar.selectedDate
+        gallerySaveTask = Task { [weak self, dependencies] in
+            var isSaved = false
+            if let canvasImage = await dependencies.canvasImageExporter.image(of: canvasContent) {
+                isSaved = await CanvasGallerySaver.save(canvasImage)
+            }
+
+            guard !Task.isCancelled, let self else { return }
+            state.gallerySave = .idle
+            eventContinuation.yield(
+                isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
+            )
+        }
+    }
+
     private func loadCanvas(for date: CalendarDate) {
         canvasLoadTask?.cancel()
 
         state.contentState = .loading
         state.canvasContent = nil
 
+        let parfaitID = date == state.calendar.today ? nil : parfaitIDsByDate[date]
         canvasLoadTask = Task { [weak self, dependencies] in
-            let loadResult = await dependencies.loadCanvas(date)
-            guard !Task.isCancelled, let self else { return }
-
-            switch loadResult {
-            case .empty:
-                state.contentState = .empty
-            case .filled(let content):
-                state.contentState = .filled
-                state.canvasContent = content
+            do {
+                let parfait = try await Self.fetchParfait(parfaitID: parfaitID, dependencies: dependencies)
+                guard !Task.isCancelled, let self else { return }
+                apply(parfait)
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled, let self else { return }
+                state.contentState = .failed
             }
         }
+    }
+
+    /// 오늘은 전용 조회를, 과거는 목록에서 받아 둔 `parfaitID` 를 쓴다.
+    private static func fetchParfait(
+        parfaitID: Int?,
+        dependencies: Dependencies
+    ) async throws -> Parfait {
+        guard let parfaitID else {
+            return try await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+        }
+        return try await dependencies.canvasUseCase.fetchParfait(
+            groupID: dependencies.groupID,
+            parfaitID: parfaitID
+        )
+    }
+
+    private func apply(_ parfait: Parfait) {
+        state.parfaitID = parfait.id
+        state.status = parfait.status
+        state.lastClosedDate = parfait.lastClosedDate.map(CalendarDate.init)
+        state.members = parfait.members.map(Member.init)
+        parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id
+
+        guard !parfait.isEmpty else {
+            state.contentState = .empty
+            state.canvasContent = nil
+            return
+        }
+        state.contentState = .filled
+        state.canvasContent = CanvasContent(parfait)
     }
 
     private func loadInitialDataIfNeeded() {
@@ -130,18 +254,28 @@ public final class CanvasStore: MVIStore {
         loadRecordedDates(for: selectedDate.year)
 
         recordedYearsLoadTask = Task { [weak self, dependencies] in
-            let recordedYears = await dependencies.loadRecordedYears()
-            guard !Task.isCancelled, let self else { return }
-            state.calendar.recordedYears = recordedYears
+            let years = try? await dependencies.canvasUseCase.fetchYears(groupID: dependencies.groupID)
+            guard !Task.isCancelled, let self, let years else { return }
+            state.calendar.recordedYears = Set(years)
         }
     }
 
     private func loadRecordedDates(for year: Int) {
         recordedDatesLoadTask?.cancel()
         recordedDatesLoadTask = Task { [weak self, dependencies] in
-            let recordedDates = await dependencies.loadRecordedDates(year)
-            guard !Task.isCancelled, let self else { return }
-            state.calendar.replaceRecordedDates(recordedDates, for: year)
+            let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
+                groupID: dependencies.groupID,
+                year: year
+            )
+            guard !Task.isCancelled, let self, let summaries else { return }
+
+            for summary in summaries {
+                parfaitIDsByDate[CalendarDate(summary.date)] = summary.id
+            }
+            state.calendar.replaceRecordedDates(
+                Set(summaries.map { CalendarDate($0.date) }),
+                for: year
+            )
         }
     }
 
@@ -149,191 +283,11 @@ public final class CanvasStore: MVIStore {
         canvasLoadTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
+        gallerySaveTask?.cancel()
+        gallerySaveTask = nil
         canvasLoadTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
         didLoadInitialData = false
-    }
-}
-
-public extension CanvasStore {
-    struct Dependencies: Sendable {
-        public let loadCanvas: @Sendable (CalendarDate) async -> CanvasLoadResult
-        public let loadRecordedDates: @Sendable (Int) async -> Set<CalendarDate>
-        public let loadRecordedYears: @Sendable () async -> Set<Int>
-        public let now: @Sendable () -> Date
-
-        public init(
-            loadCanvas: @escaping @Sendable (CalendarDate) async -> CanvasLoadResult,
-            loadRecordedDates: @escaping @Sendable (Int) async -> Set<CalendarDate>,
-            loadRecordedYears: @escaping @Sendable () async -> Set<Int>,
-            now: @escaping @Sendable () -> Date = { .now }
-        ) {
-            self.loadCanvas = loadCanvas
-            self.loadRecordedDates = loadRecordedDates
-            self.loadRecordedYears = loadRecordedYears
-            self.now = now
-        }
-    }
-
-    struct State: Equatable, Sendable {
-        public var groupName: String
-        public var members: [Member]
-        public var contentState: ContentState
-        public var canvasContent: CanvasContent?
-        public var menuState: MenuState
-        public var calendar: CalendarState
-        public var toppingAddSource: ToppingAddSource?
-
-        public init(
-            groupName: String = "그룹이름",
-            members: [Member] = [],
-            contentState: ContentState? = nil,
-            canvasContent: CanvasContent? = nil,
-            menuState: MenuState = .collapsed,
-            calendar: CalendarState = CalendarState(),
-            toppingAddSource: ToppingAddSource? = nil
-        ) {
-            self.groupName = groupName
-            self.members = members
-            self.contentState = contentState ?? calendar.contentState(for: calendar.selectedDate)
-            self.canvasContent = canvasContent
-            self.menuState = menuState
-            self.calendar = calendar
-            self.toppingAddSource = toppingAddSource
-        }
-
-        public var dateText: String {
-            calendar.dateText
-        }
-
-        public var weekdayText: String {
-            calendar.weekdayText
-        }
-    }
-
-    struct Member: Equatable, Identifiable, Sendable {
-        public let id: Int
-        public let nickname: String
-
-        public init(id: Int, nickname: String) {
-            self.id = id
-            self.nickname = nickname
-        }
-
-        /// 네임태그 타입은 원래 서버가 계정 생성 시 1회 배정하는 고정 값이라 화면마다 같아야 한다.
-        /// 캔버스 API 가 아직 이 값을 주지 않아 멤버 ID 로 임시 계산한다 — 그룹 목록과 색이 어긋난다.
-        /// API 연결 시 제거할 것.
-        public var nametagType: YGNametagChip.NametagType {
-            let typeCount = YGNametagChip.NametagType.allCases.count
-            let rawValue = Int(id.magnitude % UInt(typeCount)) + 1
-            return YGNametagChip.NametagType(rawValue: rawValue) ?? .type1
-        }
-
-        public static let defaultMembers = [
-            Member(id: 1, nickname: "김"),
-            Member(id: 2, nickname: "박"),
-            Member(id: 3, nickname: "신"),
-            Member(id: 4, nickname: "전"),
-            Member(id: 5, nickname: "전"),
-            Member(id: 6, nickname: "이")
-        ]
-    }
-
-    enum ContentState: Equatable, Sendable {
-        case empty
-        case loading
-        case filled
-    }
-
-    enum CanvasLoadResult: Equatable, Sendable {
-        case empty
-        case filled(CanvasContent)
-    }
-
-    struct CanvasContent: Equatable, Sendable {
-        public let background: CanvasBackground
-        public let images: [CanvasImage]
-
-        public init(background: CanvasBackground, images: [CanvasImage] = []) {
-            self.background = background
-            self.images = images.sorted { $0.positionZ < $1.positionZ }
-        }
-    }
-
-    enum CanvasBackground: Equatable, Sendable {
-        case color(hex: String)
-        case image(url: URL)
-    }
-
-    struct CanvasImage: Equatable, Identifiable, Sendable {
-        public let id: Int
-        public let imageURL: URL
-        public let positionX: Double
-        public let positionY: Double
-        public let positionZ: Double
-        public let scale: Double
-        public let rotation: Double
-        public let border: CanvasImageBorder?
-
-        public init(
-            id: Int,
-            imageURL: URL,
-            positionX: Double,
-            positionY: Double,
-            positionZ: Double,
-            scale: Double = 1,
-            rotation: Double = 0,
-            border: CanvasImageBorder? = nil
-        ) {
-            self.id = id
-            self.imageURL = imageURL
-            self.positionX = positionX
-            self.positionY = positionY
-            self.positionZ = positionZ
-            self.scale = scale
-            self.rotation = rotation
-            self.border = border
-        }
-    }
-
-    struct CanvasImageBorder: Equatable, Sendable {
-        public let colorHex: String
-        public let width: Double
-
-        public init(colorHex: String, width: Double) {
-            self.colorHex = colorHex
-            self.width = width
-        }
-    }
-
-    enum MenuState: Equatable, Sendable {
-        case collapsed
-        case sourceOptions
-    }
-
-    enum ToppingAddSource: Hashable, Identifiable, Sendable {
-        case camera(canvasDate: CalendarDate)
-        case gallery(canvasDate: CalendarDate)
-
-        public var id: Self { self }
-    }
-
-    enum Intent {
-        case screenAppeared
-        case screenDisappeared
-        case canvasEditTapped
-        case toppingAddTapped
-        case cameraOptionTapped
-        case galleryOptionTapped
-        case toppingAddFlowDismissed
-        case calendarTapped
-        case calendarDimTapped
-        case calendarMonthTapped
-        case calendarYearTapped
-        case calendarMonthSelected(Int)
-        case calendarYearSelected(Int)
-        case calendarDateSelected(CalendarDate)
-        case moreMenuTapped
     }
 }

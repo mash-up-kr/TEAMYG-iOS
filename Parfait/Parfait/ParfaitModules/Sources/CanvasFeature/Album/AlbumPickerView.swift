@@ -15,11 +15,13 @@ public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
     @Namespace private var zoomNamespace
     @State private var toasts: [YGToastItem] = []
+    private let showsSelectionGuide: Bool
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
 
-    public init(store: AlbumPickerStore) {
+    public init(store: AlbumPickerStore, showsSelectionGuide: Bool = true) {
         _store = State(initialValue: store)
+        self.showsSelectionGuide = showsSelectionGuide
     }
 
     public var body: some View {
@@ -70,7 +72,11 @@ public struct AlbumPickerView: View {
         }
         .onAppear {
             store.send(.appeared)
-            toasts.append(YGToastItem(kind: .warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요"))
+            if showsSelectionGuide {
+                toasts.append(
+                    YGToastItem(kind: .warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요")
+                )
+            }
         }
         .onDisappear { store.send(.disappeared) }
         .ygToastOverlay($toasts)
@@ -269,7 +275,8 @@ extension PHAsset {
         store: AlbumPickerStore(
             isLimited: true,
             recentUploadsRepository: PreviewRecentUploadsRepository(),
-            onPhotoConfirmed: { _ in }
+            onPhotoConfirmed: { _ in },
+            onRecentUploadConfirmed: { _ in }
         )
     )
 }
@@ -279,7 +286,8 @@ extension PHAsset {
         store: AlbumPickerStore(
             isLimited: false,
             recentUploadsRepository: PreviewRecentUploadsRepository(),
-            onPhotoConfirmed: { _ in }
+            onPhotoConfirmed: { _ in },
+            onRecentUploadConfirmed: { _ in }
         )
     )
 }

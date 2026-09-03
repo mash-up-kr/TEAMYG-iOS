@@ -5,18 +5,35 @@
 //  Created by 박서연 on 7/30/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
 public struct CanvasView: View {
     @State private var store: CanvasStore
+    @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
+    private let toppingUseCase: any ToppingUseCase
+    private let imageUploadRepository: any ImageUploadRepository
+    private let recentUploadsRepository: any RecentUploadsRepository
+    private let toppingRenderer: CanvasToppingRenderer
 
-    public init(store: CanvasStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
+    public init(
+        store: CanvasStore,
+        makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
+        toppingUseCase: any ToppingUseCase,
+        imageUploadRepository: any ImageUploadRepository,
+        recentUploadsRepository: any RecentUploadsRepository,
+        toppingRenderer: CanvasToppingRenderer
+    ) {
         _store = State(initialValue: store)
         self.makeAlbumPickerStore = makeAlbumPickerStore
+        self.toppingUseCase = toppingUseCase
+        self.imageUploadRepository = imageUploadRepository
+        self.recentUploadsRepository = recentUploadsRepository
+        self.toppingRenderer = toppingRenderer
     }
 
     public var body: some View {
@@ -40,6 +57,20 @@ public struct CanvasView: View {
         .task {
             store.send(.screenAppeared)
         }
+        .task {
+            for await event in store.events {
+                switch event {
+                case .gallerySaveSucceeded(let dateText):
+                    toasts.append(
+                        YGToastItem(kind: .success, message: "\(dateText)의 캔버스가 갤러리에 저장됐어요")
+                    )
+                case .gallerySaveFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
+                    )
+                }
+            }
+        }
         .onDisappear {
             store.send(.screenDisappeared)
         }
@@ -51,6 +82,12 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
             }
         }
+        .navigationDestination(item: canvasEditDestinationBinding) { _ in
+            canvasEditFlow
+        }
+        // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
+        .environment(\.canvasToppingRenderer, toppingRenderer)
+        .ygToastOverlay($toasts)
     }
 
     private func toppingAddFlow(
@@ -61,7 +98,14 @@ public struct CanvasView: View {
             store: ToppingAddStore(
                 canvasDate: canvasDate,
                 photoSource: photoSource,
-                canvasContent: store.state.canvasContent
+                canvasContent: store.state.canvasContent,
+                dependencies: .init(
+                    groupID: store.groupID,
+                    parfaitID: store.state.parfaitID,
+                    toppingUseCase: toppingUseCase,
+                    recentUploadsRepository: recentUploadsRepository,
+                    onSaved: { store.send(.toppingSaved) }
+                )
             ),
             makeAlbumPickerStore: makeAlbumPickerStore
         )
@@ -78,71 +122,46 @@ public struct CanvasView: View {
         )
     }
 
+    @ViewBuilder
+    private var canvasEditFlow: some View {
+        if let parfaitID = store.state.parfaitID,
+           let canvasContent = store.state.canvasContent {
+            CanvasEditView(
+                store: CanvasEditStore(
+                    state: .init(
+                        dateText: store.state.dateText,
+                        weekdayText: store.state.weekdayText,
+                        canvasContent: canvasContent
+                    ),
+                    dependencies: .init(
+                        groupID: store.groupID,
+                        parfaitID: parfaitID,
+                        canvasUseCase: store.canvasUseCase,
+                        toppingUseCase: toppingUseCase,
+                        imageUploadRepository: imageUploadRepository,
+                        onDismiss: { store.send(.canvasEditFlowDismissed) },
+                        onSaved: { store.send(.canvasEditSaved) }
+                    )
+                ),
+                makeAlbumPickerStore: makeAlbumPickerStore
+            )
+        }
+    }
+
+    private var canvasEditDestinationBinding: Binding<CanvasStore.CanvasEditDestination?> {
+        Binding(
+            get: { store.state.canvasEditDestination },
+            set: { destination in
+                if destination == nil {
+                    store.send(.canvasEditFlowDismissed)
+                }
+            }
+        )
+    }
+
     private var topBarMembers: [YGTopBar.Member] {
         store.state.members.map {
             YGTopBar.Member(nickname: $0.nickname, nametagType: $0.nametagType)
         }
-    }
-}
-
-#Preview("Empty") {
-    NavigationStack {
-        CanvasView(
-            store: CanvasStore(
-                state: .init(members: CanvasStore.Member.defaultMembers),
-                dependencies: .init(
-                    loadCanvas: { _ in .empty },
-                    loadRecordedDates: { _ in [] },
-                    loadRecordedYears: { [] }
-                )
-            ),
-            makeAlbumPickerStore: { isLimited, onPhotoConfirmed in
-                AlbumPickerStore(
-                    isLimited: isLimited,
-                    recentUploadsRepository: PreviewRecentUploadsRepository(),
-                    onPhotoConfirmed: onPhotoConfirmed
-                )
-            }
-        )
-    }
-}
-
-#Preview("Calendar") {
-    let today = CalendarDate(year: 2026, month: 8, day: 4)
-    let selectedDate = CalendarDate(year: 2026, month: 8, day: 1)
-
-    NavigationStack {
-        CanvasView(
-            store: CanvasStore(
-                state: .init(
-                    members: CanvasStore.Member.defaultMembers,
-                    contentState: .filled,
-                    calendar: .init(
-                        selectedDate: selectedDate,
-                        recordedDates: [
-                            .init(year: 2026, month: 4, day: 28),
-                            .init(year: 2026, month: 4, day: 29),
-                            .init(year: 2026, month: 5, day: 1),
-                            .init(year: 2026, month: 5, day: 2),
-                            selectedDate
-                        ],
-                        today: today,
-                        presentation: .grid
-                    )
-                ),
-                dependencies: .init(
-                    loadCanvas: { _ in .empty },
-                    loadRecordedDates: { _ in [] },
-                    loadRecordedYears: { [] }
-                )
-            ),
-            makeAlbumPickerStore: { isLimited, onPhotoConfirmed in
-                AlbumPickerStore(
-                    isLimited: isLimited,
-                    recentUploadsRepository: PreviewRecentUploadsRepository(),
-                    onPhotoConfirmed: onPhotoConfirmed
-                )
-            }
-        )
     }
 }

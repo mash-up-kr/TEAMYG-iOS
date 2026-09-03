@@ -60,6 +60,11 @@ public struct CalendarDate: Hashable, Comparable, Sendable {
         return Self.monthNames[month - 1]
     }
 
+    /// `N월 N일` — 갤러리 저장 결과 Toast 문구에 쓴다 (`canvas-policy.md` §7.3).
+    var koreanDateText: String {
+        "\(month)월 \(day)일"
+    }
+
     var weekdayName: String {
         guard let date else { return "" }
         let weekday = Self.gregorian.component(.weekday, from: date)
