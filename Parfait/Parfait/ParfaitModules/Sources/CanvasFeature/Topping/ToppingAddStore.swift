@@ -17,11 +17,13 @@ final class ToppingAddStore: MVIStore {
 
     private let cameraSession = CameraSession()
     private let objectExtractor: any ObjectExtracting
+    private let borderRenderer = ToppingBorderRenderer()
     private var cameraSetupTask: Task<Void, Never>?
     private var cameraSwitchTask: Task<Void, Never>?
     private var photoCaptureTask: Task<Void, Never>?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
+    private var borderRenderTask: Task<Void, Never>?
     /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
     private var cameraGeneration = 0
 
@@ -54,6 +56,10 @@ final class ToppingAddStore: MVIStore {
              .candidateSelectionBackTapped, .analysisErrorClosed, .cutoutResultClosed,
              .photoEditTapped, .cutoutConfirmed:
             handleAnalysisIntent(intent)
+
+        case .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
+             .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderConfirmed:
+            handleBorderIntent(intent)
         }
     }
 
@@ -94,13 +100,57 @@ final class ToppingAddStore: MVIStore {
         case .candidateSelectionBackTapped, .analysisErrorClosed:
             returnToPhotoConfirm()
         case .cutoutResultClosed:
-            state.extractedTopping = nil
+            releaseExtractedTopping()
             state.screen = .candidateSelection
-        case .photoEditTapped, .cutoutConfirmed:
+        case .cutoutConfirmed:
+            guard state.extractedTopping != nil else { break }
+            state.screen = .borderEdit
+            renderBorderSilhouette()
+        case .photoEditTapped:
             break
         default:
             break
         }
+    }
+
+    private func handleBorderIntent(_ intent: Intent) {
+        switch intent {
+        case .borderEditClosed:
+            releaseExtractedTopping()
+            state.screen = .candidateSelection
+        case .borderConfirmed:
+            break
+        default:
+            if state.borderEditor.apply(intent) {
+                renderBorderSilhouette()
+            }
+        }
+    }
+
+    private func renderBorderSilhouette() {
+        borderRenderTask?.cancel()
+        guard let topping = state.extractedTopping, state.borderEditor.border.isVisible else {
+            state.borderSilhouette = nil
+            return
+        }
+        let width = state.borderEditor.border.width
+        borderRenderTask = Task { [weak self, borderRenderer] in
+            let image = await borderRenderer.silhouette(of: topping, width: width)
+            guard !Task.isCancelled, let image else { return }
+            self?.state.borderSilhouette = BorderSilhouette(image: image)
+        }
+    }
+
+    private func releaseExtractedTopping() {
+        borderRenderTask?.cancel()
+        state.extractedTopping = nil
+        state.borderSilhouette = nil
+    }
+
+    private func resetToppingDraft() {
+        releaseExtractedTopping()
+        state.borderEditor = ToppingBorderEditor()
+        Task { [borderRenderer] in await borderRenderer.reset() }
     }
 
     private func proceedWithCapturedPhoto() {
@@ -122,7 +172,7 @@ final class ToppingAddStore: MVIStore {
     private func startAnalysis(of source: PhotoAnalysisSource) {
         analysisTask?.cancel()
         state.analysis = nil
-        state.extractedTopping = nil
+        resetToppingDraft()
         state.screen = .analysisLoading
 
         analysisTask = Task { [weak self, objectExtractor, extractorResetTask] in
@@ -149,7 +199,7 @@ final class ToppingAddStore: MVIStore {
         else { return }
 
         analysisTask?.cancel()
-        state.extractedTopping = nil
+        releaseExtractedTopping()
         state.screen = .analysisLoading
 
         analysisTask = Task { [weak self, objectExtractor] in
@@ -176,7 +226,7 @@ final class ToppingAddStore: MVIStore {
         analysisTask?.cancel()
         analysisTask = nil
         state.analysis = nil
-        state.extractedTopping = nil
+        resetToppingDraft()
         extractorResetTask = Task { [objectExtractor] in
             await objectExtractor.reset()
         }
