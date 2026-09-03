@@ -11,6 +11,7 @@ import CanvasData
 import CanvasDomain
 import CanvasFeature
 import Core
+import Foundation
 import GroupData
 import GroupDomain
 import GroupFeature
@@ -27,8 +28,9 @@ struct AppDependencies {
     private let networkClient: any NetworkClient
     /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
+    private let imageSession = URLSession(configuration: .imageTraffic)
     /// 캔버스를 나갔다 들어와도 토핑 이미지·테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
-    private let canvasToppingRenderer = CanvasToppingRenderer()
+    private let canvasToppingRenderer: CanvasToppingRenderer
 
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
@@ -36,6 +38,7 @@ struct AppDependencies {
         self.networkClient = NetworkClientImpl(
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
+        canvasToppingRenderer = CanvasToppingRenderer(session: imageSession)
     }
 
     /// 저장된 액세스 토큰 존재 여부 — 자동로그인(로그인 화면 스킵) 판단용.
@@ -126,18 +129,23 @@ struct AppDependencies {
                 canvasUseCase: CanvasUseCaseImpl(
                     canvasRepository: CanvasRepositoryImpl(networkClient: networkClient)
                 ),
-                canvasImageExporter: CanvasImageExporter(toppingRenderer: canvasToppingRenderer)
+                canvasImageExporter: CanvasImageExporter(
+                    toppingRenderer: canvasToppingRenderer,
+                    session: imageSession
+                )
             )
         )
     }
 
     func makeAlbumPickerStore(
         isLimited: Bool,
+        showsRecentUploads: Bool,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
         onRecentUploadConfirmed: @escaping (StoredImage) -> Void
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,
+            showsRecentUploads: showsRecentUploads,
             recentUploadsRepository: recentUploadsRepository,
             onPhotoConfirmed: onPhotoConfirmed,
             onRecentUploadConfirmed: onRecentUploadConfirmed

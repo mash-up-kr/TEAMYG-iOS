@@ -25,14 +25,14 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
     var hex: String? {
         switch self {
         case .none: nil
-        case .white: "#FAFAFA"
-        case .black: "#0E0E0E"
-        case .pink: "#FCC2CC"
-        case .orange: "#FCE7C2"
-        case .yellow: "#FAFAAB"
-        case .green: "#C5FFD7"
-        case .sky: "#C2E4FC"
-        case .purple: "#DCC2FC"
+        case .white: CanvasPalette.white
+        case .black: CanvasPalette.black
+        case .pink: CanvasPalette.pink
+        case .orange: CanvasPalette.orange
+        case .yellow: CanvasPalette.yellow
+        case .green: CanvasPalette.green
+        case .sky: CanvasPalette.sky
+        case .purple: CanvasPalette.purple
         }
     }
 
@@ -41,26 +41,19 @@ enum ToppingBorderColor: String, CaseIterable, Identifiable, Sendable {
     }
 
     var chipColor: Color {
-        strokeColor ?? Color(hex: "#FAFAFA")
-    }
-
-    var needsChipOutline: Bool {
-        self == .none || self == .white
+        strokeColor ?? Color(hex: CanvasPalette.white)
     }
 
     init?(hex: String) {
-        let normalizedHex = hex.uppercased()
-        if normalizedHex == "#F9F9AB" {
-            self = .yellow
-            return
-        }
-        guard let color = Self.allCases.first(where: { $0.hex == normalizedHex }) else { return nil }
+        guard let color = Self.allCases.first(where: { CanvasPalette.matches($0.hex, hex) }) else { return nil }
         self = color
     }
 }
 
 struct ToppingBorder: Equatable, Sendable {
-    static let widthRange: ClosedRange<Double> = 0.005...0.05
+    /// 굵기 범위는 Domain 계약이 원본이다 — 슬라이더 상한과 저장 검증이 갈리면
+    /// 넣을 수는 있는데 저장에서 튕기는 상태가 된다.
+    static let widthRange: ClosedRange<Double> = ToppingBorderStyle.widthRange
     static let defaultWidth: Double = 0.02
 
     var color: ToppingBorderColor = .none
@@ -113,7 +106,7 @@ struct BorderSilhouette: Equatable, Sendable {
 
 struct ToppingBorderEditor: Equatable, Sendable {
     private(set) var border = ToppingBorder()
-    private var history = EditHistory<ToppingBorder>()
+    private var history = BorderHistory()
     private var widthBaseline: ToppingBorder?
 
     var canUndo: Bool { history.canUndo }

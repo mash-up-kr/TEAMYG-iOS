@@ -5,6 +5,8 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+// swiftlint:disable file_length
+
 import CanvasDomain
 import CoreGraphics
 import Foundation
@@ -16,34 +18,37 @@ import UIComponent
 final class ToppingAddStore: MVIStore {
     private(set) var state: State
 
-    private let cameraSession = CameraSession()
+    /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
+
+    @ObservationIgnored private lazy var camera = CameraFlow { [weak self] event in
+        self?.handleCameraEvent(event)
+    }
     private let dependencies: Dependencies
-    private let objectExtractor: any ObjectExtracting
-    private let borderRenderer = ToppingBorderRenderer()
-    private let maskRenderer = ToppingMaskRenderer()
+    @ObservationIgnored private lazy var objectExtractor: any ObjectExtracting = ObjectExtractor()
+    @ObservationIgnored private lazy var borderRenderer = ToppingBorderRenderer()
+    @ObservationIgnored private lazy var maskRenderer = ToppingMaskRenderer()
     /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
     private var baseMask: CGImage?
-    private var cameraSetupTask: Task<Void, Never>?
-    private var cameraSwitchTask: Task<Void, Never>?
-    private var photoCaptureTask: Task<Void, Never>?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
-    /// 켜기/끄기 요청에 붙이는 일련번호. 발급은 순서가 보장되는 MainActor 에서만 한다.
-    private var cameraGeneration = 0
 
     init(
         canvasDate: CalendarDate,
         photoSource: PhotoSource,
         canvasContent: CanvasStore.CanvasContent? = nil,
-        dependencies: Dependencies,
-        objectExtractor: any ObjectExtracting = ObjectExtractor()
+        dependencies: Dependencies
     ) {
         state = State(canvasDate: canvasDate, photoSource: photoSource, canvasContent: canvasContent)
         self.dependencies = dependencies
-        self.objectExtractor = objectExtractor
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     func send(_ intent: Intent) {
@@ -73,7 +78,7 @@ final class ToppingAddStore: MVIStore {
             handleManualCutoutIntent(intent)
 
         case .placementCanvasResized, .placementMoved, .placementScaled, .placementRotated,
-             .placementClosed, .placementConfirmed, .saveErrorDismissed:
+             .placementClosed, .placementConfirmed:
             handlePlacementIntent(intent)
         }
     }
@@ -104,10 +109,10 @@ final class ToppingAddStore: MVIStore {
             case .manual:
                 state.screen = .manualCutout
             case .recentUpload:
+                // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
                 releaseExtractedTopping()
                 state.screen = .gallery
             case .automatic:
-                releaseExtractedTopping()
                 state.screen = .candidateSelection
             }
         case .borderAreaTabTapped:
@@ -157,11 +162,13 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func proceedWithCapturedPhoto() {
-        switch state.photoCapturePhase {
+        switch camera.state.capturePhase {
         case .processing:
+            // 아직 사진이 안 나왔다 — 나오는 대로 분석으로 넘긴다.
+            camera.requestHandoffWhenCaptured()
             state.screen = .analysisLoading
         case .ready(_, let photoData):
-            startAnalysis(of: .cameraPhoto(photoData, viewFinderRegion: state.capturedViewFinderRegion))
+            startAnalysis(of: .cameraPhoto(photoData, viewFinderRegion: camera.state.capturedViewFinderRegion))
         case .idle:
             break
         }
@@ -186,7 +193,7 @@ final class ToppingAddStore: MVIStore {
                 guard let self, !Task.isCancelled else { return }
                 state.analysis = analysis
                 state.screen = .candidateSelection
-                releaseCapturedPreviewFrame()
+                camera.releaseFreezeFrame()
             } catch is CancellationError {
                 return
             } catch {
@@ -268,8 +275,6 @@ final class ToppingAddStore: MVIStore {
     }
 }
 
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
 extension ToppingAddStore {
     struct Dependencies: Sendable {
         let groupID: Int
@@ -296,16 +301,22 @@ extension ToppingAddStore {
     }
 
     var previewSource: any CameraPreviewSource {
-        cameraSession.previewSource
+        camera.previewSource
+    }
+
+    /// 카메라 상태는 `CameraFlow` 가 소유한다 — 뷰가 읽는 값만 그대로 넘겨준다.
+    var cameraState: CameraFlowState {
+        camera.state
     }
 }
 
 /// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
 private extension ToppingAddStore {
-    private func handleCutoutResultIntent(_ intent: Intent) {
+    func handleCutoutResultIntent(_ intent: Intent) {
         switch intent {
         case .cutoutResultClosed:
-            releaseExtractedTopping()
+            // 초안(누끼·마스크·테두리)은 유지한 채 후보 선택으로만 돌아간다
+            // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
             state.screen = .candidateSelection
         case .cutoutConfirmed:
             guard state.extractedTopping != nil else { break }
@@ -393,225 +404,98 @@ private extension ToppingAddStore {
     }
 }
 
-/// 카메라 세션 켜기·끄기와 촬영. `cameraGeneration` 으로 뒤늦게 도착한 옛 요청을 걸러낸다.
+/// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 배경 편집과 공용 화면 — `canvas-policy.md` §5.1).
+/// 여기서는 이 흐름의 화면 전이만 해석한다.
 private extension ToppingAddStore {
-    private func handleCameraIntent(_ intent: Intent) {
+    func handleCameraIntent(_ intent: Intent) {
         switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            resumeCameraIfNeeded()
-        case .screenDisappeared:
-            cancelAnalysis()
-            suspendCamera()
-        case .sceneEnteredBackground:
-            suspendCamera()
+        case .screenAppeared, .sceneBecameActive, .screenDisappeared, .sceneEnteredBackground:
+            handleCameraLifecycleIntent(intent)
         case .cameraRetryTapped:
-            prepareCamera()
+            camera.prepare()
         case .flashTapped:
-            state.flashMode = state.flashMode.toggled
+            camera.toggleFlash()
         case .cameraPositionTapped:
-            switchCamera()
+            camera.switchCamera()
         case .shutterTapped(let viewFinderRegion):
-            capturePhoto(viewFinderRegion: viewFinderRegion)
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
         case .retakeTapped:
-            retakePhoto()
+            guard camera.retake() else { break }
+            state.screen = .camera
         default:
             break
         }
     }
 
-    private func resumeCameraIfNeeded() {
-        guard state.screen.needsRunningCamera else { return }
-        prepareCamera()
-    }
-
-    private func prepareCamera() {
-        cameraSetupTask?.cancel()
-        let generation = nextCameraGeneration()
-        state.cameraPhase = .preparing
-
-        cameraSetupTask = Task { [weak self] in
-            guard let self, await resolveAuthorization() else { return }
-            await startCamera(generation: generation)
+    func handleCameraLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            guard state.screen.needsRunningCamera else { return }
+            camera.prepare()
+        case .screenDisappeared:
+            cancelAnalysis()
+            camera.suspend()
+        case .sceneEnteredBackground:
+            camera.suspend()
+        default:
+            break
         }
     }
 
-    private func resolveAuthorization() async -> Bool {
-        let isAuthorized = switch CameraPermission.current() {
-        case .authorized: true
-        case .notDetermined: await CameraPermission.request()
-        case .denied, .restricted: false
-        }
-
-        guard !Task.isCancelled else { return false }
-        guard isAuthorized else {
-            state.cameraPhase = .permissionDenied
+    func handleCameraEvent(_ event: CameraFlowEvent) {
+        switch event {
+        case .permissionDenied:
             state.screen = .cameraPermissionError
-            return false
-        }
-        return true
-    }
-
-    private func startCamera(generation: Int) async {
-        let didStart = await cameraSession.start(generation: generation)
-        guard isLatestRequest(generation) else { return }
-
-        if didStart {
-            state.cameraPhase = .running
-            if state.screen.isCameraError {
-                state.screen = .camera
-            }
-        } else {
-            state.cameraPhase = .unavailable
+        case .unavailable:
             state.screen = .cameraUnavailable
-        }
-    }
-
-    private func suspendCamera() {
-        cancelCameraTasks()
-        if case .processing = state.photoCapturePhase {
-            state.photoCapturePhase = .idle
-            state.capturedViewFinderRegion = nil
-            state.screen = .camera
-        }
-        let generation = nextCameraGeneration()
-        state.cameraPhase = .idle
-        Task { [cameraSession] in
-            await cameraSession.stop(generation: generation)
-        }
-    }
-
-    private func switchCamera() {
-        guard state.isCameraReady else { return }
-        state.isSwitchingCamera = true
-        cameraSwitchTask = Task { [weak self, cameraSession] in
-            let switchedPosition = await cameraSession.switchCamera()
-            guard let self else { return }
-
-            state.isSwitchingCamera = false
-            guard let switchedPosition else { return }
-
-            state.cameraPosition = switchedPosition
-            if switchedPosition == .front {
-                state.flashMode = .off
-            }
-        }
-    }
-
-    private func capturePhoto(viewFinderRegion: ViewFinderRegion?) {
-        guard state.isCameraReady else { return }
-
-        let captureGeneration = nextCameraGeneration()
-        state.capturedViewFinderRegion = viewFinderRegion
-        state.photoCapturePhase = .processing(previewFrame: nil)
-
-        photoCaptureTask = Task { [weak self, cameraSession, flashMode = state.flashMode] in
-            async let pendingPhotoData = cameraSession.capturePhoto(flashMode: flashMode)
-            let previewFrame = await cameraSession.latestPreviewFrame()
-
-            guard let self, isLatestRequest(captureGeneration) else { return }
-            if let previewFrame {
-                state.photoCapturePhase = .processing(previewFrame: previewFrame)
-                state.screen = .cameraConfirmation
-            }
-
-            let photoData = await pendingPhotoData
-            guard isLatestRequest(captureGeneration) else { return }
-
-            guard let photoData else {
-                state.photoCapturePhase = .idle
-                state.screen = .camera
-                photoCaptureTask = nil
-                prepareCamera()
-                return
-            }
-
-            let shouldStartAnalysis = state.screen == .analysisLoading
-            state.photoCapturePhase = .ready(previewFrame: previewFrame, photoData: photoData)
-            photoCaptureTask = nil
-
-            if shouldStartAnalysis {
+        case .running:
+            if state.screen.isCameraError { state.screen = .camera }
+        case .freezeFrameReady:
+            state.screen = .cameraConfirmation
+        case .captureFinished(let photoData, let viewFinderRegion, let wantsHandoff):
+            if wantsHandoff {
                 startAnalysis(of: .cameraPhoto(photoData, viewFinderRegion: viewFinderRegion))
             } else {
                 state.screen = .cameraConfirmation
             }
-            await cameraSession.stop(generation: nextCameraGeneration())
+        case .captureFailed, .captureAborted:
+            state.screen = .camera
         }
     }
 }
 
 private extension ToppingAddStore {
-    private func releaseCapturedPreviewFrame() {
-        guard case .ready(let previewFrame, let photoData) = state.photoCapturePhase, previewFrame != nil else {
-            return
-        }
-        state.photoCapturePhase = .ready(previewFrame: nil, photoData: photoData)
-    }
-
-    private func retakePhoto() {
-        guard state.isRetakeEnabled else { return }
-        photoCaptureTask?.cancel()
-        photoCaptureTask = nil
-        state.photoCapturePhase = .idle
-        state.capturedViewFinderRegion = nil
-        state.screen = .camera
-        prepareCamera()
-    }
-
-    private func openSystemSettings() {
+    func openSystemSettings() {
         Task {
             guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
             await UIApplication.shared.open(settingsURL)
         }
     }
-
-    /// 켜기/끄기 요청에 붙일 새 일련번호. 뒤늦게 도착한 옛 요청은 `CameraSession` 이 무시한다.
-    private func nextCameraGeneration() -> Int {
-        cameraGeneration += 1
-        return cameraGeneration
-    }
-
-    private func isLatestRequest(_ generation: Int) -> Bool {
-        !Task.isCancelled && generation == cameraGeneration
-    }
-
-    private func cancelCameraTasks() {
-        cameraSetupTask?.cancel()
-        cameraSwitchTask?.cancel()
-        photoCaptureTask?.cancel()
-        cameraSetupTask = nil
-        cameraSwitchTask = nil
-        photoCaptureTask = nil
-        state.isSwitchingCamera = false
-    }
 }
 
 /// C-106 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
 private extension ToppingAddStore {
-    private func handlePlacementIntent(_ intent: Intent) {
+    func handlePlacementIntent(_ intent: Intent) {
         switch intent {
         case .placementClosed:
             guard state.saveState != .saving else { break }
             state.screen = .borderEdit
         case .placementConfirmed:
             saveTopping()
-        case .saveErrorDismissed:
-            state.saveState = .idle
         default:
             state.placementEditor.apply(intent)
         }
     }
 
     /// 누끼를 PNG 로 굽고 업로드·배치까지 맡긴 뒤, 성공하면 최근 업로드에 남기고 캔버스로 돌아간다.
-    private func saveTopping() {
-        guard state.saveState != .saving,
-              let topping = state.extractedTopping,
-              let parfaitID = dependencies.parfaitID
+    func saveTopping() {
+        // 이미 저장 중이면 조용히 무시한다 — 진행 중인 저장을 실패로 보고하면 안 된다.
+        guard state.saveState != .saving else { return }
+        guard let topping = state.extractedTopping,
+              let parfaitID = dependencies.parfaitID,
+              let pngData = ToppingImageEncoder.encodePNG(topping.image)
         else {
-            state.saveState = .failed
-            return
-        }
-        guard let pngData = ToppingImageEncoder.encodePNG(topping.image) else {
-            state.saveState = .failed
+            eventChannel.send(.saveFailed)
             return
         }
 
@@ -629,7 +513,8 @@ private extension ToppingAddStore {
                     groupID: dependencies.groupID,
                     parfaitID: parfaitID
                 )
-                try? await dependencies.recentUploadsRepository.save(pngData)
+                // 서버 배치는 이미 끝났다 — 최근 업로드 기록 실패로 저장 전체를 물리지 않는다.
+                _ = try? await dependencies.recentUploadsRepository.save(pngData)
                 guard !Task.isCancelled, let self else { return }
                 state.saveState = .idle
                 dependencies.onSaved()
@@ -637,13 +522,14 @@ private extension ToppingAddStore {
                 return
             } catch {
                 guard !Task.isCancelled, let self else { return }
-                state.saveState = .failed
+                state.saveState = .idle
+                eventChannel.send(.saveFailed)
             }
         }
     }
 
     /// 새 토핑은 항상 맨 위에 얹는다.
-    private var nextZOrder: Int {
+    var nextZOrder: Int {
         let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
         return Int(highest.rounded()) + 1
     }

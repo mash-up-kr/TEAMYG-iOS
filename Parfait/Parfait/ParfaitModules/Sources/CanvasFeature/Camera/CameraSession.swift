@@ -40,6 +40,7 @@ actor CameraSession {
         captureSession.startRunning()
         guard captureSession.isRunning else { return false }
 
+        previewFrameReceiver.resume()
         if let device = videoInput?.device {
             updateRotationCoordinator(for: device)
         }

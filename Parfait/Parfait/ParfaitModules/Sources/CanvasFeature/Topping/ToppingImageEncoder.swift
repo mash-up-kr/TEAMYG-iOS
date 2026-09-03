@@ -34,8 +34,9 @@ enum ToppingImageEncoder {
         return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 
+    /// 누끼는 알파가 살아 있어야 한다 — `CGImage.downscaled(longEdge:)` 는 알파를 버리므로 쓰지 않는다.
     static func encodePNG(_ image: CGImage) -> Data? {
-        let resized = image.downscaled(longEdge: maximumLongEdge)
+        let resized = image.downscaledPreservingAlpha(longEdge: maximumLongEdge)
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(
             data,

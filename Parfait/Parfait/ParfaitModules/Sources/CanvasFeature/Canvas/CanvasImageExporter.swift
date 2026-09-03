@@ -32,15 +32,34 @@ public struct CanvasImageExporter: Sendable {
     }
 
     func image(of content: CanvasStore.CanvasContent) async -> UIImage? {
-        guard let background = await preparedBackground(content.background) else { return nil }
+        async let loadedBackground = preparedBackground(content.background)
+        async let loadedToppings = preparedToppings(content.images)
 
-        var toppings: [PreparedTopping] = []
-        for canvasImage in content.images {
-            guard let topping = await preparedTopping(canvasImage) else { return nil }
-            toppings.append(topping)
-        }
+        guard let background = await loadedBackground,
+              let toppings = await loadedToppings
+        else { return nil }
 
         return await render(background: background, toppings: toppings)
+    }
+
+    private func preparedToppings(
+        _ canvasImages: [CanvasStore.CanvasImage]
+    ) async -> [PreparedTopping]? {
+        await withTaskGroup(of: PreparedTopping?.self) { group in
+            for canvasImage in canvasImages {
+                group.addTask { await self.preparedTopping(canvasImage) }
+            }
+
+            var prepared: [PreparedTopping] = []
+            for await topping in group {
+                guard let topping else {
+                    group.cancelAll()
+                    return nil
+                }
+                prepared.append(topping)
+            }
+            return prepared.sorted { $0.canvasImage.positionZ < $1.canvasImage.positionZ }
+        }
     }
 
     @MainActor
@@ -82,7 +101,12 @@ public struct CanvasImageExporter: Sendable {
     }
 
     private func preparedTopping(_ canvasImage: CanvasStore.CanvasImage) async -> PreparedTopping? {
-        guard let image = await toppingRenderer.topping(at: canvasImage.imageURL) else { return nil }
+        // 저장본에 그려질 크기로만 받는다 — 화면과 같은 식이되 배율이 `renderScale` 이다.
+        let neededLongEdge = ToppingPlacement(canvasImage).longSide(in: Self.canvasSize) * Self.renderScale
+        guard let image = await toppingRenderer.topping(
+            at: canvasImage.imageURL,
+            neededLongEdge: neededLongEdge
+        ) else { return nil }
 
         var silhouette: CGImage?
         if let border = canvasImage.border, border.width > 0 {
@@ -111,7 +135,7 @@ private struct PreparedTopping: Identifiable {
 }
 
 /// 저장본 한 장. 이미지를 모두 받아 둔 뒤에 그리므로 `CanvasContentView` 와 달리 비동기 로딩이 없다 —
-/// `ImageRenderer` 는 `task` 를 기다려 주지 않는다. 배치 규칙은 `CanvasPlacedImage` 와 같아야 한다.
+/// `ImageRenderer` 는 `task` 를 기다려 주지 않는다.
 private struct CanvasSnapshotView: View {
     let background: PreparedBackground
     let toppings: [PreparedTopping]
@@ -121,9 +145,10 @@ private struct CanvasSnapshotView: View {
         ZStack {
             backgroundLayer
 
-            ForEach(toppings) { topping in
+            // 이미 positionZ 오름차순으로 정렬해 넘긴다 — 배열 순서가 곧 쌓임 순서다.
+            ForEach(Array(toppings.enumerated()), id: \.element.id) { order, topping in
                 toppingLayer(topping)
-                    .zIndex(topping.canvasImage.positionZ)
+                    .zIndex(Double(order))
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -146,35 +171,12 @@ private struct CanvasSnapshotView: View {
     }
 
     private func toppingLayer(_ topping: PreparedTopping) -> some View {
-        let renderedSize = renderedSize(of: topping)
-
-        return ZStack {
-            if let silhouette = topping.silhouette, let border = topping.canvasImage.border {
-                Image(decorative: silhouette, scale: 1, orientation: .up)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(Color(hex: border.colorHex))
-            }
-
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
-        }
-        .frame(width: renderedSize.width, height: renderedSize.height)
-        .rotationEffect(.degrees(topping.canvasImage.rotation))
-        .position(
-            x: CGFloat(topping.canvasImage.positionX) * canvasSize.width,
-            y: CGFloat(topping.canvasImage.positionY) * canvasSize.height
-        )
-    }
-
-    private func renderedSize(of topping: PreparedTopping) -> CGSize {
-        let longSide = canvasSize.width
-            * CanvasArea.toppingBaseLongSideRatio
-            * CGFloat(topping.canvasImage.scale)
-
-        return CanvasArea.toppingSize(
-            pixelSize: CGSize(width: topping.image.width, height: topping.image.height),
-            longSide: longSide
+        CanvasToppingLayer(
+            topping: topping.image,
+            silhouette: topping.silhouette,
+            borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
+            placement: ToppingPlacement(topping.canvasImage),
+            canvasSize: canvasSize
         )
     }
 }

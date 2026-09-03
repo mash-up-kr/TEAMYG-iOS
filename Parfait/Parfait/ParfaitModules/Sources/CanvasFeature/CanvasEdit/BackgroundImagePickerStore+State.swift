@@ -14,13 +14,7 @@ extension BackgroundImagePickerStore {
         let weekdayText: String
         let photoSource: PhotoSource
         var screen: Screen
-        var cameraPhase: CameraPhase = .idle
-        var flashMode: CameraFlashMode = .off
-        var cameraPosition: CameraPosition = .back
-        var photoCapturePhase: PhotoCapturePhase = .idle
-        var capturedViewFinderRegion: ViewFinderRegion?
         var showsCameraGuide = true
-        var isSwitchingCamera = false
         var isPreparingImage = false
 
         init(dateText: String, weekdayText: String, photoSource: PhotoSource) {
@@ -30,33 +24,6 @@ extension BackgroundImagePickerStore {
             screen = photoSource.entryScreen
         }
 
-        var isCameraReady: Bool {
-            cameraPhase == .running && !isSwitchingCamera && photoCapturePhase == .idle
-        }
-
-        var isFlashControlEnabled: Bool {
-            cameraPosition == .back
-        }
-
-        var capturedPhotoData: Data? {
-            guard case .ready(_, let photoData) = photoCapturePhase else { return nil }
-            return photoData
-        }
-
-        var cameraPreviewFrame: CameraPreviewFrame? {
-            switch photoCapturePhase {
-            case .processing(let previewFrame), .ready(let previewFrame, _): previewFrame
-            case .idle: nil
-            }
-        }
-
-        var isRetakeEnabled: Bool {
-            if case .ready = photoCapturePhase { true } else { false }
-        }
-
-        var isNextEnabled: Bool {
-            photoCapturePhase != .idle && !isPreparingImage
-        }
     }
 
     struct Dependencies: Sendable {
@@ -91,20 +58,6 @@ extension BackgroundImagePickerStore {
         var needsRunningCamera: Bool {
             self == .camera || isCameraError
         }
-    }
-
-    enum CameraPhase: Equatable, Sendable {
-        case idle
-        case preparing
-        case running
-        case permissionDenied
-        case unavailable
-    }
-
-    enum PhotoCapturePhase: Equatable, Sendable {
-        case idle
-        case processing(previewFrame: CameraPreviewFrame?)
-        case ready(previewFrame: CameraPreviewFrame?, photoData: Data)
     }
 
     enum Event: Sendable {

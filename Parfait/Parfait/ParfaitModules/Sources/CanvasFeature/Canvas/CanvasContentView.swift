@@ -10,15 +10,29 @@ import SwiftUI
 import UIComponent
 
 struct CanvasContentView: View {
+    /// Spotlight 우선순위: 강조 토핑 → Dim → 나머지 토핑 → 배경 (`canvas-policy.md` §4.2).
+    ///
+    /// 토핑은 서버 `positionZ` 값이 아니라 **정렬된 배열 순서**로 쌓는다 — `positionZ` 는
+    /// 클라이언트가 매기는 값이라 범위가 정해져 있지 않고, dim/Spotlight 상수와 같은 축을 쓰면
+    /// 값이 커졌을 때 순서가 뒤집힌다.
+    private static let dimZIndex: Double = 1_000_000
+    private static let spotlightZIndex: Double = 2_000_000
+
     let content: CanvasStore.CanvasContent
+    var spotlightedToppingID: Int?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
+    var onDimTap: (() -> Void)?
 
     init(
         content: CanvasStore.CanvasContent,
-        onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil
+        spotlightedToppingID: Int? = nil,
+        onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
+        onDimTap: (() -> Void)? = nil
     ) {
         self.content = content
+        self.spotlightedToppingID = spotlightedToppingID
         self.onImageTap = onImageTap
+        self.onDimTap = onDimTap
     }
 
     var body: some View {
@@ -26,17 +40,29 @@ struct CanvasContentView: View {
             ZStack {
                 background
 
-                ForEach(content.images) { canvasImage in
+                if spotlightedToppingID != nil {
+                    Color.black50
+                        .contentShape(.rect)
+                        .onTapGesture { onDimTap?() }
+                        .zIndex(Self.dimZIndex)
+                }
+
+                ForEach(Array(content.images.enumerated()), id: \.element.id) { order, canvasImage in
                     CanvasPlacedImage(
                         canvasImage: canvasImage,
                         canvasSize: proxy.size,
                         onTap: imageTapAction(for: canvasImage)
                     )
-                        .zIndex(canvasImage.positionZ)
+                        .zIndex(zIndex(for: canvasImage, order: order))
                 }
             }
         }
         .clipped()
+    }
+
+    /// `content.images` 는 `positionZ` 오름차순으로 정렬돼 있다 — 배열 순서가 곧 쌓임 순서다.
+    private func zIndex(for canvasImage: CanvasStore.CanvasImage, order: Int) -> Double {
+        canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : Double(order)
     }
 
     private func imageTapAction(for canvasImage: CanvasStore.CanvasImage) -> (() -> Void)? {
@@ -115,52 +141,47 @@ struct CanvasPlacedImage: View {
     var onToppingLoaded: ((CGSize) -> Void)?
 
     @Environment(\.canvasToppingRenderer) private var renderer
+    @Environment(\.displayScale) private var displayScale
     @State private var topping: CGImage?
     @State private var silhouette: CGImage?
     @State private var isLoading = true
 
     var body: some View {
         content
-            .contentShape(.rect)
-            .onTapGesture { onTap?() }
-            .allowsHitTesting(onTap != nil)
-            .rotationEffect(.degrees(canvasImage.rotation))
-            .position(center)
-            .task(id: LoadKey(canvasImage)) { await load() }
+            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge)) { await load() }
     }
 
     @ViewBuilder
     private var content: some View {
         if let topping {
-            ZStack {
-                if let silhouette, let border = canvasImage.border {
-                    Image(decorative: silhouette, scale: 1, orientation: .up)
-                        .resizable()
-                        .renderingMode(.template)
-                        .foregroundStyle(Color(hex: border.colorHex))
-                }
-
-                Image(decorative: topping, scale: 1, orientation: .up)
-                    .resizable()
-            }
-            .frame(width: renderedSize.width, height: renderedSize.height)
-            .overlay {
-                if isSelected {
-                    Rectangle()
-                        .strokeBorder(.whiteFixed, lineWidth: 2)
-                }
-            }
+            CanvasToppingLayer(
+                topping: topping,
+                silhouette: silhouette,
+                borderColor: canvasImage.border.map { Color(hex: $0.colorHex) },
+                placement: placement,
+                canvasSize: canvasSize,
+                isSelected: isSelected,
+                onTap: onTap
+            )
         } else if isLoading {
             ProgressView()
                 .tint(.gray500)
+                .position(placement.center(in: canvasSize))
         }
     }
 
     private func load() async {
         isLoading = true
         defer { isLoading = false }
+        // 렌더러는 캔버스 화면이 주입한다. 주입이 없으면 그릴 수단이 없다.
+        // 레이아웃 전(캔버스 크기 0)에는 필요 해상도를 모른다 — 크기가 정해지면 `task` 가 다시 돈다.
+        guard let renderer, neededLongEdgePixels > 0 else { return }
 
-        let loaded = await renderer.topping(at: canvasImage.imageURL)
+        // 이미 그려 둔 이미지는 새 해상도가 도착할 때까지 그대로 둔다 — 확대 중 깜빡이지 않게.
+        let loaded = await renderer.topping(
+            at: canvasImage.imageURL,
+            neededLongEdge: neededLongEdgePixels
+        )
         guard !Task.isCancelled else { return }
         topping = loaded
         if let loaded {
@@ -176,33 +197,35 @@ struct CanvasPlacedImage: View {
         silhouette = rendered
     }
 
+    private var placement: ToppingPlacement {
+        ToppingPlacement(canvasImage)
+    }
+
     private var longSide: CGFloat {
-        canvasSize.width * CanvasArea.toppingBaseLongSideRatio * CGFloat(canvasImage.scale)
+        placement.longSide(in: canvasSize)
     }
 
-    private var renderedSize: CGSize {
-        guard let topping else { return CGSize(width: longSide, height: longSide) }
-
-        return CanvasArea.toppingSize(
-            pixelSize: CGSize(width: topping.width, height: topping.height),
-            longSide: longSide
-        )
+    /// 화면에 그려질 긴 변의 픽셀 수. 짧은 변은 원본 비율을 따라가므로 이 값만으로 필요 해상도가 정해진다 —
+    /// 이미지를 받기 전에도 계산할 수 있어 "받아 보고 크기를 정하는" 순환을 피한다.
+    private var neededLongEdgePixels: CGFloat {
+        longSide * displayScale
     }
 
-    private var center: CGPoint {
-        CGPoint(
-            x: CGFloat(canvasImage.positionX) * canvasSize.width,
-            y: CGFloat(canvasImage.positionY) * canvasSize.height
-        )
+    private var decodeLongEdge: CGFloat {
+        ToppingDecodeBucket.longEdge(covering: neededLongEdgePixels)
     }
 
+    /// 확대해서 버킷이 올라가면 다시 받아야 하므로 해상도도 키에 넣는다.
+    /// 버킷 안에서 배율만 오르내리는 동안에는 값이 그대로라 재디코딩이 일어나지 않는다.
     private struct LoadKey: Equatable {
         let imageURL: URL
         let border: CanvasStore.CanvasImageBorder?
+        let decodeLongEdge: CGFloat
 
-        init(_ canvasImage: CanvasStore.CanvasImage) {
+        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat) {
             imageURL = canvasImage.imageURL
             border = canvasImage.border
+            self.decodeLongEdge = decodeLongEdge
         }
     }
 }

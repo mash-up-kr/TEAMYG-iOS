@@ -13,6 +13,7 @@ public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingUseCase: any ToppingUseCase
@@ -52,13 +53,14 @@ public struct CanvasView: View {
                     state: store.state,
                     send: { store.send($0) }
                 )
+                .ygToastOverlay($toasts)
             }
         }
         .task {
             store.send(.screenAppeared)
         }
         .task {
-            for await event in store.events {
+            for await event in store.eventStream() {
                 switch event {
                 case .gallerySaveSucceeded(let dateText):
                     toasts.append(
@@ -68,8 +70,23 @@ public struct CanvasView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
                     )
+                case .canvasNotReady:
+                    toasts.append(
+                        YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                    )
+                case .canvasLoadFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "캔버스를 불러오지 못했어요. 아래로 당겨 새로고침해 주세요.")
+                    )
+                case .toppingSpotlighted(let spotlightToast):
+                    // Spotlight 를 옮길 때마다 앞선 작성자 Toast 는 즉시 걷어낸다.
+                    toasts = [spotlightToast.toastItem]
                 }
             }
+        }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            guard newScenePhase == .active else { return }
+            store.send(.sceneBecameActive)
         }
         .onDisappear {
             store.send(.screenDisappeared)
@@ -82,12 +99,11 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
             }
         }
-        .navigationDestination(item: canvasEditDestinationBinding) { _ in
-            canvasEditFlow
+        .navigationDestination(item: canvasEditDestinationBinding) { destination in
+            canvasEditFlow(destination)
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
-        .ygToastOverlay($toasts)
     }
 
     private func toppingAddFlow(
@@ -107,7 +123,8 @@ public struct CanvasView: View {
                     onSaved: { store.send(.toppingSaved) }
                 )
             ),
-            makeAlbumPickerStore: makeAlbumPickerStore
+            makeAlbumPickerStore: makeAlbumPickerStore,
+            toppingRenderer: toppingRenderer
         )
     }
 
@@ -123,15 +140,16 @@ public struct CanvasView: View {
     }
 
     @ViewBuilder
-    private var canvasEditFlow: some View {
-        if let parfaitID = store.state.parfaitID,
-           let canvasContent = store.state.canvasContent {
+    private func canvasEditFlow(_ destination: CanvasStore.CanvasEditDestination) -> some View {
+        if let parfaitID = store.state.parfaitID {
             CanvasEditView(
                 store: CanvasEditStore(
                     state: .init(
                         dateText: store.state.dateText,
                         weekdayText: store.state.weekdayText,
-                        canvasContent: canvasContent
+                        canvasContent: store.state.canvasContent ?? .empty,
+                        screen: destination.editScreen,
+                        selectedToppingID: destination.selectedToppingID
                     ),
                     dependencies: .init(
                         groupID: store.groupID,
@@ -143,7 +161,8 @@ public struct CanvasView: View {
                         onSaved: { store.send(.canvasEditSaved) }
                     )
                 ),
-                makeAlbumPickerStore: makeAlbumPickerStore
+                makeAlbumPickerStore: makeAlbumPickerStore,
+                toppingRenderer: toppingRenderer
             )
         }
     }

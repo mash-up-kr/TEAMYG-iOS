@@ -39,7 +39,7 @@ struct BackgroundImagePickerView: View {
         .ygToastOverlay($toasts)
         .task {
             store.send(.screenAppeared)
-            for await event in store.events {
+            for await event in store.eventStream() {
                 switch event {
                 case .imagePreparationFailed:
                     toasts.append(
@@ -72,9 +72,9 @@ struct BackgroundImagePickerView: View {
             ToppingCameraView(
                 dateText: store.state.dateText,
                 weekdayText: store.state.weekdayText,
-                flashMode: store.state.flashMode,
-                isFlashControlEnabled: store.state.isFlashControlEnabled,
-                isCameraReady: store.state.isCameraReady,
+                flashMode: store.cameraState.flashMode,
+                isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
+                isCameraReady: store.cameraState.isReady,
                 showsToast: false,
                 previewSource: store.previewSource,
                 onToastDismissed: { store.send(.cameraGuideDismissed) },
@@ -85,11 +85,11 @@ struct BackgroundImagePickerView: View {
 
         case .cameraConfirmation:
             ToppingCameraConfirmationView(
-                previewFrame: store.state.cameraPreviewFrame,
-                photoData: store.state.capturedPhotoData,
-                viewFinderRegion: store.state.capturedViewFinderRegion,
-                isRetakeEnabled: store.state.isRetakeEnabled,
-                isNextEnabled: store.state.isNextEnabled,
+                previewFrame: store.cameraState.previewFrame,
+                photoData: store.cameraState.capturedPhotoData,
+                viewFinderRegion: store.cameraState.capturedViewFinderRegion,
+                isRetakeEnabled: store.cameraState.isRetakeEnabled,
+                isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
                 onRetakeTap: { store.send(.retakeTapped) },
                 onNextTap: { store.send(.photoConfirmed) }
             )
@@ -113,8 +113,10 @@ struct BackgroundImagePickerView: View {
         case .gallery:
             AlbumView(
                 makeAlbumPickerStore: { isLimited in
+                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다.
                     makeAlbumPickerStore(
                         isLimited,
+                        false,
                         confirmGalleryPhoto,
                         confirmRecentUpload
                     )

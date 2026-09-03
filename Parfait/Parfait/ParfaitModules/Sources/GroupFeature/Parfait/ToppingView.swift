@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent

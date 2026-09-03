@@ -11,6 +11,7 @@ import Foundation
 enum ParfaitMappingError: Error {
     case malformedDate(String)
     case malformedURL(String)
+    case malformedColor(String)
 }
 
 extension ParfaitDTO {
@@ -47,6 +48,8 @@ extension PlacedByDTO {
 }
 
 extension BackgroundDTO {
+    /// 서버·안드로이드가 보낸 값을 그대로 `Color(hex:)` 로 넘기면, 형식이 깨졌을 때
+    /// 디버그 빌드가 `assertionFailure` 로 죽고 릴리스에서는 조용히 검정이 된다. 여기서 먼저 막는다.
     func toEntity() throws -> ParfaitBackground {
         switch type {
         case "IMAGE":
@@ -55,6 +58,9 @@ extension BackgroundDTO {
             }
             return .image(url: url)
         default:
+            guard HexColor.isValid(value) else {
+                throw ParfaitMappingError.malformedColor(value)
+            }
             return .color(hex: value)
         }
     }
@@ -164,8 +170,9 @@ private extension NametagChip {
 }
 
 private extension ToppingBorderStyle {
+    /// 색 형식이 깨졌으면 테두리만 떨어뜨린다 — 토핑 한 장 때문에 캔버스 전체 조회를 실패시키지 않는다.
     init(type: String, colorHex: String?, width: Double?) {
-        guard type == "SOLID", let colorHex, let width else {
+        guard type == "SOLID", let colorHex, let width, HexColor.isValid(colorHex) else {
             self = .none
             return
         }

@@ -48,7 +48,7 @@ public struct AlbumView: View {
                 case .denied:
                     YGErrorView(
                         title: "갤러리 권한이 없어요",
-                        message: "설정에서 갤러리 권한을 허용해 주세요",
+                        message: "설정에서 사진 접근 권한을 허용해 주세요",
                         buttonTitle: "설정으로 이동"
                     ) {
                         guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }

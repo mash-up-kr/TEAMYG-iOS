@@ -6,11 +6,10 @@
 //
 
 import Foundation
-import Photos
 import UIKit
 
 enum BackgroundImageLoader {
-    private static let maximumLongEdge = 4_096
+    private static let maximumLongEdge = 2_048
     private static let jpegCompressionQuality = 0.9
 
     static func cameraJPEG(
@@ -29,8 +28,11 @@ enum BackgroundImageLoader {
     }
 
     static func galleryJPEG(assetIdentifier: String) async -> Data? {
-        guard let imageData = await galleryImageData(assetIdentifier: assetIdentifier) else { return nil }
-        return await normalizedJPEG(imageData)
+        guard let original = await PhotoLibraryImageSource.originalData(
+            assetIdentifier: assetIdentifier
+        ) else { return nil }
+        // 방향은 `ImageDownsampling` 이 `kCGImageSourceCreateThumbnailWithTransform` 로 적용한다.
+        return await normalizedJPEG(original.photoData)
     }
 
     static func recentUploadJPEG(_ imageData: Data) async -> Data? {
@@ -45,26 +47,5 @@ enum BackgroundImageLoader {
             ) else { return nil }
             return UIImage(cgImage: normalizedImage).jpegData(compressionQuality: jpegCompressionQuality)
         }.value
-    }
-
-    private static func galleryImageData(assetIdentifier: String) async -> Data? {
-        guard let asset = PHAsset.fetchAssets(
-            withLocalIdentifiers: [assetIdentifier],
-            options: nil
-        ).firstObject else { return nil }
-
-        let options = PHImageRequestOptions()
-        options.isNetworkAccessAllowed = true
-        options.deliveryMode = .highQualityFormat
-        options.resizeMode = .none
-
-        return await withCheckedContinuation { continuation in
-            PHImageManager.default().requestImageDataAndOrientation(
-                for: asset,
-                options: options
-            ) { imageData, _, _, _ in
-                continuation.resume(returning: imageData)
-            }
-        }
     }
 }

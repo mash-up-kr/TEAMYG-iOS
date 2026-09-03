@@ -13,10 +13,6 @@ struct ToppingPlacementView: View {
     private static let canvasTopSpacing: CGFloat = 60
     private static let canvasSpace = "ToppingPlacementCanvas"
     private static let selectionStrokeWidth: CGFloat = 2
-    private static let handleLength: CGFloat = 44
-    private static let handleCircleLength: CGFloat = 28
-    private static let handleIconLength: CGFloat = 18
-    private static let handleCornerOffset: CGFloat = 22
 
     let canvasContent: CanvasStore.CanvasContent?
     let topping: ExtractedTopping
@@ -31,9 +27,7 @@ struct ToppingPlacementView: View {
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
 
-    @State private var dragTranslation: CGSize = .zero
-    @State private var scaleFactor: Double = 1
-    @State private var rotationDelta: Double = 0
+    @State private var draft = ToppingTransformDraft()
 
     var body: some View {
         ZStack {
@@ -123,28 +117,14 @@ struct ToppingPlacementView: View {
     }
 
     private func handle(_ icon: Image, gesture: some Gesture) -> some View {
-        icon
-            .renderingMode(.template)
-            .resizable()
-            .frame(width: Self.handleIconLength, height: Self.handleIconLength)
-            .foregroundStyle(.gray900)
-            .frame(width: Self.handleCircleLength, height: Self.handleCircleLength)
-            .background(.whiteFixed, in: .circle)
-            .overlay {
-                Circle()
-                    .strokeBorder(.black5, lineWidth: 1)
-            }
-            .frame(width: Self.handleLength, height: Self.handleLength)
-            .contentShape(.rect)
+        ToppingHandleIcon(icon)
             .gesture(gesture)
     }
 }
 
 private extension ToppingPlacementView {
     var previewPlacement: ToppingPlacement {
-        editor.magnifying(by: scaleFactor)
-            .moved(by: dragTranslation, in: editor.canvasSize)
-            .rotated(by: rotationDelta)
+        draft.applied(to: editor.placement, in: editor.canvasSize)
     }
 
     var previewCenter: CGPoint {
@@ -157,68 +137,58 @@ private extension ToppingPlacementView {
 
     /// 핸들은 회전한 토핑의 오른쪽 두 모서리 바깥에 붙는다 (Figma `C-106`).
     func handleCenter(towardBottom: Bool) -> CGPoint {
-        let halfWidth = renderedSize.width / 2 + Self.handleCornerOffset
-        let halfHeight = renderedSize.height / 2 + Self.handleCornerOffset
-        let corner = CGSize(width: halfWidth, height: towardBottom ? halfHeight : -halfHeight)
-        let radians = previewPlacement.rotationDegrees * .pi / 180
-        let center = previewCenter
-
-        return CGPoint(
-            x: center.x + corner.width * cos(radians) - corner.height * sin(radians),
-            y: center.y + corner.width * sin(radians) + corner.height * cos(radians)
+        previewPlacement.handleCenter(
+            horizontal: 1,
+            vertical: towardBottom ? 1 : -1,
+            renderedSize: renderedSize,
+            cornerOffset: ToppingHandle.cornerOffset,
+            in: editor.canvasSize
         )
     }
 
     var moveGesture: some Gesture {
         DragGesture(coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                dragTranslation = value.translation
-            }
+            .onChanged { draft.translation = $0.translation }
             .onEnded { value in
-                dragTranslation = .zero
+                draft.reset()
                 onMove(value.translation)
             }
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                scaleFactor = magnification(for: value)
-            }
+            .onChanged { draft.scaleFactor = magnification(for: $0) }
             .onEnded { value in
                 let factor = magnification(for: value)
-                scaleFactor = 1
+                draft.reset()
                 onScale(factor)
             }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { value in
-                rotationDelta = rotation(for: value)
-            }
+            .onChanged { draft.accumulateRotation(rawDegrees: rotation(for: $0)) }
             .onEnded { value in
-                let degrees = rotation(for: value)
-                rotationDelta = 0
+                draft.accumulateRotation(rawDegrees: rotation(for: value))
+                let degrees = draft.rotationDegrees
+                draft.reset()
                 onRotate(degrees)
             }
     }
 
     func magnification(for value: DragGesture.Value) -> Double {
-        let center = editor.center
-        let startDistance = hypot(value.startLocation.x - center.x, value.startLocation.y - center.y)
-        let currentDistance = hypot(value.location.x - center.x, value.location.y - center.y)
-        guard startDistance > 0 else { return 1 }
-
-        return Double(currentDistance / startDistance)
+        editor.placement.magnification(
+            from: value.startLocation,
+            to: value.location,
+            in: editor.canvasSize
+        )
     }
 
     func rotation(for value: DragGesture.Value) -> Double {
-        let center = editor.center
-        let startAngle = atan2(value.startLocation.y - center.y, value.startLocation.x - center.x)
-        let currentAngle = atan2(value.location.y - center.y, value.location.x - center.x)
-        let degrees = Angle(radians: Double(currentAngle - startAngle)).degrees
-
-        return remainder(degrees, 360)
+        editor.placement.rotation(
+            from: value.startLocation,
+            to: value.location,
+            in: editor.canvasSize
+        )
     }
 }

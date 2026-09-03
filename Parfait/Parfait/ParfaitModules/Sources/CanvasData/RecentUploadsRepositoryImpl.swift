@@ -7,7 +7,6 @@
 
 import CanvasDomain
 import Foundation
-import ImageIO
 
 /// `RecentUploadsRepository` 파일 구현.
 /// Application Support/RecentUploads/ 에 파일로 저장하고, 조회 시 `StoredImage` 로 읽어 넘긴다.
@@ -23,7 +22,7 @@ public actor RecentUploadsRepositoryImpl: RecentUploadsRepository {
         try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         let fileName = "\(UUID().uuidString).png"
         try imageData.write(to: directoryURL.appending(path: fileName))
-        return makeStoredImage(id: fileName, imageData: imageData, createdAt: .now)
+        return StoredImage(id: fileName, imageData: imageData, createdAt: .now)
     }
 
     /// 최신순(파일 생성일 내림차순) 기록 목록. IO 실패는 빈 배열로 흡수한다 (스펙: 섹션 숨김).
@@ -45,35 +44,12 @@ public actor RecentUploadsRepositoryImpl: RecentUploadsRepository {
             .prefix(limit)
             .compactMap { fileURL, createdAt in
                 guard let imageData = try? Data(contentsOf: fileURL, options: .mappedIfSafe) else { return nil }
-                return makeStoredImage(
+                return StoredImage(
                     id: fileURL.lastPathComponent,
                     imageData: imageData,
                     createdAt: createdAt
                 )
             }
-    }
-
-    private func makeStoredImage(id: String, imageData: Data, createdAt: Date) -> StoredImage {
-        let pixelSize = pixelSize(of: imageData)
-        return StoredImage(
-            id: id,
-            imageData: imageData,
-            pixelWidth: pixelSize.width,
-            pixelHeight: pixelSize.height,
-            createdAt: createdAt
-        )
-    }
-
-    /// ImageIO 로 헤더만 파싱해 픽셀 크기를 얻는다 (전체 디코딩 없음). 실패 시 0.
-    private func pixelSize(of imageData: Data) -> (width: Int, height: Int) {
-        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
-              let width = properties[kCGImagePropertyPixelWidth] as? Int,
-              let height = properties[kCGImagePropertyPixelHeight] as? Int
-        else {
-            return (0, 0)
-        }
-        return (width, height)
     }
 
     private func creationDate(of fileURL: URL) -> Date {

@@ -93,7 +93,8 @@ enum ObjectExtractionPolicy {
     static let maximumCandidateCount = 10
     static let safeMarginRatio: CGFloat = 0.2
     static let minimumSafeMargin: CGFloat = 50
-    static let extractionCanvasLongEdge: CGFloat = 1500
+    /// 업로드 상한을 그대로 따른다 — 더 크게 떠 봐야 인코딩 단계에서 다시 줄어든다.
+    static let extractionCanvasLongEdge: CGFloat = ToppingImageEncoder.maximumLongEdge
     static let analysisTimeout: Duration = .seconds(30)
 
     /// 오브젝트를 감싸는 여백 포함 영역. 사진 밖으로 나가는 부분은 결과물에서 투명 여백이 된다.

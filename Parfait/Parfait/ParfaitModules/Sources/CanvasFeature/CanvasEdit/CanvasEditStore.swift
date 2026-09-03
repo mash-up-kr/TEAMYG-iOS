@@ -15,16 +15,18 @@ final class CanvasEditStore: MVIStore {
     private(set) var state: State
 
     /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
-    let events: AsyncStream<Event>
-    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
-    @ObservationIgnored private var saveTask: Task<Void, Never>?
 
     init(state: State, dependencies: Dependencies) {
         self.state = state
         self.dependencies = dependencies
-        (events, eventContinuation) = AsyncStream.makeStream()
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     func send(_ intent: Intent) {
@@ -42,11 +44,6 @@ final class CanvasEditStore: MVIStore {
             handleBorderIntent(intent)
         case .confirmTapped:
             saveChanges()
-        case .saveErrorDismissed:
-            state.saveState = .idle
-        case .screenDisappeared:
-            saveTask?.cancel()
-            saveTask = nil
         }
     }
 
@@ -139,7 +136,7 @@ final class CanvasEditStore: MVIStore {
         else { return }
 
         guard topping.isMine else {
-            eventContinuation.yield(.otherToppingSelected)
+            eventChannel.send(.otherToppingSelected)
             return
         }
         state.selectedToppingID = toppingID
@@ -166,10 +163,8 @@ final class CanvasEditStore: MVIStore {
     private func closeEditor() {
         guard state.saveState != .saving else { return }
         switch state.screen {
-        case .background:
+        case .background, .toppings:
             state.showsExitPopup = true
-        case .toppings:
-            dependencies.onDismiss()
         case .border:
             state.screen = .toppings
         }
@@ -192,21 +187,19 @@ extension CanvasEditStore {
         }
 
         state.saveState = .saving
-        saveTask = Task { [weak self] in
-            guard let self else { return }
+        Task { [self] in
             do {
                 try await saveBackgroundIfNeeded()
                 try await savePlacementChanges()
                 try await saveBorderChanges()
                 try await saveDeletions()
-                guard !Task.isCancelled else { return }
                 state.saveState = .idle
                 dependencies.onSaved()
             } catch is CancellationError {
                 return
             } catch {
-                guard !Task.isCancelled else { return }
-                state.saveState = .failed
+                state.saveState = .idle
+                eventChannel.send(.saveFailed)
             }
         }
     }
@@ -219,6 +212,9 @@ extension CanvasEditStore {
         case .color(let hex):
             change = .color(hex: hex)
         case .image:
+            // 이미지 URL 배경은 업로드 성공 경로에서만 만들어지고 그 자리에서 savedBackground 로
+            // 승격된다. 여기 도달했다면 "변경이 있는데 아무것도 안 보내고 성공" 이 되므로 알린다.
+            assertionFailure("이미지 URL 배경은 업로드 경로에서만 만들어진다")
             return
         case .imageData(let jpegData):
             let uploadedImage: UploadedImage
@@ -228,16 +224,16 @@ extension CanvasEditStore {
                 uploadedImage = try await dependencies.imageUploadRepository.upload(
                     .background(jpegData: jpegData)
                 )
-                guard !Task.isCancelled else { return }
+                try Task.checkCancellation()
                 state.pendingUploadedBackground = uploadedImage
             }
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             _ = try await dependencies.canvasUseCase.changeBackground(
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID,
                 to: .image(imageID: uploadedImage.id)
             )
-            guard !Task.isCancelled else { return }
+            try Task.checkCancellation()
             state.background = .image(url: uploadedImage.url)
             state.savedBackground = state.background
             state.pendingUploadedBackground = nil
@@ -249,56 +245,93 @@ extension CanvasEditStore {
             parfaitID: dependencies.parfaitID,
             to: change
         )
-        guard !Task.isCancelled else { return }
+        try Task.checkCancellation()
         state.savedBackground = state.background
     }
 
     private func savePlacementChanges() async throws {
-        let toppingIDs = state.toppings
-            .filter { !$0.isDeleted && $0.hasPlacementChanges }
-            .map(\.id)
+        let updates = Dictionary(
+            uniqueKeysWithValues: state.toppings
+                .filter { !$0.isDeleted && $0.hasPlacementChanges }
+                .map { ($0.id, $0.placementUpdate) }
+        )
 
-        for toppingID in toppingIDs {
-            guard let topping = state.toppings.first(where: { $0.id == toppingID }) else { continue }
+        try await saveConcurrently(Array(updates.keys)) { [dependencies] toppingID in
+            guard let update = updates[toppingID] else { return }
             _ = try await dependencies.toppingUseCase.updatePlacement(
-                topping.placementUpdate,
+                update,
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+        } promote: { toppingID in
             updateTopping(toppingID) { $0.savedPlacement = $0.placement }
         }
     }
 
     private func saveBorderChanges() async throws {
-        let toppingIDs = state.toppings
-            .filter { !$0.isDeleted && $0.hasBorderChanges }
-            .map(\.id)
+        let styles = Dictionary(
+            uniqueKeysWithValues: state.toppings
+                .filter { !$0.isDeleted && $0.hasBorderChanges }
+                .map { ($0.id, $0.border.style) }
+        )
 
-        for toppingID in toppingIDs {
-            guard let topping = state.toppings.first(where: { $0.id == toppingID }) else { continue }
+        try await saveConcurrently(Array(styles.keys)) { [dependencies] toppingID in
+            guard let style = styles[toppingID] else { return }
             _ = try await dependencies.toppingUseCase.updateBorder(
-                topping.border.style,
+                style,
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+        } promote: { toppingID in
             updateTopping(toppingID) { $0.savedBorder = $0.border }
         }
     }
 
     private func saveDeletions() async throws {
-        let toppingIDs = state.toppings.filter(\.isDeleted).map(\.id)
-        for toppingID in toppingIDs {
+        try await saveConcurrently(state.toppings.filter(\.isDeleted).map(\.id)) { [dependencies] toppingID in
             try await dependencies.toppingUseCase.delete(
                 toppingID: toppingID,
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID
             )
-            guard !Task.isCancelled else { return }
+        } promote: { toppingID in
             state.toppings.removeAll { $0.id == toppingID }
         }
     }
+
+    private func saveConcurrently(
+        _ toppingIDs: [Int],
+        request: @escaping @Sendable (Int) async throws -> Void,
+        promote: (Int) -> Void
+    ) async throws {
+        guard !toppingIDs.isEmpty else { return }
+
+        let savedIDs = await withTaskGroup(of: Int?.self) { group in
+            for toppingID in toppingIDs {
+                group.addTask {
+                    do {
+                        try await request(toppingID)
+                        return toppingID
+                    } catch {
+                        return nil
+                    }
+                }
+            }
+
+            var succeeded: [Int] = []
+            for await toppingID in group {
+                if let toppingID { succeeded.append(toppingID) }
+            }
+            return succeeded
+        }
+
+        savedIDs.forEach(promote)
+        guard savedIDs.count == toppingIDs.count else { throw SaveFailure.someRequestsFailed }
+    }
+}
+
+private enum SaveFailure: Error {
+    case someRequestsFailed
 }

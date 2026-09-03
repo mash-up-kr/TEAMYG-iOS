@@ -16,10 +16,16 @@ struct ToppingAddFlowView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
+    private let toppingRenderer: CanvasToppingRenderer
 
-    init(store: ToppingAddStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
+    init(
+        store: ToppingAddStore,
+        makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
+        toppingRenderer: CanvasToppingRenderer
+    ) {
         _store = State(initialValue: store)
         self.makeAlbumPickerStore = makeAlbumPickerStore
+        self.toppingRenderer = toppingRenderer
     }
 
     var body: some View {
@@ -32,23 +38,27 @@ struct ToppingAddFlowView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .environment(\.canvasToppingRenderer, toppingRenderer)
         .task {
             store.send(.screenAppeared)
         }
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        .ygToastOverlay($toasts)
+        .task {
+            for await event in store.eventStream() {
+                switch event {
+                case .saveFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+                    )
+                }
+            }
+        }
         // `.inactive` 는 권한 다이얼로그·알림 배너·앱 스위처 등에서도 흔히 발생한다.
         // 여기서 세션을 끄면 껐다 켜기가 잦아져 최초 권한 요청 플로우가 끊기므로 `.background` 만 처리한다.
         // (백그라운드 진입 시엔 iOS 가 캡처 세션을 어차피 중단시킨다.)
-        .ygToastOverlay($toasts)
-        .onChange(of: store.state.saveState) { _, saveState in
-            guard saveState == .failed else { return }
-            toasts.append(
-                YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
-            )
-            store.send(.saveErrorDismissed)
-        }
         .onChange(of: scenePhase) { _, newScenePhase in
             switch newScenePhase {
             case .active:
@@ -70,9 +80,9 @@ struct ToppingAddFlowView: View {
             ToppingCameraView(
                 dateText: store.state.canvasDateText,
                 weekdayText: store.state.canvasWeekdayText,
-                flashMode: store.state.flashMode,
-                isFlashControlEnabled: store.state.isFlashControlEnabled,
-                isCameraReady: store.state.isCameraReady,
+                flashMode: store.cameraState.flashMode,
+                isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
+                isCameraReady: store.cameraState.isReady,
                 showsToast: store.state.showsToast,
                 previewSource: store.previewSource,
                 onToastDismissed: { store.send(.toastDismissed) },
@@ -83,11 +93,11 @@ struct ToppingAddFlowView: View {
 
         case .cameraConfirmation:
             ToppingCameraConfirmationView(
-                previewFrame: store.state.cameraPreviewFrame,
-                photoData: store.state.capturedPhotoData,
-                viewFinderRegion: store.state.capturedViewFinderRegion,
-                isRetakeEnabled: store.state.isRetakeEnabled,
-                isNextEnabled: store.state.isNextEnabled,
+                previewFrame: store.cameraState.previewFrame,
+                photoData: store.cameraState.capturedPhotoData,
+                viewFinderRegion: store.cameraState.capturedViewFinderRegion,
+                isRetakeEnabled: store.cameraState.isRetakeEnabled,
+                isNextEnabled: store.cameraState.hasCapture,
                 onRetakeTap: { store.send(.retakeTapped) },
                 onNextTap: { store.send(.photoConfirmed) }
             )
@@ -115,7 +125,7 @@ struct ToppingAddFlowView: View {
 
     /// 일반 사진은 확인 화면(C-102-Confirm)을 거치고, 최근 업로드 누끼는 곧장 테두리 편집으로 간다.
     private func albumPickerStore(isLimited: Bool) -> AlbumPickerStore {
-        makeAlbumPickerStore(isLimited, confirmGalleryPhoto, confirmRecentUpload)
+        makeAlbumPickerStore(isLimited, true, confirmGalleryPhoto, confirmRecentUpload)
     }
 
     private func confirmGalleryPhoto(_ assetIdentifier: String) {

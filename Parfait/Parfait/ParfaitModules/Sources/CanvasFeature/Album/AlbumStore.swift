@@ -21,7 +21,10 @@ public final class AlbumStore: MVIStore {
         case .appeared, .sceneBecameActive:
             refreshPermission()
         case .disappeared:
+            // 핸들을 비우지 않으면 `refreshPermission` 의 `requestTask == nil` 가드에 걸려
+            // 다시 들어와도 권한 요청이 나가지 않는다 (팝업 대기 화면에서 멈춘다).
             requestTask?.cancel()
+            requestTask = nil
         }
     }
 

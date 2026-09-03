@@ -15,25 +15,32 @@ import UIComponent
 final class BackgroundImagePickerStore: MVIStore {
     private(set) var state: State
 
-    let events: AsyncStream<Event>
-    @ObservationIgnored private let eventContinuation: AsyncStream<Event>.Continuation
+    /// 토스트처럼 한 번만 소비해야 하는 결과는 화면 상태와 분리한다 (`docs/mvi.md`).
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
-    private let cameraSession = CameraSession()
+    @ObservationIgnored private lazy var camera = CameraFlow { [weak self] event in
+        self?.handleCameraEvent(event)
+    }
     private let dependencies: Dependencies
-    @ObservationIgnored private var cameraSetupTask: Task<Void, Never>?
-    @ObservationIgnored private var cameraSwitchTask: Task<Void, Never>?
-    @ObservationIgnored private var photoCaptureTask: Task<Void, Never>?
     @ObservationIgnored private var imagePreparationTask: Task<Void, Never>?
-    private var cameraGeneration = 0
 
     init(state: State, dependencies: Dependencies) {
         self.state = state
         self.dependencies = dependencies
-        (events, eventContinuation) = AsyncStream.makeStream()
+    }
+
+    /// 화면이 사라졌다 다시 나타나도 이어 받을 수 있도록 구독마다 새 스트림을 내준다.
+    func eventStream() -> AsyncStream<Event> {
+        eventChannel.stream()
     }
 
     var previewSource: any CameraPreviewSource {
-        cameraSession.previewSource
+        camera.previewSource
+    }
+
+    /// 카메라 상태는 `CameraFlow` 가 소유한다 — 뷰가 읽는 값만 그대로 넘겨준다.
+    var cameraState: CameraFlowState {
+        camera.state
     }
 
     func send(_ intent: Intent) {
@@ -63,18 +70,24 @@ final class BackgroundImagePickerStore: MVIStore {
     }
 
     private func prepareCapturedPhoto() {
-        switch state.photoCapturePhase {
+        switch camera.state.capturePhase {
         case .processing:
+            // 아직 사진이 안 나왔다 — 나오는 대로 배경 준비로 넘긴다.
+            camera.requestHandoffWhenCaptured()
             state.isPreparingImage = true
         case .ready(_, let photoData):
-            prepareImage(source: .camera) {
-                await BackgroundImageLoader.cameraJPEG(
-                    photoData: photoData,
-                    viewFinderRegion: self.state.capturedViewFinderRegion
-                )
-            }
+            prepareCameraPhoto(photoData, viewFinderRegion: camera.state.capturedViewFinderRegion)
         case .idle:
             break
+        }
+    }
+
+    private func prepareCameraPhoto(_ photoData: Data, viewFinderRegion: ViewFinderRegion?) {
+        prepareImage(source: .camera) {
+            await BackgroundImageLoader.cameraJPEG(
+                photoData: photoData,
+                viewFinderRegion: viewFinderRegion
+            )
         }
     }
 
@@ -101,7 +114,7 @@ final class BackgroundImagePickerStore: MVIStore {
             guard let self, !Task.isCancelled else { return }
             state.isPreparingImage = false
             guard let jpegData else {
-                eventContinuation.yield(.imagePreparationFailed)
+                eventChannel.send(.imagePreparationFailed)
                 return
             }
             dependencies.onImageSelected(jpegData, source)
@@ -116,180 +129,70 @@ final class BackgroundImagePickerStore: MVIStore {
     }
 }
 
-/// 카메라 세션 켜기·끄기와 촬영. 토핑 추가와 같은 generation 규약으로 늦은 요청을 버린다.
+/// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 토핑 추가와 공용 화면 — `canvas-policy.md` §5.1).
+/// 여기서는 배경 편집 흐름의 화면 전이만 해석한다.
 private extension BackgroundImagePickerStore {
     func handleCameraIntent(_ intent: Intent) {
         switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            resumeCameraIfNeeded()
-        case .screenDisappeared:
-            imagePreparationTask?.cancel()
-            imagePreparationTask = nil
-            suspendCamera()
-        case .sceneEnteredBackground:
-            suspendCamera()
+        case .screenAppeared, .sceneBecameActive, .screenDisappeared, .sceneEnteredBackground:
+            handleCameraLifecycleIntent(intent)
         case .cameraGuideDismissed:
             state.showsCameraGuide = false
-        case .flashTapped:
-            state.flashMode = state.flashMode.toggled
-        case .cameraPositionTapped:
-            switchCamera()
-        case .shutterTapped(let viewFinderRegion):
-            capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            retakePhoto()
         case .cameraRetryTapped:
-            prepareCamera()
+            camera.prepare()
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { break }
+            cancelImagePreparation()
+            state.screen = .camera
         default:
             break
         }
     }
 
-    func resumeCameraIfNeeded() {
-        guard state.photoSource == .camera, state.screen.needsRunningCamera else { return }
-        prepareCamera()
-    }
-
-    func prepareCamera() {
-        cameraSetupTask?.cancel()
-        let generation = nextCameraGeneration()
-        state.cameraPhase = .preparing
-
-        cameraSetupTask = Task { [weak self] in
-            guard let self, await resolveAuthorization() else { return }
-            await startCamera(generation: generation)
+    func handleCameraLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            guard state.photoSource == .camera, state.screen.needsRunningCamera else { return }
+            camera.prepare()
+        case .screenDisappeared:
+            cancelImagePreparation()
+            camera.suspend()
+        case .sceneEnteredBackground:
+            camera.suspend()
+        default:
+            break
         }
     }
 
-    func resolveAuthorization() async -> Bool {
-        let isAuthorized = switch CameraPermission.current() {
-        case .authorized: true
-        case .notDetermined: await CameraPermission.request()
-        case .denied, .restricted: false
-        }
-
-        guard !Task.isCancelled else { return false }
-        guard isAuthorized else {
-            state.cameraPhase = .permissionDenied
-            state.screen = .cameraPermissionError
-            return false
-        }
-        return true
-    }
-
-    func startCamera(generation: Int) async {
-        let didStart = await cameraSession.start(generation: generation)
-        guard isLatestRequest(generation) else { return }
-
-        if didStart {
-            state.cameraPhase = .running
-            if state.screen.isCameraError {
-                state.screen = .camera
-            }
-        } else {
-            state.cameraPhase = .unavailable
-            state.screen = .cameraUnavailable
-        }
-    }
-
-    func suspendCamera() {
-        cancelCameraTasks()
-        if case .processing = state.photoCapturePhase {
-            state.photoCapturePhase = .idle
-            state.capturedViewFinderRegion = nil
-            state.screen = .camera
-        }
-        let generation = nextCameraGeneration()
-        state.cameraPhase = .idle
-        Task { [cameraSession] in
-            await cameraSession.stop(generation: generation)
-        }
-    }
-
-    func switchCamera() {
-        guard state.isCameraReady else { return }
-        state.isSwitchingCamera = true
-        cameraSwitchTask = Task { [weak self, cameraSession] in
-            let switchedPosition = await cameraSession.switchCamera()
-            guard let self else { return }
-
-            state.isSwitchingCamera = false
-            guard let switchedPosition else { return }
-            state.cameraPosition = switchedPosition
-            if switchedPosition == .front {
-                state.flashMode = .off
-            }
-        }
-    }
-
-    func capturePhoto(viewFinderRegion: ViewFinderRegion?) {
-        guard state.isCameraReady else { return }
-
-        let captureGeneration = nextCameraGeneration()
-        state.capturedViewFinderRegion = viewFinderRegion
-        state.photoCapturePhase = .processing(previewFrame: nil)
-
-        photoCaptureTask = Task { [weak self, cameraSession, flashMode = state.flashMode] in
-            async let pendingPhotoData = cameraSession.capturePhoto(flashMode: flashMode)
-            let previewFrame = await cameraSession.latestPreviewFrame()
-
-            guard let self, isLatestRequest(captureGeneration) else { return }
-            if let previewFrame {
-                state.photoCapturePhase = .processing(previewFrame: previewFrame)
-                state.screen = .cameraConfirmation
-            }
-
-            let photoData = await pendingPhotoData
-            guard isLatestRequest(captureGeneration) else { return }
-            guard let photoData else {
-                state.photoCapturePhase = .idle
-                state.screen = .camera
-                photoCaptureTask = nil
-                prepareCamera()
-                return
-            }
-
-            let shouldPrepareImage = state.isPreparingImage
-            state.photoCapturePhase = .ready(previewFrame: previewFrame, photoData: photoData)
-            photoCaptureTask = nil
-            state.screen = .cameraConfirmation
-            await cameraSession.stop(generation: nextCameraGeneration())
-
-            if shouldPrepareImage {
-                prepareCapturedPhoto()
-            }
-        }
-    }
-
-    func retakePhoto() {
-        guard state.isRetakeEnabled else { return }
-        photoCaptureTask?.cancel()
-        photoCaptureTask = nil
+    func cancelImagePreparation() {
         imagePreparationTask?.cancel()
         imagePreparationTask = nil
         state.isPreparingImage = false
-        state.photoCapturePhase = .idle
-        state.capturedViewFinderRegion = nil
-        state.screen = .camera
-        prepareCamera()
     }
 
-    func nextCameraGeneration() -> Int {
-        cameraGeneration += 1
-        return cameraGeneration
-    }
-
-    func isLatestRequest(_ generation: Int) -> Bool {
-        !Task.isCancelled && generation == cameraGeneration
-    }
-
-    func cancelCameraTasks() {
-        cameraSetupTask?.cancel()
-        cameraSwitchTask?.cancel()
-        photoCaptureTask?.cancel()
-        cameraSetupTask = nil
-        cameraSwitchTask = nil
-        photoCaptureTask = nil
-        state.isSwitchingCamera = false
+    func handleCameraEvent(_ event: CameraFlowEvent) {
+        switch event {
+        case .permissionDenied:
+            state.screen = .cameraPermissionError
+        case .unavailable:
+            state.screen = .cameraUnavailable
+        case .running:
+            if state.screen.isCameraError { state.screen = .camera }
+        case .freezeFrameReady:
+            state.screen = .cameraConfirmation
+        case .captureFinished(let photoData, let viewFinderRegion, let wantsHandoff):
+            state.screen = .cameraConfirmation
+            guard wantsHandoff else { return }
+            prepareCameraPhoto(photoData, viewFinderRegion: viewFinderRegion)
+        case .captureFailed, .captureAborted:
+            state.isPreparingImage = false
+            state.screen = .camera
+        }
     }
 }

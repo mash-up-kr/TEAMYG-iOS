@@ -10,7 +10,7 @@ import SwiftUI
 import UIComponent
 
 struct ToppingBorderEditView: View {
-    private static let historyButtonLength: CGFloat = 42
+    private static let historyBarInset: CGFloat = 18
     private static let chipLength: CGFloat = 36
 
     let topping: CGImage?
@@ -101,27 +101,14 @@ struct ToppingBorderEditView: View {
     }
 
     private var historyBar: some View {
-        HStack(spacing: .gap3) {
-            historyButton(.icArrowLeft, isEnabled: canUndo, action: onUndoTap)
-            historyButton(.icArrowRight, isEnabled: canRedo, action: onRedoTap)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
+        ToppingHistoryBar(
+            canUndo: canUndo,
+            canRedo: canRedo,
+            onUndoTap: onUndoTap,
+            onRedoTap: onRedoTap
+        )
+        .padding(.horizontal, Self.historyBarInset)
         .padding(.top, .padding3)
-    }
-
-    private func historyButton(_ icon: Image, isEnabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            icon
-                .renderingMode(.template)
-                .resizable()
-                .frame(width: 24, height: 24)
-                .foregroundStyle(isEnabled ? Color.gray900 : .gray300)
-                .frame(width: Self.historyButtonLength, height: Self.historyButtonLength)
-                .background(.gray100, in: .circle)
-        }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
     }
 
     private var preview: some View {
@@ -167,12 +154,12 @@ struct ToppingBorderEditView: View {
     }
 
     private var palette: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: .gap3) {
             ForEach(ToppingBorderColor.allCases) { color in
                 paletteChip(color)
-                    .frame(maxWidth: .infinity)
             }
         }
+        .padding(.vertical, .padding2)
     }
 
     private func paletteChip(_ color: ToppingBorderColor) -> some View {
@@ -183,24 +170,23 @@ struct ToppingBorderEditView: View {
                 .fill(color.chipColor)
                 .frame(width: Self.chipLength, height: Self.chipLength)
                 .overlay {
-                    if color.needsChipOutline {
-                        Circle().strokeBorder(.gray300, lineWidth: 1)
-                    }
+                    Circle()
+                        .strokeBorder(chipOutlineColor(for: color), lineWidth: 1)
                 }
                 .overlay {
                     if color == .none {
-                        chipSlash
+                        chipSlash(isSelected: color == border.color)
                     }
                 }
                 .overlay {
-                    if color == border.color {
+                    if color == border.color, color != .none {
                         Circle()
-                            .fill(.black50)
+                            .fill(.black25)
                             .overlay {
                                 Image.icCheck
                                     .renderingMode(.template)
                                     .resizable()
-                                    .frame(width: 18, height: 18)
+                                    .frame(width: 24, height: 24)
                                     .foregroundStyle(.whiteFixed)
                             }
                     }
@@ -209,11 +195,15 @@ struct ToppingBorderEditView: View {
         .buttonStyle(.plain)
     }
 
-    private var chipSlash: some View {
+    private func chipOutlineColor(for color: ToppingBorderColor) -> Color {
+        color == .none && color == border.color ? .gray850 : .black5
+    }
+
+    private func chipSlash(isSelected: Bool) -> some View {
         Path { path in
-            path.move(to: CGPoint(x: Self.chipLength * 0.24, y: Self.chipLength * 0.76))
-            path.addLine(to: CGPoint(x: Self.chipLength * 0.76, y: Self.chipLength * 0.24))
+            path.move(to: CGPoint(x: Self.chipLength * 0.15, y: Self.chipLength * 0.85))
+            path.addLine(to: CGPoint(x: Self.chipLength * 0.85, y: Self.chipLength * 0.15))
         }
-        .stroke(.gray500, lineWidth: 1)
+        .stroke(isSelected ? Color.gray850 : .gray100, lineWidth: 1)
     }
 }

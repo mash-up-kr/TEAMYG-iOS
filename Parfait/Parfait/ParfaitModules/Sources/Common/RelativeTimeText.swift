@@ -1,20 +1,20 @@
 //
 //  RelativeTimeText.swift
-//  GroupFeature
+//  Common
 //
 //  Created by 신상우 on 8/1/26.
 //
 
 import Foundation
 
-/// Grouptag-Chip 에 들어가는 상대시간 문구.
+/// 지난 시각을 한국어 문구로 옮긴다. Grouptag-Chip 과 캔버스 Spotlight Toast 가 함께 쓴다.
 ///
 /// 정책표: `방금 전` / `N분 전` / `N시간 전` / `N일 전` / `오래 전`(7일 이상).
-enum RelativeTimeText {
+public enum RelativeTimeText {
     /// 이 기간을 넘기면 경과 시간을 세지 않고 "오래 전" 으로 뭉갠다.
     private static let longAgoThresholdInDays = 7
 
-    static func string(from date: Date, now: Date = Date()) -> String {
+    public static func string(from date: Date, now: Date = Date()) -> String {
         let elapsed = now.timeIntervalSince(date)
         guard elapsed >= 60 else { return "방금 전" }
 
