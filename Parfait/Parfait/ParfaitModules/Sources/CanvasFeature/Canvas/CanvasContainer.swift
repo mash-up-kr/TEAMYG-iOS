@@ -14,29 +14,33 @@ struct CanvasContainer: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            VStack(spacing: -1) {
-                CanvasBoard(
-                    dateText: state.dateText,
-                    weekdayText: state.weekdayText,
-                    contentState: state.contentState,
-                    canvasContent: state.canvasContent,
-                    isDimmed: state.menuState == .sourceOptions,
-                    onCalendarTap: { send(.calendarTapped) }
-                )
-                .frame(maxHeight: .infinity)
-                .overlay(alignment: .bottom) {
-                    if state.menuState == .sourceOptions {
-                        CanvasMenuSourceOptions(
-                            onCameraOptionTap: { send(.cameraOptionTapped) },
-                            onGalleryOptionTap: { send(.galleryOptionTapped) }
-                        )
+            GeometryReader { proxy in
+                VStack(spacing: -1) {
+                    CanvasBoard(
+                        dateText: state.dateText,
+                        weekdayText: state.weekdayText,
+                        contentState: state.contentState,
+                        canvasContent: state.canvasContent,
+                        isDimmed: state.menuState == .sourceOptions,
+                        onCalendarTap: { send(.calendarTapped) }
+                    )
+                    .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                    .overlay(alignment: .bottom) {
+                        if state.menuState == .sourceOptions {
+                            CanvasMenuSourceOptions(
+                                onCameraOptionTap: { send(.cameraOptionTapped) },
+                                onGalleryOptionTap: { send(.galleryOptionTapped) }
+                            )
+                        }
                     }
-                }
 
-                CanvasMenuBar(
-                    onToppingAddTap: { send(.toppingAddTapped) },
-                    onCanvasEditTap: { send(.canvasEditTapped) }
-                )
+                    CanvasMenuBar(
+                        onToppingAddTap: { send(.toppingAddTapped) },
+                        onCanvasEditTap: { send(.canvasEditTapped) }
+                    )
+                }
+                .frame(width: CanvasArea.width(fitting: proxy.size))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .padding(.horizontal, .padding7)
             .padding(.vertical, .padding6)

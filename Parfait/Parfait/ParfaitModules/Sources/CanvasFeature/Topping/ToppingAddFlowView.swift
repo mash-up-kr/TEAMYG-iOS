@@ -11,51 +11,22 @@ import UIComponent
 struct ToppingAddFlowView: View {
     @State private var store: ToppingAddStore
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dismiss) private var dismiss
 
-    init(store: ToppingAddStore) {
+    private let makeAlbumPickerStore: AlbumPickerStoreFactory
+
+    init(store: ToppingAddStore, makeAlbumPickerStore: @escaping AlbumPickerStoreFactory) {
         _store = State(initialValue: store)
+        self.makeAlbumPickerStore = makeAlbumPickerStore
     }
 
     var body: some View {
         Group {
-            switch store.state.screen {
+            switch store.state.photoSource {
             case .camera:
-                ToppingCameraView(
-                    dateText: store.state.canvasDateText,
-                    weekdayText: store.state.canvasWeekdayText,
-                    flashMode: store.state.flashMode,
-                    isFlashControlEnabled: store.state.isFlashControlEnabled,
-                    isCameraReady: store.state.isCameraReady,
-                    showsToast: store.state.showsToast,
-                    previewSource: store.previewSource,
-                    send: { store.send($0) }
-                )
-
-            case .cameraConfirmation:
-                ToppingCameraConfirmationView(
-                    photoData: store.state.capturedPhotoData,
-                    onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) }
-                )
-
-            case .cameraPermissionError:
-                ToppingErrorView(
-                    title: "카메라 권한이 없어요",
-                    message: "설정에서 카메라 권한을 허용해 주세요",
-                    actionTitle: "설정으로 이동",
-                    onActionTap: { store.send(.settingsTapped) }
-                )
-
-            case .cameraUnavailable:
-                ToppingErrorView(
-                    title: "카메라를 사용할 수 없어요",
-                    message: "잠시 후 다시 시도해 주세요",
-                    actionTitle: "다시 시도",
-                    onActionTap: { store.send(.cameraRetryTapped) }
-                )
-
-            case .analysisLoading:
-                ToppingAnalysisLoadingView()
+                cameraFlow
+            case .gallery:
+                galleryFlow
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -79,6 +50,110 @@ struct ToppingAddFlowView: View {
             @unknown default:
                 break
             }
+        }
+    }
+
+    @ViewBuilder
+    private var cameraFlow: some View {
+        switch store.state.screen {
+        case .camera:
+            ToppingCameraView(
+                dateText: store.state.canvasDateText,
+                weekdayText: store.state.canvasWeekdayText,
+                flashMode: store.state.flashMode,
+                isFlashControlEnabled: store.state.isFlashControlEnabled,
+                isCameraReady: store.state.isCameraReady,
+                showsToast: store.state.showsToast,
+                previewSource: store.previewSource,
+                send: { store.send($0) }
+            )
+
+        case .cameraConfirmation:
+            ToppingCameraConfirmationView(
+                previewFrame: store.state.cameraPreviewFrame,
+                photoData: store.state.capturedPhotoData,
+                viewFinderRegion: store.state.capturedViewFinderRegion,
+                isRetakeEnabled: store.state.isRetakeEnabled,
+                isNextEnabled: store.state.isNextEnabled,
+                onRetakeTap: { store.send(.retakeTapped) },
+                onNextTap: { store.send(.photoConfirmed) }
+            )
+
+        case .cameraPermissionError:
+            ToppingErrorView(
+                title: "카메라 권한이 없어요",
+                message: "설정에서 카메라 권한을 허용해 주세요",
+                actionTitle: "설정으로 이동",
+                onActionTap: { store.send(.settingsTapped) }
+            )
+
+        case .cameraUnavailable:
+            ToppingErrorView(
+                title: "카메라를 사용할 수 없어요",
+                message: "잠시 후 다시 시도해 주세요",
+                actionTitle: "다시 시도",
+                onActionTap: { store.send(.cameraRetryTapped) }
+            )
+
+        default:
+            analysisFlow
+        }
+    }
+
+    private var galleryFlow: some View {
+        ZStack {
+            AlbumView(
+                makeAlbumPickerStore: { isLimited in
+                    makeAlbumPickerStore(isLimited) { assetIdentifier in
+                        store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
+                    }
+                }
+            )
+
+            if store.state.screen.isAnalysisScreen {
+                analysisFlow
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var analysisFlow: some View {
+        switch store.state.screen {
+        case .analysisLoading:
+            ToppingAnalysisLoadingView(
+                onCancelTap: {
+                    store.send(.analysisCancelled)
+                    dismiss()
+                }
+            )
+
+        case .analysisError:
+            ToppingAnalysisErrorView(
+                onCloseTap: { store.send(.analysisErrorClosed) }
+            )
+
+        case .candidateSelection:
+            if let analysis = store.state.analysis {
+                ToppingCandidateSelectionView(
+                    photo: analysis.photo,
+                    candidates: analysis.candidates,
+                    onBackTap: { store.send(.candidateSelectionBackTapped) },
+                    onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) }
+                )
+            }
+
+        case .cutoutResult:
+            if let extractedTopping = store.state.extractedTopping {
+                ToppingCutoutResultView(
+                    topping: extractedTopping,
+                    onCloseTap: { store.send(.cutoutResultClosed) },
+                    onPhotoEditTap: { store.send(.photoEditTapped) },
+                    onNextTap: { store.send(.cutoutConfirmed) }
+                )
+            }
+
+        default:
+            EmptyView()
         }
     }
 }

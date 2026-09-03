@@ -11,16 +11,27 @@ import PhotosUI
 import SwiftUI
 import UIComponent
 
+public typealias AlbumPickerStoreFactory = (
+    _ isLimited: Bool,
+    _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+) -> AlbumPickerStore
+
 @Observable @MainActor
 public final class AlbumPickerStore: MVIStore {
     public private(set) var state: State
     private let recentUploadsRepository: any RecentUploadsRepository
+    private let onPhotoConfirmed: (_ assetIdentifier: String) -> Void
     private var recentUploadsTask: Task<Void, Never>?
     private var limitedPickerTask: Task<Void, Never>?
     private var changeRelay: PhotoLibraryChangeRelay?
 
-    public init(isLimited: Bool, recentUploadsRepository: any RecentUploadsRepository) {
+    public init(
+        isLimited: Bool,
+        recentUploadsRepository: any RecentUploadsRepository,
+        onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void
+    ) {
         self.recentUploadsRepository = recentUploadsRepository
+        self.onPhotoConfirmed = onPhotoConfirmed
         state = State(isLimited: isLimited)
     }
 
@@ -37,13 +48,24 @@ public final class AlbumPickerStore: MVIStore {
         case .reselectTapped:
             presentLimitedLibraryPicker()
         case let .photoTapped(asset, thumbnail):
-            state.selectedPhoto = SelectedPhoto(id: asset.localIdentifier, asset: asset, thumbnail: thumbnail)
+            state.selectedPhoto = SelectedPhoto(
+                id: asset.localIdentifier,
+                asset: asset,
+                upload: nil,
+                thumbnail: thumbnail
+            )
         case let .recentUploadTapped(upload, thumbnail):
-            state.selectedPhoto = SelectedPhoto(id: upload.zoomIdentifier, asset: nil, thumbnail: thumbnail)
+            state.selectedPhoto = SelectedPhoto(
+                id: upload.zoomIdentifier,
+                asset: nil,
+                upload: upload,
+                thumbnail: thumbnail
+            )
         case .confirmReselectTapped:
             state.selectedPhoto = nil
         case .confirmNextTapped:
-            print("다음 버튼 클릭! 누끼를 따러갑니다")
+            guard let asset = state.selectedPhoto?.asset else { return }
+            onPhotoConfirmed(asset.localIdentifier)
         }
     }
 
@@ -140,13 +162,18 @@ public final class AlbumPickerStore: MVIStore {
     }
 
     /// 확인 화면(C-102-Confirm)에 표시할 선택 사진 — 기기 사진·최근 업로드 공용.
-    /// 썸네일은 고화질 로드 전 줌 애니메이션용 플레이스홀더.
+    /// 썸네일은 셀 크기로만 디코딩된 플레이스홀더라, 확인 화면은 아래 원본 출처에서 화면 크기로 다시 로드한다.
     struct SelectedPhoto: Equatable {
         /// matched geometry 전환 식별자 (기기 사진: localIdentifier, 최근 업로드: zoomIdentifier)
         let id: String
-        /// 고화질 후속 로드용 — 최근 업로드는 nil (썸네일이 이미 원본 데이터).
+        /// 고화질 후속 로드용 원본 출처 — 둘 중 하나만 채워진다.
         let asset: PHAsset?
+        let upload: StoredImage?
         let thumbnail: UIImage?
+
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.id == rhs.id && lhs.thumbnail === rhs.thumbnail
+        }
     }
 }
 

@@ -19,6 +19,7 @@ struct ToppingCameraView: View {
     let send: (ToppingAddStore.Intent) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
 
@@ -26,6 +27,11 @@ struct ToppingCameraView: View {
         ZStack {
             CameraPreviewView(previewSource: previewSource)
                 .ignoresSafeArea()
+                .onGeometryChange(for: CGRect.self) { geometry in
+                    geometry.frame(in: .global)
+                } action: { frame in
+                    previewFrame = frame
+                }
 
             dimOverlay
 
@@ -37,7 +43,7 @@ struct ToppingCameraView: View {
                     isFlashControlEnabled: isFlashControlEnabled,
                     isCameraReady: isCameraReady,
                     onFlashTap: { send(.flashTapped) },
-                    onShutterTap: { send(.shutterTapped) },
+                    onShutterTap: { send(.shutterTapped(viewFinderRegion: viewFinderRegion)) },
                     onSwitchCameraTap: { send(.cameraPositionTapped) }
                 )
                 .padding(.top, .padding3)
@@ -79,6 +85,10 @@ struct ToppingCameraView: View {
             .onChange(of: guideToasts.isEmpty) { _, isEmpty in
                 if isEmpty { send(.toastDismissed) }
             }
+    }
+
+    private var viewFinderRegion: ViewFinderRegion? {
+        ViewFinderRegion(previewFrame: previewFrame, viewFinderFrame: viewFinderFrame)
     }
 
     private func presentGuideToastIfNeeded() {

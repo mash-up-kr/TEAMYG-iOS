@@ -51,8 +51,11 @@ public final class CanvasStore: MVIStore {
             )
 
         case .galleryOptionTapped:
-            // C-102 커스텀 갤러리 구현 시 동일한 토핑 추가 흐름에 연결한다.
-            break
+            state.calendar.close()
+            state.menuState = .collapsed
+            state.toppingAddSource = .gallery(
+                canvasDate: CalendarDate(canvasDayContaining: dependencies.now())
+            )
 
         case .toppingAddFlowDismissed:
             state.toppingAddSource = nil
@@ -311,6 +314,7 @@ public extension CanvasStore {
 
     enum ToppingAddSource: Hashable, Identifiable, Sendable {
         case camera(canvasDate: CalendarDate)
+        case gallery(canvasDate: CalendarDate)
 
         public var id: Self { self }
     }
