@@ -33,19 +33,7 @@ public final class SettingStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .appeared:
-            // 계정 정보 화면에서 닉네임을 바꾸고 돌아온 경우도 있어 진입할 때마다 새로 조회한다.
-            guard loadTask == nil else { return }
-            loadTask = Task {
-                defer { loadTask = nil }
-                do {
-                    let account = try await memberUseCase.fetchMyAccount()
-                    state.nickname = account.nickname
-                    state.loginProvider = account.provider
-                } catch {
-                    // 에러 UI 정책 미정 — 로그만 남긴다 (docs/server-connection.md)
-                    print("내 계정 조회 실패: \(error)")
-                }
-            }
+            beginLoad()
         case .logoutTapped:
             guard actionTask == nil else { return }
             actionTask = Task {
@@ -75,12 +63,38 @@ public final class SettingStore: MVIStore {
         }
     }
 
+    /// 화면 진입 로드 — 계정 정보와 약관 목록.
+    /// 계정 정보 화면에서 닉네임을 바꾸고 돌아온 경우도 있어 진입할 때마다 새로 조회한다.
+    private func beginLoad() {
+        guard loadTask == nil else { return }
+        loadTask = Task {
+            defer { loadTask = nil }
+            do {
+                let account = try await memberUseCase.fetchMyAccount()
+                state.nickname = account.nickname
+                state.loginProvider = account.provider
+            } catch {
+                // 에러 UI 정책 미정 — 로그만 남긴다 (docs/server-connection.md)
+                print("내 계정 조회 실패: \(error)")
+            }
+            // 약관 내용은 바뀌지 않으므로 한 번만 조회한다.
+            guard state.policies.isEmpty else { return }
+            do {
+                state.policies = try await authUseCase.fetchPolicies()
+            } catch {
+                print("약관 목록 조회 실패: \(error)")
+            }
+        }
+    }
+
     public struct State: Equatable {
         public var nickname: String
         public var loginProvider: String
         /// 표시용 문자열 그대로 (예: "1.0v")
         public var appVersion: String
         public var isWithdrawPopupPresented: Bool
+        /// 서버가 내려준 약관 목록 — 설정 목록의 약관 행이 그대로 쓴다.
+        public var policies: [Policy] = []
 
         public init(
             nickname: String = "",

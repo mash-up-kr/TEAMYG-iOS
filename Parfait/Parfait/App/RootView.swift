@@ -93,26 +93,48 @@ struct RootView: View {
                 store: diContainer.makeSettingStore(),
                 makeAccountInfoStore: diContainer.makeAccountInfoStore
             )
-        case .canvas:
-            // ponytail: 그룹 목록 → 캔버스 라우팅이 붙기 전까지 쓰는 임시 진입값.
-            //           `AppRoute.canvas` 에 groupID·groupName 페이로드가 생기면 이 상수를 지운다.
-            CanvasView(
-                store: diContainer.makeCanvasStore(
-                    groupID: TemporaryCanvasEntry.groupID,
-                    groupName: TemporaryCanvasEntry.groupName
+        case .canvas(let groupID, let groupName):
+            // 서버 그룹 ID 는 Int, 라우트 페이로드는 String(`ParfaitGroup.id`·푸시 groupId) —
+            // 숫자가 아니면 갈 그룹이 없으므로 아무것도 그리지 않는다(정상 경로에선 항상 숫자).
+            if let groupID = Int(groupID) {
+                CanvasView(
+                    store: diContainer.makeCanvasStore(
+                        groupID: groupID,
+                        groupName: groupName
+                    ),
+                    router: router,
+                    makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
+                    toppingUseCase: diContainer.makeToppingUseCase(),
+                    imageUploadRepository: diContainer.makeImageUploadRepository(),
+                    recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
+                    toppingRenderer: diContainer.makeCanvasToppingRenderer()
+                )
+            }
+        case .groupSideMenu(let groupID, let groupName):
+            GroupSideMenuView(
+                store: diContainer.makeGroupSideMenuStore(
+                    groupID: groupID,
+                    groupName: groupName
                 ),
-                makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
-                toppingUseCase: diContainer.makeToppingUseCase(),
-                imageUploadRepository: diContainer.makeImageUploadRepository(),
-                recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
-                toppingRenderer: diContainer.makeCanvasToppingRenderer()
+                onExit: { handleSideMenuExit($0, groupName: groupName) }
             )
         }
     }
-}
 
-/// 그룹 목록 연결 전까지 캔버스가 바라볼 그룹. 개발 서버의 실제 그룹이다.
-enum TemporaryCanvasEntry {
-    static let groupID = 25
-    static let groupName = "사이드메뉴데모"
+    /// 사이드메뉴를 떠나는 지점의 화면 이동·확인 토스트 — 호출부(App) 몫이다 (`GroupSideMenuView.onExit`).
+    /// 나가기/신고는 그룹이 사라졌으므로 캔버스로 돌아가지 않고 G-001 로 스택을 재시작한다.
+    private func handleSideMenuExit(
+        _ exitAction: GroupSideMenuStore.ExitAction,
+        groupName: String
+    ) {
+        switch exitAction {
+        case .leave, .report:
+            router.replaceStack(with: .group)
+        case .discardNicknameEdit:
+            router.pop()
+        }
+        if let message = exitAction.completionToastMessage(groupName: groupName) {
+            toasts.append(YGToastItem(kind: .success, message: message))
+        }
+    }
 }

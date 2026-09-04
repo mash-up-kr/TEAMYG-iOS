@@ -117,7 +117,7 @@ public struct GroupView: View {
     private func parfaitScroll(groups: [ParfaitGroup]) -> some View {
         scaledScroll { scale in
             ParfaitSceneView(groups: groups, scale: scale) { group in
-                router.push(.canvas(groupID: group.id))
+                router.push(.canvas(groupID: group.id, groupName: group.name))
             }
         }
         // 툴팁은 바깥 아무 데나 눌러 닫는다 — 툴팁 자신은 위에 떠 있어 이 제스처를 가린다.

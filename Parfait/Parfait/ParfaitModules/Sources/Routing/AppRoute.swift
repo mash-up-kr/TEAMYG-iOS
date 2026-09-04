@@ -11,8 +11,11 @@ public enum AppRoute: Hashable {
     case setting
     /// 캔버스(C-001) — 어느 그룹의 파르페인지 들고 간다.
     ///
-    /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id` 다.
-    /// 엔티티가 아니라 원시값으로 넘긴다 — Routing 이 GroupDomain 에 의존하지 않게 하려는 것이고,
-    /// 캔버스가 그룹에서 필요한 건 조회 키뿐이다.
-    case canvas(groupID: String)
+    /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id`·`name` 이다.
+    /// 엔티티가 아니라 원시값으로 넘긴다 — Routing 이 GroupDomain 에 의존하지 않게 하려는 것이다.
+    /// `groupName` 은 캔버스 상단 바 제목 — 캔버스 API 응답에 그룹명이 없어 진입점이 들고 간다.
+    /// 이름을 모르는 진입점(푸시 탭)은 빈 문자열로 온다.
+    case canvas(groupID: String, groupName: String)
+    /// 그룹 사이드메뉴(S-101) — 캔버스(C-001) 상단 바 더보기(⋯)로 진입한다. 페이로드 규칙은 `canvas` 와 같다.
+    case groupSideMenu(groupID: String, groupName: String)
 }

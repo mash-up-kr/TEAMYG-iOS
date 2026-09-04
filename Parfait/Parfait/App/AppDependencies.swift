@@ -84,6 +84,14 @@ struct AppDependencies {
         GroupUseCaseImpl(groupRepository: GroupRepositoryImpl(networkClient: networkClient))
     }
 
+    func makeGroupSideMenuStore(groupID: String, groupName: String) -> GroupSideMenuStore {
+        GroupSideMenuStore(
+            groupID: groupID,
+            groupName: groupName,
+            groupUseCase: makeGroupUseCase()
+        )
+    }
+
     func makeToppingUseCase() -> ToppingUseCaseImpl {
         ToppingUseCaseImpl(
             imageUploadRepository: ImageUploadRepositoryImpl(networkClient: networkClient),
