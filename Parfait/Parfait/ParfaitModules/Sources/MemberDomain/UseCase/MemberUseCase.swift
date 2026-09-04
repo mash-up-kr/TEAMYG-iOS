@@ -10,6 +10,8 @@ public protocol MemberUseCase: Sendable {
     func fetchMyAccount() async throws -> MemberAccount
     func changeNickname(_ nickname: String) async throws -> String
     func withdraw() async throws
+    /// 기기(FCM) 토큰 등록/갱신.
+    func registerDeviceToken(_ token: String) async throws
 }
 
 public struct MemberUseCaseImpl: MemberUseCase {
@@ -29,5 +31,9 @@ public struct MemberUseCaseImpl: MemberUseCase {
 
     public func withdraw() async throws {
         try await memberRepository.withdraw()
+    }
+
+    public func registerDeviceToken(_ token: String) async throws {
+        try await memberRepository.registerDeviceToken(token)
     }
 }

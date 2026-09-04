@@ -10,6 +10,8 @@ import AuthData
 
 @main
 struct ParfaitApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         KakaoAuthConfigurator.initialize(
             appKey: Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String ?? ""
@@ -18,7 +20,7 @@ struct ParfaitApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(notificationRoutes: appDelegate.notificationRoutes)
                 .onOpenURL { url in
                     KakaoAuthConfigurator.handleOpenURL(url)
                 }

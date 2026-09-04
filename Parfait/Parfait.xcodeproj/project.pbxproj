@@ -15,6 +15,9 @@
 		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
 		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
 		AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7A2FECFD6700703DBC /* MemberData */; };
+		AB832DE73045513400DDC625 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000002 /* FirebaseAnalytics */; };
+		AB832DE83045513400DDC625 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000003 /* FirebaseCrashlytics */; };
+		AB832DE93045513400DDC625 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000004 /* FirebaseMessaging */; };
 		DEC0DE000000000000000001 /* UIComponent in Frameworks */ = {isa = PBXBuildFile; productRef = DEC0DE000000000000000002 /* UIComponent */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +30,10 @@
 		ABCA0DE000000000000000AA /* Exceptions for "Parfait" folder in "Parfait" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				"Config/GoogleService-Info.plist",
+				Config/Secrets.xcconfig,
+				Config/Secrets.xcconfig.template,
+				Config/Shared.xcconfig,
 				Info.plist,
 				ParfaitModules,
 			);
@@ -55,6 +62,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB832DE93045513400DDC625 /* FirebaseMessaging in Frameworks */,
+				AB832DE83045513400DDC625 /* FirebaseCrashlytics in Frameworks */,
+				AB832DE73045513400DDC625 /* FirebaseAnalytics in Frameworks */,
 				AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */,
 				AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */,
 				AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */,
@@ -113,6 +123,8 @@
 				ABB461F72FD7FD12000B89AC /* Sources */,
 				ABB461F82FD7FD12000B89AC /* Frameworks */,
 				ABB461F92FD7FD12000B89AC /* Resources */,
+				FB0000000000000000000005 /* Copy GoogleService-Info.plist */,
+				FB0000000000000000000006 /* Upload dSYMs to Crashlytics */,
 			);
 			buildRules = (
 			);
@@ -131,6 +143,9 @@
 				AB4D0E762FECFD6700703DBC /* GroupFeature */,
 				AB4D0E782FECFD6700703DBC /* LoginFeature */,
 				AB034109300F3F2800ACF3EF /* SettingFeature */,
+				FB0000000000000000000002 /* FirebaseAnalytics */,
+				FB0000000000000000000003 /* FirebaseCrashlytics */,
+				FB0000000000000000000004 /* FirebaseMessaging */,
 			);
 			productName = Parfait;
 			productReference = ABB461FB2FD7FD12000B89AC /* Parfait.app */;
@@ -185,6 +200,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				AB4D0E612FECC28D00703DBC /* XCLocalSwiftPackageReference "Parfait/ParfaitModules" */,
+				FB0000000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ABB461FC2FD7FD12000B89AC /* Products */;
@@ -213,6 +229,44 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		FB0000000000000000000005 /* Copy GoogleService-Info.plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Parfait/Config/GoogleService-Info.plist",
+			);
+			name = "Copy GoogleService-Info.plist";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo 🔨\"GoogleService.plist 복사\"\n# GoogleService-Info.plist 는 gitignore 대상 — 팀 공유 위치에서 받아 Config/ 에 둔다.\nPLIST=\"${SRCROOT}/Parfait/Config/GoogleService-Info.plist\"\nif [ -f \"$PLIST\" ]; then\n  cp \"$PLIST\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/\"\nelse\n  echo \"warning: GoogleService-Info.plist 없음 (${PLIST}) — Firebase 미설정 상태로 빌드됩니다.\"\nfi\n";
+		};
+		FB0000000000000000000006 /* Upload dSYMs to Crashlytics */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+				"$(DWARF_DSYM_FOLDER_PATH)/$(DWARF_DSYM_FILE_NAME)/Contents/Info.plist",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/GoogleService-Info.plist",
+				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
+			);
+			name = "Upload dSYMs to Crashlytics";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo 🔨\"dSYM 업로드\"\n# plist(Firebase 설정)나 dSYM 이 없으면 스킵 — 팀원 로컬/Debug 빌드를 깨지 않기 위함.\nPLIST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist\"\nDSYM=\"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}\"\nif [ ! -f \"$PLIST\" ] || [ ! -d \"$DSYM\" ]; then\n  echo \"note: Crashlytics dSYM 업로드 스킵 (GoogleService-Info.plist 또는 dSYM 없음)\"\n  exit 0\nfi\n\"${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		ABB461F72FD7FD12000B89AC /* Sources */ = {
@@ -554,6 +608,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		FB0000000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		AB034109300F3F2800ACF3EF /* SettingFeature */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -590,6 +655,21 @@
 		DEC0DE000000000000000002 /* UIComponent */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = UIComponent;
+		};
+		FB0000000000000000000002 /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0000000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		FB0000000000000000000003 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0000000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		FB0000000000000000000004 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0000000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
