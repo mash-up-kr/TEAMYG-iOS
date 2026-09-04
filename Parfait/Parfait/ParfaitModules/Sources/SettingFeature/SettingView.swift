@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/21/26.
 //
 
+import AuthDomain
 import SwiftUI
 import UIComponent
 
@@ -48,11 +49,10 @@ public struct SettingView: View {
             switch route {
             case .accountInfo:
                 AccountInfoView(store: makeAccountInfoStore(store.state.nickname))
-            case .termsOfService:
-                YGWebView(title: "서비스 이용약관", url: .termsOfService)
-            case .privacyPolicy:
-                YGWebView(title: "개인정보 처리 방침", url: .privacyPolicy)
             }
+        }
+        .navigationDestination(for: Policy.self) { policy in
+            YGWebView(title: policy.title, url: policy.url)
         }
     }
 
@@ -84,15 +84,17 @@ public struct SettingView: View {
 
     private var settingList: some View {
         VStack(spacing: .gap3) {
-            navigationRow("계정 정보", route: .accountInfo)
-            navigationRow("서비스 이용약관", route: .termsOfService)
-            navigationRow("개인정보 처리 방침", route: .privacyPolicy)
+            navigationRow("계정 정보", value: SettingRoute.accountInfo)
+            // 약관 행은 서버 목록(제목·원문 주소) 그대로 — 로드 전에는 표시하지 않는다.
+            ForEach(store.state.policies) { policy in
+                navigationRow(policy.title, value: policy)
+            }
             versionRow
         }
     }
 
-    private func navigationRow(_ title: String, route: SettingRoute) -> some View {
-        NavigationLink(value: route) {
+    private func navigationRow(_ title: String, value: some Hashable) -> some View {
+        NavigationLink(value: value) {
             navigationRowLabel(title)
         }
         .buttonStyle(.plain)
@@ -137,12 +139,6 @@ public struct SettingView: View {
             YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
         }
     }
-}
-
-// ponytail: 실제 약관·방침 주소 확정 전 임시 링크
-private extension URL {
-    static let termsOfService = URL(string: "https://www.apple.com/legal/internet-services/terms/site.html")!
-    static let privacyPolicy = URL(string: "https://www.apple.com/legal/privacy/en-ww/")!
 }
 
 #Preview {

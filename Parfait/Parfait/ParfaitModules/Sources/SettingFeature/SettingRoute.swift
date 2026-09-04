@@ -9,6 +9,4 @@
 /// 피처 안에서만 쓰는 화면은 여기로. (하이브리드 라우팅 규칙: docs/architecture.md)
 public enum SettingRoute: Hashable {
     case accountInfo
-    case termsOfService
-    case privacyPolicy
 }
