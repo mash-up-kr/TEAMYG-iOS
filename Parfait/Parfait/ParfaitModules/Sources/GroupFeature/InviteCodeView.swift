@@ -14,9 +14,6 @@ public struct InviteCodeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @State private var store: InviteCodeStore
-    /// 클립보드 문자열 존재 여부만으로 노출 결정 — 내용 형식 검사는 시스템
-    /// 붙여넣기 허용 팝업을 띄우므로 하지 않고, 탭 이후 Store 가 검증한다.
-    @State private var isPasteButtonVisible = false
 
     public init(store: InviteCodeStore) {
         _store = State(initialValue: store)
@@ -45,11 +42,6 @@ public struct InviteCodeView: View {
                 )
 
                 errorMessage
-
-                if isPasteButtonVisible {
-                    pasteButton
-                        .frame(maxWidth: .infinity)
-                }
             }
             .frame(width: InviteCodeInputField.fieldWidth, alignment: .leading)
 
@@ -63,11 +55,16 @@ public struct InviteCodeView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 20)
-        // 진입 시(initial) + 코드 복사를 위해 앱을 나갔다 돌아왔을 때 클립보드 확인
+        // 진입 시(initial) + 코드 복사를 위해 앱을 나갔다 돌아왔을 때 클립보드를 읽어
+        // 입력창에 자동으로 채운다. 다른 앱에서 복사한 내용이면 시스템 붙여넣기
+        // 허용 알럿이 뜨고, 거부 시 nil 이라 아무 일도 없다. 검증은 Store 가 한다.
         .onChange(of: scenePhase, initial: true) { _, newPhase in
-            if newPhase == .active {
-                isPasteButtonVisible = UIPasteboard.general.hasStrings
-            }
+            guard newPhase == .active,
+                  store.state.inviteCode.isEmpty, // 입력 중인 내용을 덮어쓰지 않는다
+                  UIPasteboard.general.hasStrings,
+                  let pastedString = UIPasteboard.general.string
+            else { return }
+            store.send(.pasted(pastedString))
         }
         .onDisappear {
             store.send(.screenDisappeared)
@@ -106,19 +103,6 @@ public struct InviteCodeView: View {
         Text("초대코드는 그룹원에게 직접 받을 수 있어요")
             .suit(.body02Regular)
             .foregroundStyle(.gray500)
-    }
-
-    // MARK: - 붙여넣기 (시스템 PasteButton — 탭 시점에만 클립보드 접근이 허용돼 팝업이 없다)
-
-    private var pasteButton: some View {
-        PasteButton(payloadType: String.self) { strings in
-            guard let pastedString = strings.first else { return }
-            Task { @MainActor in
-                store.send(.pasted(pastedString))
-                isPasteButtonVisible = false
-            }
-        }
-        .buttonBorderShape(.capsule)
     }
 
     // MARK: - 에러 메시지 (기본 hidden, 공간은 항상 예약해 레이아웃 밀림 방지)
