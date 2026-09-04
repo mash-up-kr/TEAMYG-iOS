@@ -90,9 +90,9 @@ public final class CanvasStore: MVIStore {
         case .pastParfaitNudgeTapped:
             openPastParfaitNudgeTarget()
 
-        case .moreMenuTapped:
-            // 후속 화면 정책 확정 전까지 외형과 Intent 경계만 제공한다.
-            break
+        case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
+            state.calendar.close()
+            state.menuState = .collapsed
         }
     }
 

@@ -16,4 +16,6 @@ public enum AppRoute: Hashable {
     /// `groupName` 은 캔버스 상단 바 제목 — 캔버스 API 응답에 그룹명이 없어 진입점이 들고 간다.
     /// 이름을 모르는 진입점(푸시 탭)은 빈 문자열로 온다.
     case canvas(groupID: String, groupName: String)
+    /// 그룹 사이드메뉴(S-101) — 캔버스(C-001) 상단 바 더보기(⋯)로 진입한다. 페이로드 규칙은 `canvas` 와 같다.
+    case groupSideMenu(groupID: String, groupName: String)
 }

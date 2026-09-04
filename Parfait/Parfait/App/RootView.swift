@@ -102,6 +102,7 @@ struct RootView: View {
                         groupID: groupID,
                         groupName: groupName
                     ),
+                    router: router,
                     makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
                     toppingUseCase: diContainer.makeToppingUseCase(),
                     imageUploadRepository: diContainer.makeImageUploadRepository(),
@@ -109,6 +110,31 @@ struct RootView: View {
                     toppingRenderer: diContainer.makeCanvasToppingRenderer()
                 )
             }
+        case .groupSideMenu(let groupID, let groupName):
+            GroupSideMenuView(
+                store: diContainer.makeGroupSideMenuStore(
+                    groupID: groupID,
+                    groupName: groupName
+                ),
+                onExit: { handleSideMenuExit($0, groupName: groupName) }
+            )
+        }
+    }
+
+    /// 사이드메뉴를 떠나는 지점의 화면 이동·확인 토스트 — 호출부(App) 몫이다 (`GroupSideMenuView.onExit`).
+    /// 나가기/신고는 그룹이 사라졌으므로 캔버스로 돌아가지 않고 G-001 로 스택을 재시작한다.
+    private func handleSideMenuExit(
+        _ exitAction: GroupSideMenuStore.ExitAction,
+        groupName: String
+    ) {
+        switch exitAction {
+        case .leave, .report:
+            router.replaceStack(with: .group)
+        case .discardNicknameEdit:
+            router.pop()
+        }
+        if let message = exitAction.completionToastMessage(groupName: groupName) {
+            toasts.append(YGToastItem(kind: .success, message: message))
         }
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Routing
 import SwiftUI
 import UIComponent
 
@@ -15,6 +16,8 @@ public struct CanvasView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
+    /// 사이드메뉴(S-101)로 나가는 통로. 피처 밖 화면이라 `AppRoute` 로 간다.
+    private let router: any Router
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingUseCase: any ToppingUseCase
     private let imageUploadRepository: any ImageUploadRepository
@@ -23,6 +26,7 @@ public struct CanvasView: View {
 
     public init(
         store: CanvasStore,
+        router: any Router,
         makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
         toppingUseCase: any ToppingUseCase,
         imageUploadRepository: any ImageUploadRepository,
@@ -30,6 +34,7 @@ public struct CanvasView: View {
         toppingRenderer: CanvasToppingRenderer
     ) {
         _store = State(initialValue: store)
+        self.router = router
         self.makeAlbumPickerStore = makeAlbumPickerStore
         self.toppingUseCase = toppingUseCase
         self.imageUploadRepository = imageUploadRepository
@@ -46,7 +51,15 @@ public struct CanvasView: View {
                 YGTopBar(
                     .canvas(title: store.state.groupName, members: topBarMembers),
                     onLeadingTap: { dismiss() },
-                    onTrailingTap: { store.send(.moreMenuTapped) }
+                    onTrailingTap: {
+                        store.send(.moreMenuTapped)
+                        router.push(
+                            .groupSideMenu(
+                                groupID: String(store.groupID),
+                                groupName: store.state.groupName
+                            )
+                        )
+                    }
                 )
 
                 CanvasContainer(
