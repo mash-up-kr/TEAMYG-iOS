@@ -196,7 +196,8 @@ private struct CameraControlBar: View {
 
     var body: some View {
         HStack {
-            YGCircleButton(.icLightning, variant: flashMode == .enabled ? .secondary : .default, action: onFlashTap)
+            YGCircleButton(flashMode == .enabled ? .icLightningFill : .icLightning,
+                           variant: .default, action: onFlashTap)
                 .disabled(!isFlashControlEnabled)
                 .opacity(isFlashControlEnabled ? 1 : 0.5)
 

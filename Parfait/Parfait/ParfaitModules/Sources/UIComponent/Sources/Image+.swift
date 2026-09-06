@@ -38,6 +38,7 @@ public extension Image {
     static let icGallery = Image("Ic_Gallery", bundle: .module)
     static let icHamburger = Image("Ic_Hamburger", bundle: .module)
     static let icLightning = Image("Ic_Lightning", bundle: .module)
+    static let icLightningFill = Image("Ic_Lightning_Fill", bundle: .module)
     static let icMinusRound = Image("Ic_Minus_Round", bundle: .module)
     static let icNewgroup = Image("Ic_Newgroup", bundle: .module)
     static let icPlus = Image("Ic_Plus", bundle: .module)
@@ -85,6 +86,7 @@ public extension UIImage {
     static var icGallery: UIImage { UIImage(resource: ImageResource(name: "Ic_Gallery", bundle: .module)) }
     static var icHamburger: UIImage { UIImage(resource: ImageResource(name: "Ic_Hamburger", bundle: .module)) }
     static var icLightning: UIImage { UIImage(resource: ImageResource(name: "Ic_Lightning", bundle: .module)) }
+    static var icLightningFill: UIImage { UIImage(resource: ImageResource(name: "Ic_Lightning_Fill", bundle: .module)) }
     static var icMinusRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Minus_Round", bundle: .module)) }
     static var icNewgroup: UIImage { UIImage(resource: ImageResource(name: "Ic_Newgroup", bundle: .module)) }
     static var icPlus: UIImage { UIImage(resource: ImageResource(name: "Ic_Plus", bundle: .module)) }
