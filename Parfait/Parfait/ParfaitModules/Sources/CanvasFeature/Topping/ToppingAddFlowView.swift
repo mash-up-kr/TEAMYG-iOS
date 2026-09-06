@@ -214,6 +214,7 @@ struct ToppingAddFlowView: View {
                     onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                     onColorSelect: { store.send(.borderColorSelected($0)) },
                     onPreviewLongEdgeChange: { store.send(.borderPreviewLongEdgeChanged($0)) },
+                    placementScale: nil,
                     showsAreaTab: store.state.cutoutPath != .recentUpload,
                     onAreaTabTap: { store.send(.borderAreaTabTapped) },
                     onCloseTap: { store.send(.borderEditClosed) },

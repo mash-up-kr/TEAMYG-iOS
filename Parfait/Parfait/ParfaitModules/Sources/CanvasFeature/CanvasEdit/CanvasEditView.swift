@@ -158,6 +158,7 @@ struct CanvasEditView: View {
                 onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                 onColorSelect: { store.send(.borderColorSelected($0)) },
                 onPreviewLongEdgeChange: { borderPreviewLongEdge = $0 },
+                placementScale: store.state.borderEditingTopping?.placement.scale,
                 showsAreaTab: false,
                 singleTitle: "테두리 편집",
                 onAreaTabTap: {},

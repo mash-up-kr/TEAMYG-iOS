@@ -24,6 +24,7 @@ struct ToppingBorderEditView: View {
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
     let onPreviewLongEdgeChange: (CGFloat) -> Void
+    let placementScale: Double?
     let showsAreaTab: Bool
     let singleTitle: String
     let onAreaTabTap: () -> Void
@@ -46,6 +47,7 @@ struct ToppingBorderEditView: View {
         onWidthEditingChange: @escaping (Bool) -> Void,
         onColorSelect: @escaping (ToppingBorderColor) -> Void,
         onPreviewLongEdgeChange: @escaping (CGFloat) -> Void,
+        placementScale: Double?,
         showsAreaTab: Bool,
         singleTitle: String = "테두리",
         onAreaTabTap: @escaping () -> Void,
@@ -63,6 +65,7 @@ struct ToppingBorderEditView: View {
         self.onWidthEditingChange = onWidthEditingChange
         self.onColorSelect = onColorSelect
         self.onPreviewLongEdgeChange = onPreviewLongEdgeChange
+        self.placementScale = placementScale
         self.showsAreaTab = showsAreaTab
         self.singleTitle = singleTitle
         self.onAreaTabTap = onAreaTabTap
@@ -123,7 +126,7 @@ struct ToppingBorderEditView: View {
                     topping: topping,
                     silhouette: silhouette,
                     borderColor: border.color.strokeColor,
-                    borderWidth: CGFloat(border.width),
+                    borderWidth: previewBorderWidth,
                     size: fittedToppingSize
                 )
             } else {
@@ -136,35 +139,67 @@ struct ToppingBorderEditView: View {
         .task(id: topping.map(ObjectIdentifier.init)) {
             toppingMargin = await Self.opaqueMargin(of: topping)
         }
-        .onChange(of: fittedToppingSize, initial: true) { _, size in
-            onPreviewLongEdgeChange(max(size.width, size.height))
+        .onChange(of: placedLongSide, initial: true) { _, longSide in
+            onPreviewLongEdgeChange(longSide)
         }
         .padding(.horizontal, .padding7)
         .padding(.vertical, .padding6)
     }
 
+    private var toppingPixelSize: CGSize {
+        guard let topping, topping.width > 0, topping.height > 0 else { return .zero }
+        return CGSize(width: topping.width, height: topping.height)
+    }
+
+    private var placedLongSide: CGFloat {
+        let pixelSize = toppingPixelSize
+        guard pixelSize.width > 0, previewAreaSize.width > 0 else { return 0 }
+
+        let canvasSize = CGSize(
+            width: previewAreaSize.width,
+            height: previewAreaSize.width / CanvasArea.aspectRatio
+        )
+        let scale = placementScale
+            ?? ToppingPlacement.initial(toppingPixelSize: pixelSize, canvasSize: canvasSize).scale
+
+        return ToppingPlacement(scale: scale).longSide(in: canvasSize)
+    }
+
+    private var previewZoom: CGFloat {
+        let previewLongSide = max(fittedToppingSize.width, fittedToppingSize.height)
+        guard placedLongSide > 0, previewLongSide > 0 else { return 1 }
+
+        return previewLongSide / placedLongSide
+    }
+
+    private var previewBorderWidth: CGFloat {
+        CGFloat(border.width) * previewZoom
+    }
+
     private var fittedToppingSize: CGSize {
-        guard let topping, topping.width > 0, topping.height > 0,
-              previewAreaSize.width > 0, previewAreaSize.height > 0
+        let pixelSize = toppingPixelSize
+        guard pixelSize.width > 0, previewAreaSize.width > 0, previewAreaSize.height > 0
         else { return .zero }
 
-        let pixelSize = CGSize(width: topping.width, height: topping.height)
         let aspectFit = min(previewAreaSize.width / pixelSize.width, previewAreaSize.height / pixelSize.height)
         let scale = border.isVisible
-            ? min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize, borderWidth: CGFloat(border.width)))
+            ? min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize))
             : aspectFit
 
         return CGSize(width: pixelSize.width * scale, height: pixelSize.height * scale)
     }
 
-    private func maximumScaleFittingBorder(pixelSize: CGSize, borderWidth: CGFloat) -> CGFloat {
+    private func maximumScaleFittingBorder(pixelSize: CGSize) -> CGFloat {
         let objectHalfWidth = pixelSize.width / 2 - toppingMargin.width
         let objectHalfHeight = pixelSize.height / 2 - toppingMargin.height
-        guard objectHalfWidth > 0, objectHalfHeight > 0 else { return .greatestFiniteMagnitude }
+        guard objectHalfWidth > 0, objectHalfHeight > 0, placedLongSide > 0
+        else { return .greatestFiniteMagnitude }
+
+        let borderPixels = CGFloat(border.width) * max(pixelSize.width, pixelSize.height) / placedLongSide
 
         return min(
-            max(0, previewAreaSize.width / 2 - borderWidth) / objectHalfWidth,
-            max(0, previewAreaSize.height / 2 - borderWidth) / objectHalfHeight
+            previewAreaSize.width / 2 / (objectHalfWidth + borderPixels),
+            previewAreaSize.height / 2 / (objectHalfHeight + borderPixels)
         )
     }
 
