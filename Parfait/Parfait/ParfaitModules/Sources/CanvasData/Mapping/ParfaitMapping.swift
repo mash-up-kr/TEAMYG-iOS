@@ -176,7 +176,8 @@ private extension ToppingBorderStyle {
             self = .none
             return
         }
-        self = .solid(colorHex: colorHex, width: width)
+        let range = Self.widthRange
+        self = .solid(colorHex: colorHex, width: min(max(width, range.lowerBound), range.upperBound))
     }
 }
 

@@ -18,6 +18,7 @@ struct ToppingPlacementView: View {
     let topping: ExtractedTopping
     let silhouette: CGImage?
     let borderColor: Color?
+    let borderWidth: CGFloat
     let editor: ToppingPlacementEditor
     let isSaving: Bool
     let onCanvasResize: (CGSize) -> Void
@@ -85,18 +86,13 @@ struct ToppingPlacementView: View {
     }
 
     private var placedTopping: some View {
-        ZStack {
-            if let silhouette, let borderColor {
-                Image(decorative: silhouette, scale: 1, orientation: .up)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(borderColor)
-            }
-
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
-        }
-        .frame(width: renderedSize.width, height: renderedSize.height)
+        ToppingBorderedImage(
+            topping: topping.image,
+            silhouette: silhouette,
+            borderColor: borderColor,
+            borderWidth: borderWidth,
+            size: renderedSize
+        )
         .overlay {
             Rectangle()
                 .strokeBorder(Color.whiteFixed, lineWidth: Self.selectionStrokeWidth)

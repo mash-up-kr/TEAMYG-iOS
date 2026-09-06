@@ -148,7 +148,9 @@ struct CanvasPlacedImage: View {
 
     var body: some View {
         content
-            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge)) { await load() }
+            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge, borderRedrawKey: borderRedrawKey)) {
+                await load()
+            }
     }
 
     @ViewBuilder
@@ -158,6 +160,7 @@ struct CanvasPlacedImage: View {
                 topping: topping,
                 silhouette: silhouette,
                 borderColor: canvasImage.border.map { Color(hex: $0.colorHex) },
+                borderWidth: canvasImage.border.map { CGFloat($0.width) } ?? 0,
                 placement: placement,
                 canvasSize: canvasSize,
                 isSelected: isSelected,
@@ -192,7 +195,12 @@ struct CanvasPlacedImage: View {
             silhouette = nil
             return
         }
-        let rendered = await renderer.silhouette(of: loaded, at: canvasImage.imageURL, width: border.width)
+        let rendered = await renderer.silhouette(
+            of: loaded,
+            at: canvasImage.imageURL,
+            width: border.width,
+            renderedLongEdge: longSide
+        )
         guard !Task.isCancelled else { return }
         silhouette = rendered
     }
@@ -215,17 +223,24 @@ struct CanvasPlacedImage: View {
         ToppingDecodeBucket.longEdge(covering: neededLongEdgePixels)
     }
 
+    private var borderRedrawKey: Int {
+        guard let border = canvasImage.border, longSide > 0 else { return 0 }
+        return Int((CGFloat(border.width) / longSide * decodeLongEdge).rounded())
+    }
+
     /// 확대해서 버킷이 올라가면 다시 받아야 하므로 해상도도 키에 넣는다.
     /// 버킷 안에서 배율만 오르내리는 동안에는 값이 그대로라 재디코딩이 일어나지 않는다.
     private struct LoadKey: Equatable {
         let imageURL: URL
         let border: CanvasStore.CanvasImageBorder?
         let decodeLongEdge: CGFloat
+        let borderRedrawKey: Int
 
-        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat) {
+        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat, borderRedrawKey: Int) {
             imageURL = canvasImage.imageURL
             border = canvasImage.border
             self.decodeLongEdge = decodeLongEdge
+            self.borderRedrawKey = borderRedrawKey
         }
     }
 }

@@ -23,6 +23,7 @@ struct ToppingBorderEditView: View {
     let onWidthChange: (Double) -> Void
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
+    let onPreviewLongEdgeChange: (CGFloat) -> Void
     let showsAreaTab: Bool
     let singleTitle: String
     let onAreaTabTap: () -> Void
@@ -30,6 +31,8 @@ struct ToppingBorderEditView: View {
     let onConfirmTap: () -> Void
 
     @State private var selectedTab = 1
+    @State private var previewAreaSize: CGSize = .zero
+    @State private var toppingMargin: CGSize = .zero
 
     init(
         topping: CGImage?,
@@ -42,6 +45,7 @@ struct ToppingBorderEditView: View {
         onWidthChange: @escaping (Double) -> Void,
         onWidthEditingChange: @escaping (Bool) -> Void,
         onColorSelect: @escaping (ToppingBorderColor) -> Void,
+        onPreviewLongEdgeChange: @escaping (CGFloat) -> Void,
         showsAreaTab: Bool,
         singleTitle: String = "테두리",
         onAreaTabTap: @escaping () -> Void,
@@ -58,6 +62,7 @@ struct ToppingBorderEditView: View {
         self.onWidthChange = onWidthChange
         self.onWidthEditingChange = onWidthEditingChange
         self.onColorSelect = onColorSelect
+        self.onPreviewLongEdgeChange = onPreviewLongEdgeChange
         self.showsAreaTab = showsAreaTab
         self.singleTitle = singleTitle
         self.onAreaTabTap = onAreaTabTap
@@ -113,26 +118,66 @@ struct ToppingBorderEditView: View {
 
     private var preview: some View {
         ZStack {
-            if let silhouette, let strokeColor = border.color.strokeColor {
-                Image(decorative: silhouette, scale: 1, orientation: .up)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(strokeColor)
-                    .scaledToFit()
-            }
-
             if let topping {
-                Image(decorative: topping, scale: 1, orientation: .up)
-                    .resizable()
-                    .scaledToFit()
+                ToppingBorderedImage(
+                    topping: topping,
+                    silhouette: silhouette,
+                    borderColor: border.color.strokeColor,
+                    borderWidth: CGFloat(border.width),
+                    size: fittedToppingSize
+                )
             } else {
                 ProgressView()
                     .tint(.gray500)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { previewAreaSize = $0 }
+        .task(id: topping.map(ObjectIdentifier.init)) {
+            toppingMargin = await Self.opaqueMargin(of: topping)
+        }
+        .onChange(of: fittedToppingSize, initial: true) { _, size in
+            onPreviewLongEdgeChange(max(size.width, size.height))
+        }
         .padding(.horizontal, .padding7)
         .padding(.vertical, .padding6)
+    }
+
+    private var fittedToppingSize: CGSize {
+        guard let topping, topping.width > 0, topping.height > 0,
+              previewAreaSize.width > 0, previewAreaSize.height > 0
+        else { return .zero }
+
+        let pixelSize = CGSize(width: topping.width, height: topping.height)
+        let aspectFit = min(previewAreaSize.width / pixelSize.width, previewAreaSize.height / pixelSize.height)
+        let scale = border.isVisible
+            ? min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize, borderWidth: CGFloat(border.width)))
+            : aspectFit
+
+        return CGSize(width: pixelSize.width * scale, height: pixelSize.height * scale)
+    }
+
+    private func maximumScaleFittingBorder(pixelSize: CGSize, borderWidth: CGFloat) -> CGFloat {
+        let objectHalfWidth = pixelSize.width / 2 - toppingMargin.width
+        let objectHalfHeight = pixelSize.height / 2 - toppingMargin.height
+        guard objectHalfWidth > 0, objectHalfHeight > 0 else { return .greatestFiniteMagnitude }
+
+        return min(
+            max(0, previewAreaSize.width / 2 - borderWidth) / objectHalfWidth,
+            max(0, previewAreaSize.height / 2 - borderWidth) / objectHalfHeight
+        )
+    }
+
+    private static func opaqueMargin(of image: CGImage?) async -> CGSize {
+        guard let image else { return .zero }
+
+        return await Task.detached(priority: .userInitiated) {
+            guard let bounds = image.opaqueBounds() else { return .zero }
+            return CGSize(
+                width: min(bounds.minX, CGFloat(image.width) - bounds.maxX),
+                height: min(bounds.minY, CGFloat(image.height) - bounds.maxY)
+            )
+        }.value
     }
 
     private var editArea: some View {

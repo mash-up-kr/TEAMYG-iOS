@@ -54,11 +54,17 @@ public actor CanvasToppingRenderer {
     }
 
     /// 실루엣은 넘겨받은 비트맵에서 뜨므로 버킷마다 결과 크기가 다르다 — 캐시 키에 그 크기를 섞는다.
-    func silhouette(of topping: CGImage, at url: URL, width: Double) async -> CGImage? {
+    func silhouette(
+        of topping: CGImage,
+        at url: URL,
+        width: Double,
+        renderedLongEdge: CGFloat
+    ) async -> CGImage? {
         await borderRenderer.silhouette(
             of: topping,
             source: "\(url.absoluteString)#\(topping.width)x\(topping.height)",
-            width: width
+            width: width,
+            renderedLongEdge: renderedLongEdge
         )
     }
 

@@ -54,7 +54,7 @@ struct ToppingBorder: Equatable, Sendable {
     /// 굵기 범위는 Domain 계약이 원본이다 — 슬라이더 상한과 저장 검증이 갈리면
     /// 넣을 수는 있는데 저장에서 튕기는 상태가 된다.
     static let widthRange: ClosedRange<Double> = ToppingBorderStyle.widthRange
-    static let defaultWidth: Double = 0.02
+    static let defaultWidth: Double = 4
 
     var color: ToppingBorderColor = .none
     var width: Double = ToppingBorder.defaultWidth

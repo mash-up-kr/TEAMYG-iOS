@@ -20,6 +20,7 @@ extension ToppingAddStore {
         var extractedTopping: ExtractedTopping?
         var borderEditor = ToppingBorderEditor()
         var borderSilhouette: BorderSilhouette?
+        var borderPreviewLongEdge: CGFloat = 0
         var maskEditor = ToppingMaskEditor()
         var placementEditor = ToppingPlacementEditor()
         var cutoutPath: CutoutPath = .automatic
@@ -35,6 +36,15 @@ extension ToppingAddStore {
             self.photoSource = photoSource
             self.canvasContent = canvasContent
             screen = photoSource.entryScreen
+        }
+
+        var borderRenderLongEdge: CGFloat {
+            switch screen {
+            case .placement:
+                placementEditor.placement.longSide(in: placementEditor.canvasSize)
+            default:
+                borderPreviewLongEdge
+            }
         }
 
         var canvasDateText: String {
@@ -68,6 +78,7 @@ extension ToppingAddStore {
         case cutoutResultClosed
         case photoEditTapped
         case cutoutConfirmed
+        case borderPreviewLongEdgeChanged(CGFloat)
         case borderWidthChanged(Double)
         case borderWidthEditingChanged(Bool)
         case borderColorSelected(ToppingBorderColor)

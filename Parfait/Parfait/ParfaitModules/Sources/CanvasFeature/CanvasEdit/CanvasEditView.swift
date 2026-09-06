@@ -16,6 +16,7 @@ struct CanvasEditView: View {
     @State private var toasts: [YGToastItem] = []
     @State private var borderTopping: CGImage?
     @State private var borderSilhouette: CGImage?
+    @State private var borderPreviewLongEdge: CGFloat = 0
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingRenderer: CanvasToppingRenderer
 
@@ -156,6 +157,7 @@ struct CanvasEditView: View {
                 onWidthChange: { store.send(.borderWidthChanged($0)) },
                 onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                 onColorSelect: { store.send(.borderColorSelected($0)) },
+                onPreviewLongEdgeChange: { borderPreviewLongEdge = $0 },
                 showsAreaTab: false,
                 singleTitle: "테두리 편집",
                 onAreaTabTap: {},
@@ -248,11 +250,13 @@ private extension CanvasEditView {
 
     var borderSilhouetteKey: BorderSilhouetteKey? {
         guard let topping = store.state.borderEditingTopping,
-              store.state.borderEditor.border.isVisible
+              store.state.borderEditor.border.isVisible,
+              borderPreviewLongEdge > 0
         else { return nil }
         return BorderSilhouetteKey(
             imageURL: topping.imageURL,
-            borderWidth: store.state.borderEditor.border.width
+            borderWidth: store.state.borderEditor.border.width,
+            previewLongEdge: borderPreviewLongEdge
         )
     }
 
@@ -290,7 +294,8 @@ private extension CanvasEditView {
         let silhouette = await toppingRenderer.silhouette(
             of: topping,
             at: key.imageURL,
-            width: key.borderWidth
+            width: key.borderWidth,
+            renderedLongEdge: key.previewLongEdge
         )
         guard !Task.isCancelled else { return }
         borderSilhouette = silhouette
@@ -299,5 +304,6 @@ private extension CanvasEditView {
     struct BorderSilhouetteKey: Equatable {
         let imageURL: URL
         let borderWidth: Double
+        let previewLongEdge: CGFloat
     }
 }
