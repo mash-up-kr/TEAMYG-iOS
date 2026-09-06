@@ -160,12 +160,12 @@ struct ToppingPlacementEditor: Equatable, Sendable {
         }
     }
 
-    func placementValues(zOrder: Int) -> ToppingPlacementValues {
+    func placementValues(zOrder: Int, scaleFactor: Double) -> ToppingPlacementValues {
         ToppingPlacementValues(
             positionX: placement.positionX,
             positionY: placement.positionY,
             positionZ: zOrder,
-            scale: placement.scale,
+            scale: placement.scale * scaleFactor,
             rotation: placement.rotationDegrees
         )
     }
