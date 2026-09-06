@@ -15,6 +15,11 @@ struct CanvasContainer: View {
     var body: some View {
         ZStack(alignment: .top) {
             GeometryReader { proxy in
+                let contentSize = CGSize(
+                    width: max(proxy.size.width - .padding7 * 2, 0),
+                    height: max(proxy.size.height - .padding6 * 2, 0)
+                )
+
                 // Pull-to-Refresh 를 걸기 위한 스크롤 컨테이너. 내용 높이를 뷰포트에 맞춰
                 // 실제 스크롤은 일어나지 않고 당겨서 새로고침만 동작한다
                 // (`canvas-policy.md` §4.2 — 다른 그룹원의 토핑을 받아오는 유일한 경로).
@@ -44,15 +49,15 @@ struct CanvasContainer: View {
 
                         menuBar
                     }
-                    .frame(width: CanvasArea.width(fitting: proxy.size))
-                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                    .frame(width: CanvasArea.width(fitting: contentSize))
+                    .frame(maxWidth: .infinity, minHeight: contentSize.height)
+                    .padding(.horizontal, .padding7)
+                    .padding(.vertical, .padding6)
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.always)
                 .refreshable { send(.refreshRequested) }
             }
-            .padding(.horizontal, .padding7)
-            .padding(.vertical, .padding6)
 
             if let pastParfaitNudge = state.pastParfaitNudge {
                 CanvasPastParfaitNudge(nudge: pastParfaitNudge) {

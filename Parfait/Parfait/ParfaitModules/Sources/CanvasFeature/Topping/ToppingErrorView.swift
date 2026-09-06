@@ -23,8 +23,8 @@ struct ToppingErrorView: View {
                 Image.icWarningRound
                     .renderingMode(.template)
                     .resizable()
-                    .foregroundStyle(.gray900)
-                    .frame(width: 28, height: 28)
+                    .foregroundStyle(.cherry600)
+                    .frame(width: 44, height: 44)
 
                 VStack(spacing: .gap2) {
                     Text(title)
