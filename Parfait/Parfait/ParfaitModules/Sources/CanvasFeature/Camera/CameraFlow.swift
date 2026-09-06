@@ -66,6 +66,9 @@ final class CameraFlow {
 
     func toggleFlash() {
         state.flashMode = state.flashMode.toggled
+        Task { [session, flashMode = state.flashMode] in
+            await session.setFlashMode(flashMode)
+        }
     }
 
     func switchCamera() {
@@ -92,8 +95,8 @@ final class CameraFlow {
         state.capturedViewFinderRegion = viewFinderRegion
         state.capturePhase = .processing(previewFrame: nil)
 
-        captureTask = Task { [weak self, session, flashMode = state.flashMode] in
-            async let pendingPhotoData = session.capturePhoto(flashMode: flashMode)
+        captureTask = Task { [weak self, session] in
+            async let pendingPhotoData = session.capturePhoto()
             let previewFrame = await session.latestPreviewFrame()
 
             guard let self, isLatestRequest(captureGeneration) else { return }

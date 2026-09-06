@@ -24,7 +24,7 @@ enum CameraFlashMode: Equatable, Sendable {
         self == .off ? .enabled : .off
     }
 
-    var avFoundationMode: AVCaptureDevice.FlashMode {
+    var avFoundationTorchMode: AVCaptureDevice.TorchMode {
         switch self {
         case .off: .off
         case .enabled: .on
