@@ -68,31 +68,32 @@ struct BackgroundImagePickerView: View {
     @ViewBuilder
     private var content: some View {
         switch store.state.screen {
-        case .camera:
-            ToppingCameraView(
-                dateText: store.state.dateText,
-                weekdayText: store.state.weekdayText,
-                flashMode: store.cameraState.flashMode,
-                isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                isCameraReady: store.cameraState.isReady,
-                showsToast: false,
-                previewSource: store.previewSource,
-                onToastDismissed: { store.send(.cameraGuideDismissed) },
-                onFlashTap: { store.send(.flashTapped) },
-                onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                onSwitchCameraTap: { store.send(.cameraPositionTapped) }
-            )
-
-        case .cameraConfirmation:
-            ToppingCameraConfirmationView(
-                previewFrame: store.cameraState.previewFrame,
-                photoData: store.cameraState.capturedPhotoData,
-                viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
-                onRetakeTap: { store.send(.retakeTapped) },
-                onNextTap: { store.send(.photoConfirmed) }
-            )
+        case .camera, .cameraConfirmation:
+            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
+                ToppingCameraView(
+                    dateText: store.state.dateText,
+                    weekdayText: store.state.weekdayText,
+                    flashMode: store.cameraState.flashMode,
+                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
+                    isCameraReady: store.cameraState.isReady,
+                    showsToast: false,
+                    previewSource: store.previewSource,
+                    onToastDismissed: { store.send(.cameraGuideDismissed) },
+                    onFlashTap: { store.send(.flashTapped) },
+                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
+                    onSwitchCameraTap: { store.send(.cameraPositionTapped) }
+                )
+            } confirmation: {
+                ToppingCameraConfirmationView(
+                    previewFrame: store.cameraState.previewFrame,
+                    photoData: store.cameraState.capturedPhotoData,
+                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
+                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
+                    isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
+                    onRetakeTap: { store.send(.retakeTapped) },
+                    onNextTap: { store.send(.photoConfirmed) }
+                )
+            }
 
         case .cameraPermissionError:
             ToppingErrorView(
