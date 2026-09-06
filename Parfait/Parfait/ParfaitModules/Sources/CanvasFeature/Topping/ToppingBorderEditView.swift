@@ -140,26 +140,30 @@ struct ToppingBorderEditView: View {
             Text("테두리 굵기")
                 .suit(.caption01Medium)
                 .foregroundStyle(.gray800)
+                .padding(.horizontal, .padding7)
 
             YGSlider(
                 value: Binding(get: { border.width }, set: { onWidthChange($0) }),
                 in: ToppingBorder.widthRange,
                 onEditingChanged: onWidthEditingChange
             )
+            .padding(.horizontal, .padding7)
 
             palette
         }
-        .padding(.horizontal, .padding7)
         .padding(.bottom, .padding6)
     }
 
     private var palette: some View {
-        HStack(spacing: .gap3) {
-            ForEach(ToppingBorderColor.allCases) { color in
-                paletteChip(color)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: .gap3) {
+                ForEach(ToppingBorderColor.allCases) { color in
+                    paletteChip(color)
+                }
             }
+            .padding(.horizontal, .padding7)
+            .padding(.vertical, .padding2)
         }
-        .padding(.vertical, .padding2)
     }
 
     private func paletteChip(_ color: ToppingBorderColor) -> some View {
