@@ -83,9 +83,17 @@ public struct CanvasView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
                     )
+                case .savePreviewRenderFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "저장할 이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
+                    )
                 case .canvasNotReady:
                     toasts.append(
                         YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                    )
+                case .canvasEmpty:
+                    toasts.append(
+                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요. 토핑을 올려 채워보세요.")
                     )
                 case .canvasLoadFailed:
                     toasts.append(
@@ -115,8 +123,40 @@ public struct CanvasView: View {
         .navigationDestination(item: canvasEditDestinationBinding) { destination in
             canvasEditFlow(destination)
         }
+        // 푸시가 아니라 덮어 씌운다 — 캔버스 화면을 밀어내면 저장 결과 Toast 를 받을 이벤트 구독이
+        // 끊겨 돌아왔을 때 알림이 사라진다.
+        .fullScreenCover(item: savePreviewBinding) { savePreview in
+            savePreviewFlow(savePreview)
+        }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
+    }
+
+    private func savePreviewFlow(_ savePreview: CanvasStore.SavePreview) -> some View {
+        CanvasSavePreviewView(
+            store: CanvasSavePreviewStore(
+                state: .init(
+                    dateText: store.state.dateText,
+                    weekdayText: store.state.weekdayText
+                ),
+                dependencies: .init(
+                    canvasContent: savePreview.canvasContent,
+                    canvasImageExporter: store.canvasImageExporter,
+                    onClose: { store.send(.savePreviewClosed($0)) }
+                )
+            )
+        )
+    }
+
+    private var savePreviewBinding: Binding<CanvasStore.SavePreview?> {
+        Binding(
+            get: { store.state.savePreview },
+            set: { savePreview in
+                if savePreview == nil {
+                    store.send(.savePreviewClosed(.dismissed))
+                }
+            }
+        )
     }
 
     private func toppingAddFlow(

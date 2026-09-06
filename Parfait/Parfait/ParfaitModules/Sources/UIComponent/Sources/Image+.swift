@@ -43,6 +43,7 @@ public extension Image {
     static let icPlus = Image("Ic_Plus", bundle: .module)
     static let icReverse = Image("Ic_Reverse", bundle: .module)
     static let icRotate = Image("Ic_Rotate", bundle: .module)
+    static let icSave = Image("Ic_Save", bundle: .module)
     static let icScale = Image("Ic_Scale", bundle: .module)
     static let icSocialApple = Image("Ic_Social_Apple", bundle: .module)
     static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
@@ -90,6 +91,7 @@ public extension UIImage {
     static var icPlus: UIImage { UIImage(resource: ImageResource(name: "Ic_Plus", bundle: .module)) }
     static var icReverse: UIImage { UIImage(resource: ImageResource(name: "Ic_Reverse", bundle: .module)) }
     static var icRotate: UIImage { UIImage(resource: ImageResource(name: "Ic_Rotate", bundle: .module)) }
+    static var icSave: UIImage { UIImage(resource: ImageResource(name: "Ic_Save", bundle: .module)) }
     static var icScale: UIImage { UIImage(resource: ImageResource(name: "Ic_Scale", bundle: .module)) }
     static var icSocialApple: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Apple", bundle: .module)) }
     static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }

@@ -24,12 +24,6 @@ extension CanvasStore.Dependencies {
         guard let parfaitID else { throw CanvasLoadError.unknownParfait }
         return try await canvasUseCase.fetchParfait(groupID: groupID, parfaitID: parfaitID)
     }
-
-    /// 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다. 합성·저장 중 하나라도 실패하면 `false`.
-    func saveToGallery(_ content: CanvasStore.CanvasContent) async -> Bool {
-        guard let canvasImage = await canvasImageExporter.image(of: content) else { return false }
-        return await CanvasGallerySaver.save(canvasImage)
-    }
 }
 
 public extension CanvasStore {
@@ -65,8 +59,8 @@ public extension CanvasStore {
         /// 현재 그려진 캔버스의 서버 ID. 토핑 배치·편집이 이 값을 쓴다.
         public var parfaitID: Int?
         public var status: ParfaitStatus?
-        /// 갤러리 저장 진행 상태 — 저장 중 재탭을 막는다.
-        var gallerySave: GallerySavePhase = .idle
+        /// C-001-Save-Preview. 날짜 바의 저장 버튼을 누르면 열리고, 저장하거나 닫으면 `nil` 로 돌아간다.
+        var savePreview: SavePreview?
         /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
         public var lastClosedDate: CalendarDate?
         /// C-202 Spotlight 로 강조된 타인의 토핑 (`canvas-policy.md` §4.2).
@@ -129,9 +123,24 @@ public extension CanvasStore {
         }
     }
 
-    enum GallerySavePhase: Equatable, Sendable {
-        case idle
-        case saving
+    /// C-001-Save-Preview 를 띄우는 데 필요한 것. 미리보기를 연 순간의 캔버스를 그대로 들고 간다 —
+    /// 뒤에서 캔버스가 새로 들어와도 보여 준 것과 저장되는 것이 어긋나지 않는다.
+    struct SavePreview: Equatable, Identifiable, Sendable {
+        /// 저장 완료 Toast 문구가 쓰는 날짜.
+        let date: CalendarDate
+        let canvasContent: CanvasContent
+
+        public var id: CalendarDate { date }
+    }
+
+    /// 미리보기가 닫히는 이유. 저장을 눌러 본 적도 없는데 "저장 실패" 라고 알리지 않으려고 나눠 둔다.
+    enum SavePreviewCloseReason: Equatable, Sendable {
+        /// 닫기 버튼으로 그냥 나갔다 — 알릴 것이 없다.
+        case dismissed
+        /// 저장본을 못 그려 열자마자 접었다.
+        case composeFailed
+        /// 앨범 저장까지 마쳤다.
+        case saved(Bool)
     }
 
     struct Member: Equatable, Identifiable, Sendable {
@@ -243,7 +252,8 @@ public extension CanvasStore {
         case calendarYearSelected(Int)
         case calendarDateSelected(CalendarDate)
         case refreshRequested
-        case saveToGalleryTapped
+        case savePreviewRequested
+        case savePreviewClosed(SavePreviewCloseReason)
         case todayParfaitTapped
         case pastParfaitNudgeTapped
         case moreMenuTapped
@@ -252,7 +262,11 @@ public extension CanvasStore {
     enum Event: Equatable, Sendable {
         case gallerySaveSucceeded(dateText: String)
         case gallerySaveFailed
+        /// 저장본을 합성하지 못했다. 앨범 쓰기까지 가 보지도 못한 경우라 저장 실패와 구분한다.
+        case savePreviewRenderFailed
         case canvasNotReady
+        /// 아직 아무것도 안 올라간 캔버스라 저장할 그림이 없다.
+        case canvasEmpty
         /// 조회 실패. 전용 화면 시안이 없어(`canvas-policy.md` §8) 토스트로 알린다 —
         /// 빈 캔버스와 구분되지 않으면 사용자가 "우리 캔버스가 비었다" 고 오해한다.
         case canvasLoadFailed

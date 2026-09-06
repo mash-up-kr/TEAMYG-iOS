@@ -19,7 +19,6 @@ public final class CanvasStore: MVIStore {
 
     private let dependencies: Dependencies
     private var canvasLoadTask: Task<Void, Never>?
-    private var gallerySaveTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
@@ -45,6 +44,8 @@ public final class CanvasStore: MVIStore {
     public var groupID: Int { dependencies.groupID }
     /// 캔버스 하위 편집 Store 조립에 같은 UseCase 를 전달한다.
     var canvasUseCase: any CanvasUseCase { dependencies.canvasUseCase }
+    /// 저장 미리보기 Store 가 같은 토핑 캐시를 쓰도록 합성기를 그대로 넘긴다.
+    var canvasImageExporter: CanvasImageExporter { dependencies.canvasImageExporter }
 
     public func send(_ intent: Intent) {
         switch intent {
@@ -81,8 +82,9 @@ public final class CanvasStore: MVIStore {
              .calendarDateSelected:
             handleCalendarIntent(intent)
 
-        case .saveToGalleryTapped:
-            saveCanvasToGallery()
+        case .savePreviewRequested,
+             .savePreviewClosed:
+            handleGallerySaveIntent(intent)
 
         case .todayParfaitTapped:
             openTodayCanvas()
@@ -219,34 +221,33 @@ public final class CanvasStore: MVIStore {
         loadCanvas(for: date)
     }
 
-    /// SY-001-Closed `오늘의 파르페 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
+    /// 날짜 바 `Ic_Save` — 마감 전후와 무관하게 C-001-Save-Preview 를 연다. 합성·저장은 미리보기 Store 몫이다.
+    private func handleGallerySaveIntent(_ intent: Intent) {
+        switch intent {
+        case .savePreviewRequested:
+            state.calendar.close()
+            state.menuState = .collapsed
+            guard let canvasContent = state.canvasContent else {
+                eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
+                return
+            }
+            state.savePreview = SavePreview(date: state.calendar.selectedDate, canvasContent: canvasContent)
+        case .savePreviewClosed(let reason):
+            let savedDate = state.savePreview?.date
+            state.savePreview = nil
+            guard let event = reason.event(dateText: savedDate?.koreanDateText) else { return }
+            // 미리보기가 닫히는 순간에는 캔버스 화면이 아직 재구독 전일 수 있다.
+            eventChannel.sendOrHold(event)
+        default:
+            break
+        }
+    }
+
+    /// SY-001-Closed `오늘의 캔버스로 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
     private func openTodayCanvas() {
         state.menuState = .collapsed
         guard state.calendar.selectDate(state.calendar.today) else { return }
         loadCanvas(for: state.calendar.today)
-    }
-
-    /// SY-001-Closed `갤러리에 저장` — 캔버스를 한 장으로 합성해 기기 사진 앨범에 저장한다.
-    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패 Toast 로 수렴한다.
-    private func saveCanvasToGallery() {
-        guard state.gallerySave != .saving else { return }
-        state.calendar.close()
-
-        guard let canvasContent = state.canvasContent else {
-            eventChannel.send(.gallerySaveFailed)
-            return
-        }
-
-        state.gallerySave = .saving
-        let savedDate = state.calendar.selectedDate
-        gallerySaveTask = Task { [weak self, dependencies] in
-            let isSaved = await dependencies.saveToGallery(canvasContent)
-            guard !Task.isCancelled, let self else { return }
-            state.gallerySave = .idle
-            eventChannel.send(
-                isSaved ? .gallerySaveSucceeded(dateText: savedDate.koreanDateText) : .gallerySaveFailed
-            )
-        }
     }
 
     private func reloadIfDayChanged() {
@@ -385,14 +386,12 @@ private extension CanvasStore {
     }
 
     func cancelTasks() {
-        // 저장 태스크를 취소하면 완료 클로저가 상태를 되돌리지 못한다 — 여기서 직접 풀어 준다.
-        state.gallerySave = .idle
+        // 미리보기(`savePreview`)는 건드리지 않는다. 덮인 화면이 `onDisappear` 를 받는지는
+        // SwiftUI 버전을 타는데, 여기서 지우면 미리보기가 뜨자마자 닫혀 버린다.
         if state.contentState == .loading { didLoadInitialData = false }
         canvasLoadTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
-        gallerySaveTask?.cancel()
-        gallerySaveTask = nil
         canvasLoadTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
