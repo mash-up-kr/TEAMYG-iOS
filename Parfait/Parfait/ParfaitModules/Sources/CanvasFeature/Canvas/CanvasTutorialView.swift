@@ -36,14 +36,13 @@ struct CanvasTutorialView: View {
             Color.black50.ignoresSafeArea()
             step.backdrop
                 .resizable()
-                .frame(width: 375)
                 .aspectRatio(375/732, contentMode: .fit)
                 .overlay(alignment: step.cardAlignment) {
                     step.card
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 335)
                         .overlay(alignment: .topTrailing) { nextButton }
+                        .padding(.horizontal, 20)
                 }
         }
         .contentShape(Rectangle())
