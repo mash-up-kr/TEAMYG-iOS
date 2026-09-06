@@ -87,13 +87,13 @@ extension ToppingPlacement {
     func handleCenter(
         horizontal: CGFloat,
         vertical: CGFloat,
-        renderedSize: CGSize,
+        frameSize: CGSize,
         cornerOffset: CGFloat,
         in canvasSize: CGSize
     ) -> CGPoint {
         let corner = CGSize(
-            width: horizontal * (renderedSize.width / 2 + cornerOffset),
-            height: vertical * (renderedSize.height / 2 + cornerOffset)
+            width: horizontal * (frameSize.width / 2 + cornerOffset),
+            height: vertical * (frameSize.height / 2 + cornerOffset)
         )
         let radians = rotationDegrees * .pi / 180
         let placementCenter = center(in: canvasSize)

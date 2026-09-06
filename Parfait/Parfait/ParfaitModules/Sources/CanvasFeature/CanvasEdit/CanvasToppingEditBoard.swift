@@ -153,7 +153,7 @@ private extension CanvasEditableTopping {
         previewPlacement.handleCenter(
             horizontal: horizontal,
             vertical: vertical,
-            renderedSize: renderedSize,
+            frameSize: ToppingSelectionFrame.size(around: renderedSize),
             cornerOffset: ToppingHandle.cornerOffset,
             in: canvasSize
         )

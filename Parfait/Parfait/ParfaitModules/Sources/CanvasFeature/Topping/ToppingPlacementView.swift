@@ -12,7 +12,6 @@ import UIComponent
 struct ToppingPlacementView: View {
     private static let canvasTopSpacing: CGFloat = 60
     private static let canvasSpace = "ToppingPlacementCanvas"
-    private static let selectionStrokeWidth: CGFloat = 2
 
     let canvasContent: CanvasStore.CanvasContent?
     let topping: ExtractedTopping
@@ -94,8 +93,7 @@ struct ToppingPlacementView: View {
             size: renderedSize
         )
         .overlay {
-            Rectangle()
-                .strokeBorder(Color.whiteFixed, lineWidth: Self.selectionStrokeWidth)
+            ToppingSelectionFrame(renderedSize: renderedSize)
         }
         .rotationEffect(.degrees(previewPlacement.rotationDegrees))
         .position(previewCenter)
@@ -137,7 +135,7 @@ private extension ToppingPlacementView {
         previewPlacement.handleCenter(
             horizontal: 1,
             vertical: towardBottom ? 1 : -1,
-            renderedSize: renderedSize,
+            frameSize: ToppingSelectionFrame.size(around: renderedSize),
             cornerOffset: ToppingHandle.cornerOffset,
             in: editor.canvasSize
         )

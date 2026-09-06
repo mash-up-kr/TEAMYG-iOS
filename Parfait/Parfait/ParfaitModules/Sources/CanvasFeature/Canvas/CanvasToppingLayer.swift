@@ -11,8 +11,6 @@ import UIComponent
 
 /// 화면(`CanvasPlacedImage`)과 갤러리 저장본(`CanvasImageExporter`)이 같은 그림을 내도록 배치 규칙을 한곳에 둔다.
 struct CanvasToppingLayer: View {
-    private static let selectionStrokeWidth: CGFloat = 2
-
     let topping: CGImage
     let silhouette: CGImage?
     let borderColor: Color?
@@ -32,8 +30,7 @@ struct CanvasToppingLayer: View {
         )
         .overlay {
             if isSelected {
-                Rectangle()
-                    .strokeBorder(.whiteFixed, lineWidth: Self.selectionStrokeWidth)
+                ToppingSelectionFrame(renderedSize: renderedSize)
             }
         }
         .contentShape(.rect)
