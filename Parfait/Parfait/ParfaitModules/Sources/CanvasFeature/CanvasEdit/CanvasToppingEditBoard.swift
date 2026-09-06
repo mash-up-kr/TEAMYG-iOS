@@ -101,6 +101,7 @@ private struct CanvasEditableTopping: View {
             .position(center)
             .onTapGesture(perform: onTap)
             .gesture(moveGesture, isEnabled: isSelected)
+            .simultaneousGesture(pinchGesture, isEnabled: isSelected)
     }
 
     private var handles: some View {
@@ -108,13 +109,13 @@ private struct CanvasEditableTopping: View {
             actionHandle(.icClose, action: onDeleteTap)
                 .position(handleCenter(horizontal: -1, vertical: -1))
 
-            gestureHandle(.icScale, gesture: scaleGesture)
+            gestureHandle(.icRotate, gesture: rotateGesture)
                 .position(handleCenter(horizontal: 1, vertical: -1))
 
             actionHandle(.icEdit, action: onBorderEditTap)
                 .position(handleCenter(horizontal: -1, vertical: 1))
 
-            gestureHandle(.icRotate, gesture: rotateGesture)
+            gestureHandle(.icScale, gesture: scaleGesture)
                 .position(handleCenter(horizontal: 1, vertical: 1))
         }
     }
@@ -160,29 +161,32 @@ private extension CanvasEditableTopping {
 
     var moveGesture: some Gesture {
         DragGesture(coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.translation = $0.translation }
-            .onEnded { value in
-                onPlacementChange(topping.placement.moved(by: value.translation, in: canvasSize))
-                draft.reset()
+            .onChanged { draft.drag(translation: $0.translation) }
+            .onEnded { _ in
+                guard let translation = draft.endDrag() else { return }
+                onPlacementChange(topping.placement.moved(by: translation, in: canvasSize))
             }
+    }
+
+    var pinchGesture: some Gesture {
+        ToppingPinchGesture(draft: $draft) { scaleFactor, rotationDegrees in
+            onPlacementChange(topping.placement.magnified(by: scaleFactor).rotated(by: rotationDegrees))
+        }
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.scaleFactor = magnification(for: $0) }
-            .onEnded { value in
-                onPlacementChange(topping.placement.magnified(by: magnification(for: value)))
-                draft.reset()
+            .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
+            .onEnded { _ in
+                onPlacementChange(topping.placement.magnified(by: draft.endScaleByHandle()))
             }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.accumulateRotation(rawDegrees: rotation(for: $0)) }
-            .onEnded { value in
-                draft.accumulateRotation(rawDegrees: rotation(for: value))
-                onPlacementChange(topping.placement.rotated(by: draft.rotationDegrees))
-                draft.reset()
+            .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
+            .onEnded { _ in
+                onPlacementChange(topping.placement.rotated(by: draft.endRotateByHandle()))
             }
     }
 

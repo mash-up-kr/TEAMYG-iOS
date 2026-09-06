@@ -100,14 +100,15 @@ struct ToppingPlacementView: View {
         .rotationEffect(.degrees(previewPlacement.rotationDegrees))
         .position(previewCenter)
         .gesture(moveGesture)
+        .simultaneousGesture(pinchGesture)
     }
 
     private var handles: some View {
         ZStack {
-            handle(.icScale, gesture: scaleGesture)
+            handle(.icRotate, gesture: rotateGesture)
                 .position(handleCenter(towardBottom: false))
 
-            handle(.icRotate, gesture: rotateGesture)
+            handle(.icScale, gesture: scaleGesture)
                 .position(handleCenter(towardBottom: true))
         }
     }
@@ -144,32 +145,30 @@ private extension ToppingPlacementView {
 
     var moveGesture: some Gesture {
         DragGesture(coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.translation = $0.translation }
-            .onEnded { value in
-                draft.reset()
-                onMove(value.translation)
+            .onChanged { draft.drag(translation: $0.translation) }
+            .onEnded { _ in
+                guard let translation = draft.endDrag() else { return }
+                onMove(translation)
             }
+    }
+
+    var pinchGesture: some Gesture {
+        ToppingPinchGesture(draft: $draft) { scaleFactor, rotationDegrees in
+            onScale(scaleFactor)
+            onRotate(rotationDegrees)
+        }
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.scaleFactor = magnification(for: $0) }
-            .onEnded { value in
-                let factor = magnification(for: value)
-                draft.reset()
-                onScale(factor)
-            }
+            .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
+            .onEnded { _ in onScale(draft.endScaleByHandle()) }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.accumulateRotation(rawDegrees: rotation(for: $0)) }
-            .onEnded { value in
-                draft.accumulateRotation(rawDegrees: rotation(for: value))
-                let degrees = draft.rotationDegrees
-                draft.reset()
-                onRotate(degrees)
-            }
+            .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
+            .onEnded { _ in onRotate(draft.endRotateByHandle()) }
     }
 
     func magnification(for value: DragGesture.Value) -> Double {
