@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+import Core
 import CoreGraphics
 import SwiftUI
 import UIComponent

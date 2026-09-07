@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/22/26.
 //
 
+import Core
 import CoreGraphics
 import CoreImage
 import CoreVideo
@@ -255,15 +256,11 @@ private extension ObjectExtractor {
         longEdge: CGFloat
     ) throws -> NormalizedPhoto {
         // 명시 방향(앨범 원본)이 있으면 그 값을 직접 적용하고, 없으면(카메라 촬영) 파일에 기록된 방향을 디코딩 단계에서 적용한다.
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: explicitOrientation == nil,
-            kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(longEdge.rounded()))
-        ]
-        guard let imageSource = CGImageSourceCreateWithData(photoData as CFData, nil),
-              let decodedImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary)
-        else {
+        guard let decodedImage = ImageDownsampling.decodedImage(
+            from: photoData,
+            maxPixelSize: max(1, Int(longEdge.rounded())),
+            applyOrientationTransform: explicitOrientation == nil
+        ) else {
             throw ObjectExtractionError.photoUnavailable
         }
 

@@ -30,8 +30,9 @@ struct AppDependencies {
     private let networkClient: any NetworkClient
     /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
-    private let imageSession = URLSession(configuration: .imageTraffic)
-    /// 캔버스를 나갔다 들어와도 토핑 이미지·테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
+    /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
+    private let imageProvider = ImageProvider(session: URLSession(configuration: .imageTraffic))
+    /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
 
     init() {
@@ -40,7 +41,7 @@ struct AppDependencies {
         self.networkClient = NetworkClientImpl(
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
-        canvasToppingRenderer = CanvasToppingRenderer(session: imageSession)
+        canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
     }
 
     /// 저장된 액세스 토큰 존재 여부 — 자동로그인(로그인 화면 스킵) 판단용.
@@ -155,7 +156,7 @@ struct AppDependencies {
                 ),
                 canvasImageExporter: CanvasImageExporter(
                     toppingRenderer: canvasToppingRenderer,
-                    session: imageSession
+                    imageProvider: imageProvider
                 )
             )
         )

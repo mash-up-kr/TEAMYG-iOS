@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Core
 import Photos
 import SwiftUI
 import UIComponent
