@@ -28,6 +28,7 @@ struct CanvasContainer: View {
                             spotlightedToppingID: state.spotlightedToppingID,
                             isDimmed: state.menuState == .sourceOptions,
                             onCalendarTap: { send(.calendarTapped) },
+                            onSaveTap: { send(.savePreviewRequested) },
                             onToppingTap: { send(.toppingTapped($0)) },
                             onSpotlightDismiss: { send(.spotlightDismissed) },
                             onDimTap: { send(.menuDimTapped) }
@@ -67,12 +68,11 @@ struct CanvasContainer: View {
         }
     }
 
-    /// 과거 캔버스는 열람 전용이라 토핑 추가·캔버스 편집 대신 저장·오늘 가기를 제공한다 (`canvas-policy.md` §7.2).
+    /// 과거 캔버스는 열람 전용이라 토핑 추가·캔버스 편집 대신 오늘 가기를 제공한다 (`canvas-policy.md` §7.2).
     @ViewBuilder
     private var menuBar: some View {
         if state.isClosedCanvas {
             CanvasClosedMenuBar(
-                onSaveToGalleryTap: { send(.saveToGalleryTapped) },
                 onTodayParfaitTap: { send(.todayParfaitTapped) }
             )
         } else {
@@ -120,6 +120,7 @@ private struct CanvasBoard: View {
     let spotlightedToppingID: Int?
     let isDimmed: Bool
     let onCalendarTap: () -> Void
+    let onSaveTap: () -> Void
     let onToppingTap: (Int) -> Void
     let onSpotlightDismiss: () -> Void
     let onDimTap: () -> Void
@@ -163,7 +164,8 @@ private struct CanvasBoard: View {
                 CanvasDateHeader(
                     dateText: dateText,
                     weekdayText: weekdayText,
-                    onCalendarTap: onCalendarTap
+                    onCalendarTap: onCalendarTap,
+                    onSaveTap: onSaveTap
                 )
 
                 Spacer(minLength: 0)
@@ -197,12 +199,17 @@ private struct CanvasBoard: View {
     }
 }
 
+/// 캔버스 위에 얹히는 날짜 바(`Bar-Canvas`).
+///
+/// 시안은 캘린더 아이콘을 날짜 왼쪽으로 옮기지만 그 재배치는 별도 작업이라 건드리지 않았다.
+/// 여기서는 저장 미리보기로 가는 `Ic_Save` 만 오른쪽 끝에 얹는다.
 struct CanvasDateHeader: View {
     static let height: CGFloat = 44
 
     let dateText: String
     let weekdayText: String
     let onCalendarTap: () -> Void
+    let onSaveTap: () -> Void
 
     var body: some View {
         HStack(spacing: .gap1) {
@@ -220,6 +227,8 @@ struct CanvasDateHeader: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
+
+            YGIconButton(.icSave, size: .small, tone: .strong, action: onSaveTap)
         }
         .suit(.body02Regular)
         .padding(.leading, .padding6)

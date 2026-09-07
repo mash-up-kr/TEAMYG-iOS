@@ -18,6 +18,8 @@ public struct YGFloatingBar: View {
         case backClose
         /// 닫기(우)
         case close
+        /// 타이틀(중앙) + 닫기(우)
+        case title(String)
         /// 닫기(좌) + 타이틀(중앙) + 확인(우)
         case edit(title: String)
         /// 닫기(좌) + 밑줄 탭(중앙) + 확인(우)
@@ -58,13 +60,18 @@ public struct YGFloatingBar: View {
             case .close:
                 Spacer(minLength: 0)
                 closeButton
+            case .title(let title):
+                // 좌측 버튼이 없어도 타이틀이 바 한가운데 오도록 닫기 버튼만큼 자리를 비워 둔다.
+                Color.clear
+                    .frame(width: 44, height: 44)
+                Spacer(minLength: 0)
+                titleText(title)
+                Spacer(minLength: 0)
+                closeButton
             case .edit(let title):
                 closeButton
                 Spacer(minLength: 0)
-                Text(title)
-                    .suit(.body01Regular)
-                    .foregroundStyle(.gray800)
-                    .lineLimit(1)
+                titleText(title)
                 Spacer(minLength: 0)
                 confirmButton
             case .editTab(let tabs, let selection):
@@ -90,6 +97,13 @@ public struct YGFloatingBar: View {
 
     private func circleButton(_ icon: Image, action: @escaping () -> Void) -> some View {
         YGCircleButton(icon, variant: .default, action: action)
+    }
+
+    private func titleText(_ title: String) -> some View {
+        Text(title)
+            .suit(.body01Regular)
+            .foregroundStyle(.gray800)
+            .lineLimit(1)
     }
 
     private func editTabButtons(_ tabs: [String], selection: Binding<Int>) -> some View {
@@ -127,6 +141,7 @@ public struct YGFloatingBar: View {
     VStack(spacing: .gap5) {
         YGFloatingBar(.backClose)
         YGFloatingBar(.close)
+        YGFloatingBar(.title("이미지 미리보기"))
         YGFloatingBar(.edit(title: "Text"), onConfirm: {})
         YGFloatingBar(
             .editTab(tabs: ["영역", "테두리"], selection: $tabIndex),
