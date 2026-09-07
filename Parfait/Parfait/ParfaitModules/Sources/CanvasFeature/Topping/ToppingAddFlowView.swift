@@ -104,19 +104,19 @@ struct ToppingAddFlowView: View {
             }
 
         case .cameraPermissionError:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
-                actionTitle: "설정으로 이동",
-                onActionTap: { store.send(.settingsTapped) }
+                buttonTitle: "설정으로 이동",
+                action: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
-                actionTitle: "다시 시도",
-                onActionTap: { store.send(.cameraRetryTapped) }
+                buttonTitle: "다시 시도",
+                action: { store.send(.cameraRetryTapped) }
             )
 
         default:
