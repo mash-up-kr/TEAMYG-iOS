@@ -52,14 +52,8 @@ struct CanvasToppingEditBoard: View {
             }
             .coordinateSpace(.named(Self.canvasSpace))
         }
-        .clipped()
-        .overlay {
-            Rectangle()
-                .strokeBorder(.gray500, lineWidth: 1)
-                .allowsHitTesting(false)
-        }
+        .canvasBoardFrame()
     }
-
 }
 
 private struct CanvasEditableTopping: View {
@@ -87,7 +81,16 @@ private struct CanvasEditableTopping: View {
             toppingHitTarget
 
             if isSelected {
-                handles
+                ToppingEditHandles(
+                    placement: topping.placement,
+                    canvasSize: canvasSize,
+                    toppingPixelSize: toppingPixelSize,
+                    coordinateSpace: coordinateSpace,
+                    draft: $draft,
+                    onCommit: commit,
+                    onDeleteTap: onDeleteTap,
+                    onBorderEditTap: onBorderEditTap
+                )
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -108,33 +111,6 @@ private struct CanvasEditableTopping: View {
         .position(center)
     }
 
-    private var handles: some View {
-        ZStack {
-            actionHandle(.icClose, action: onDeleteTap)
-                .position(handleCenter(horizontal: -1, vertical: -1))
-
-            gestureHandle(.icRotate, gesture: rotateGesture)
-                .position(handleCenter(horizontal: 1, vertical: -1))
-
-            actionHandle(.icEdit, action: onBorderEditTap)
-                .position(handleCenter(horizontal: -1, vertical: 1))
-
-            gestureHandle(.icScale, gesture: scaleGesture)
-                .position(handleCenter(horizontal: 1, vertical: 1))
-        }
-    }
-
-    private func actionHandle(_ icon: Image, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ToppingHandleIcon(icon)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func gestureHandle(_ icon: Image, gesture: some Gesture) -> some View {
-        ToppingHandleIcon(icon)
-            .gesture(gesture)
-    }
 }
 
 private extension CanvasEditableTopping {
@@ -153,37 +129,7 @@ private extension CanvasEditableTopping {
         previewPlacement.center(in: canvasSize)
     }
 
-    func handleCenter(horizontal: CGFloat, vertical: CGFloat) -> CGPoint {
-        previewPlacement.handleCenter(
-            horizontal: horizontal,
-            vertical: vertical,
-            frameSize: ToppingSelectionFrame.size(around: renderedSize),
-            cornerOffset: ToppingHandle.cornerOffset,
-            in: canvasSize
-        )
-    }
-
     func commit(_ transform: ToppingTransformDraft) {
         onPlacementChange(transform.applied(to: topping.placement, in: canvasSize))
-    }
-
-    var scaleGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
-            .onEnded { _ in commit(draft.endTransform()) }
-    }
-
-    var rotateGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
-            .onEnded { _ in commit(draft.endTransform()) }
-    }
-
-    func magnification(for value: DragGesture.Value) -> Double {
-        topping.placement.magnification(from: value.startLocation, to: value.location, in: canvasSize)
-    }
-
-    func rotation(for value: DragGesture.Value) -> Double {
-        topping.placement.rotation(from: value.startLocation, to: value.location, in: canvasSize)
     }
 }

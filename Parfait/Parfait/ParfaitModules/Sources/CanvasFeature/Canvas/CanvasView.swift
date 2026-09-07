@@ -170,6 +170,7 @@ public struct CanvasView: View {
                         canvasUseCase: store.canvasUseCase,
                         toppingUseCase: toppingUseCase,
                         imageUploadRepository: imageUploadRepository,
+                        toppingRenderer: toppingRenderer,
                         onDismiss: { store.send(.canvasEditFlowDismissed) },
                         onSaved: { store.send(.canvasEditSaved) }
                     )

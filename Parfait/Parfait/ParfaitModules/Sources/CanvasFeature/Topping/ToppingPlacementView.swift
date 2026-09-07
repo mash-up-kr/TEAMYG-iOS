@@ -72,46 +72,31 @@ struct ToppingPlacementView: View {
 
             transformGestureOverlay
         }
-        .clipShape(.rect)
+        .canvasBoardFrame()
         .overlay {
-            Rectangle()
-                .stroke(Color.gray500, lineWidth: 1)
-        }
-        .overlay {
-            handles
+            ToppingEditHandles(
+                placement: editor.placement,
+                canvasSize: editor.canvasSize,
+                toppingPixelSize: topping.pixelSize,
+                coordinateSpace: Self.canvasSpace,
+                draft: $draft,
+                onCommit: onTransform
+            )
         }
         .coordinateSpace(.named(Self.canvasSpace))
         .onGeometryChange(for: CGSize.self, of: { $0.size }, action: onCanvasResize)
     }
 
     private var placedTopping: some View {
-        ToppingBorderedImage(
+        CanvasToppingLayer(
             topping: topping.image,
             silhouette: silhouette,
             borderColor: borderColor,
             borderWidth: borderWidth,
-            size: renderedSize
+            placement: previewPlacement,
+            canvasSize: editor.canvasSize,
+            isSelected: true
         )
-        .overlay {
-            ToppingSelectionFrame(renderedSize: renderedSize)
-        }
-        .rotationEffect(.degrees(previewPlacement.rotationDegrees))
-        .position(previewCenter)
-    }
-
-    private var handles: some View {
-        ZStack {
-            handle(.icRotate, gesture: rotateGesture)
-                .position(handleCenter(towardBottom: false))
-
-            handle(.icScale, gesture: scaleGesture)
-                .position(handleCenter(towardBottom: true))
-        }
-    }
-
-    private func handle(_ icon: Image, gesture: some Gesture) -> some View {
-        ToppingHandleIcon(icon)
-            .gesture(gesture)
     }
 }
 
@@ -120,56 +105,9 @@ private extension ToppingPlacementView {
         draft.applied(to: editor.placement, in: editor.canvasSize)
     }
 
-    var previewCenter: CGPoint {
-        previewPlacement.center(in: editor.canvasSize)
-    }
-
-    var renderedSize: CGSize {
-        previewPlacement.renderedSize(toppingPixelSize: topping.pixelSize, canvasSize: editor.canvasSize)
-    }
-
-    /// 핸들은 회전한 토핑의 오른쪽 두 모서리 바깥에 붙는다 (Figma `C-106`).
-    func handleCenter(towardBottom: Bool) -> CGPoint {
-        previewPlacement.handleCenter(
-            horizontal: 1,
-            vertical: towardBottom ? 1 : -1,
-            frameSize: ToppingSelectionFrame.size(around: renderedSize),
-            cornerOffset: ToppingHandle.cornerOffset,
-            in: editor.canvasSize
-        )
-    }
-
     /// 배치 화면은 토핑이 하나뿐이라 캔버스 전체를 제스처 면으로 쓴다 —
     /// 두 번째 손가락이 토핑 밖에 닿아도 핀치가 잡힌다.
     var transformGestureOverlay: some View {
         ToppingTransformGestureOverlay(draft: $draft, onCommit: onTransform)
-    }
-
-    var scaleGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
-            .onEnded { _ in onTransform(draft.endTransform()) }
-    }
-
-    var rotateGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
-            .onEnded { _ in onTransform(draft.endTransform()) }
-    }
-
-    func magnification(for value: DragGesture.Value) -> Double {
-        editor.placement.magnification(
-            from: value.startLocation,
-            to: value.location,
-            in: editor.canvasSize
-        )
-    }
-
-    func rotation(for value: DragGesture.Value) -> Double {
-        editor.placement.rotation(
-            from: value.startLocation,
-            to: value.location,
-            in: editor.canvasSize
-        )
     }
 }
