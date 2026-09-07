@@ -94,14 +94,24 @@ private struct CanvasEditableTopping: View {
     }
 
     private var toppingHitTarget: some View {
-        Color.clear
-            .frame(width: renderedSize.width, height: renderedSize.height)
-            .contentShape(.rect)
-            .rotationEffect(.degrees(previewPlacement.rotationDegrees))
-            .position(center)
-            .onTapGesture(perform: onTap)
-            .gesture(moveGesture, isEnabled: isSelected)
-            .simultaneousGesture(pinchGesture, isEnabled: isSelected)
+        Group {
+            if isSelected {
+                ToppingTransformGestureOverlay(
+                    onTap: onTap,
+                    onMove: { draft.move(by: $0) },
+                    onMagnify: { draft.magnify(by: $0) },
+                    onRotate: { draft.rotate(byDegrees: $0) },
+                    onTransformEnded: commitTransform
+                )
+            } else {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture(perform: onTap)
+            }
+        }
+        .frame(width: renderedSize.width, height: renderedSize.height)
+        .rotationEffect(.degrees(previewPlacement.rotationDegrees))
+        .position(center)
     }
 
     private var handles: some View {
@@ -159,19 +169,14 @@ private extension CanvasEditableTopping {
         )
     }
 
-    var moveGesture: some Gesture {
-        DragGesture(coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.drag(translation: $0.translation) }
-            .onEnded { _ in
-                guard let translation = draft.endDrag() else { return }
-                onPlacementChange(topping.placement.moved(by: translation, in: canvasSize))
-            }
-    }
-
-    var pinchGesture: some Gesture {
-        ToppingPinchGesture(draft: $draft) { scaleFactor, rotationDegrees in
-            onPlacementChange(topping.placement.magnified(by: scaleFactor).rotated(by: rotationDegrees))
-        }
+    func commitTransform() {
+        let transform = draft.endTransform()
+        onPlacementChange(
+            topping.placement
+                .moved(by: transform.translation, in: canvasSize)
+                .magnified(by: transform.scaleFactor)
+                .rotated(by: transform.rotationDegrees)
+        )
     }
 
     var scaleGesture: some Gesture {

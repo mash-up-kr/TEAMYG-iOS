@@ -71,6 +71,8 @@ struct ToppingPlacementView: View {
             Color.black25
 
             placedTopping
+
+            transformGestureOverlay
         }
         .clipShape(.rect)
         .overlay {
@@ -97,8 +99,6 @@ struct ToppingPlacementView: View {
         }
         .rotationEffect(.degrees(previewPlacement.rotationDegrees))
         .position(previewCenter)
-        .gesture(moveGesture)
-        .simultaneousGesture(pinchGesture)
     }
 
     private var handles: some View {
@@ -141,20 +141,20 @@ private extension ToppingPlacementView {
         )
     }
 
-    var moveGesture: some Gesture {
-        DragGesture(coordinateSpace: .named(Self.canvasSpace))
-            .onChanged { draft.drag(translation: $0.translation) }
-            .onEnded { _ in
-                guard let translation = draft.endDrag() else { return }
-                onMove(translation)
+    /// 배치 화면은 토핑이 하나뿐이라 캔버스 전체를 제스처 면으로 쓴다 —
+    /// 두 번째 손가락이 토핑 밖에 닿아도 핀치가 잡힌다.
+    var transformGestureOverlay: some View {
+        ToppingTransformGestureOverlay(
+            onMove: { draft.move(by: $0) },
+            onMagnify: { draft.magnify(by: $0) },
+            onRotate: { draft.rotate(byDegrees: $0) },
+            onTransformEnded: {
+                let transform = draft.endTransform()
+                onMove(transform.translation)
+                onScale(transform.scaleFactor)
+                onRotate(transform.rotationDegrees)
             }
-    }
-
-    var pinchGesture: some Gesture {
-        ToppingPinchGesture(draft: $draft) { scaleFactor, rotationDegrees in
-            onScale(scaleFactor)
-            onRotate(rotationDegrees)
-        }
+        )
     }
 
     var scaleGesture: some Gesture {

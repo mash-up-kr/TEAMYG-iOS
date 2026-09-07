@@ -7,6 +7,7 @@
 
 import CoreGraphics
 import SwiftUI
+import UIKit
 
 /// 토핑 배치 제스처의 진행 중 값. 확정 전까지는 로컬 상태로만 들고 있다가
 /// 제스처가 끝날 때 한 번만 intent 로 올린다 (`docs/mvi.md` 바인딩 절).
@@ -18,11 +19,8 @@ struct ToppingTransformDraft: Equatable {
     private(set) var scaleFactor: Double = 1
     private(set) var rotationDegrees: Double = 0
 
-    /// 회전 제스처가 반 바퀴를 넘을 때 각도가 접히지 않도록, 직전 프레임의 원시 각도를 들고 있는다.
+    /// 핸들 회전 제스처가 반 바퀴를 넘을 때 각도가 접히지 않도록, 직전 프레임의 원시 각도를 들고 있는다.
     private var lastRawRotation: Double?
-    private var isDragging = false
-    private var isPinching = false
-    private var isDragSuppressedByPinch = false
 
     func applied(to placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingPlacement {
         placement
@@ -64,43 +62,21 @@ struct ToppingTransformDraft: Equatable {
         return committed
     }
 
-    mutating func drag(translation: CGSize) {
-        isDragging = true
-        guard !isDragSuppressedByPinch else { return }
-        self.translation = translation
+    mutating func move(by delta: CGSize) {
+        translation.width += delta.width
+        translation.height += delta.height
     }
 
-    mutating func endDrag() -> CGSize? {
-        let wasSuppressed = isDragSuppressedByPinch
-        let committed = translation
-        isDragging = false
-        isDragSuppressedByPinch = false
-        if isPinching {
-            translation = .zero
-        } else {
-            resetTransform()
-        }
-        return wasSuppressed ? nil : committed
+    mutating func magnify(by factor: Double) {
+        scaleFactor *= factor
     }
 
-    mutating func pinch(magnification: Double?, rotationDegrees rawDegrees: Double?) {
-        isPinching = true
-        isDragSuppressedByPinch = true
-        translation = .zero
-        if let magnification {
-            scaleFactor = magnification
-        }
-        if let rawDegrees {
-            accumulateRotation(rawDegrees: rawDegrees)
-        }
+    mutating func rotate(byDegrees degrees: Double) {
+        rotationDegrees += degrees
     }
 
-    mutating func endPinch() -> (scaleFactor: Double, rotationDegrees: Double) {
-        let committed = (scaleFactor: scaleFactor, rotationDegrees: rotationDegrees)
-        isPinching = false
-        if !isDragging {
-            isDragSuppressedByPinch = false
-        }
+    mutating func endTransform() -> ToppingTransformDraft {
+        let committed = self
         resetTransform()
         return committed
     }
@@ -113,26 +89,117 @@ struct ToppingTransformDraft: Equatable {
     }
 }
 
-struct ToppingPinchGesture: Gesture {
-    @Binding var draft: ToppingTransformDraft
-    let onCommit: (Double, Double) -> Void
+/// SwiftUI 제스처로는 이슈와 버그가 많아서 UIKit을 사용합니다.
+/// 이동·확대·회전을 동시에 받는 배치 제스처 면 (인스타그램식 pinch+pan).
+///
+/// SwiftUI 제스처 조합으로는 두 손가락 centroid 이동을 표현할 수 없다 — `DragGesture` 는
+/// 첫 손가락만 추적해서, 핀치와 동시에 두면 손가락을 벌릴 때 토핑이 첫 손가락을 따라 튄다.
+/// 핀치 중 드래그를 죽이는 우회는 핀치 시작 시점까지의 이동을 날려 버렸다(위치 스냅백).
+/// 그래서 이 레이어만 UIKit 인식기를 쓴다 (`ToppingCanvasGestureOverlay` 와 같은 사정).
+///
+/// 델타는 window 좌표로 읽는다 — 이 면이 토핑을 따라 회전해도(C-305) 이동 방향이 뒤틀리지 않는다.
+struct ToppingTransformGestureOverlay: UIViewRepresentable {
+    var onTap: (() -> Void)?
+    let onMove: (CGSize) -> Void
+    let onMagnify: (Double) -> Void
+    let onRotate: (Double) -> Void
+    let onTransformEnded: () -> Void
 
-    var body: some Gesture {
-        SimultaneousGesture(MagnifyGesture(), RotateGesture())
-            .onChanged { value in
-                draft.pinch(magnification: magnification(of: value), rotationDegrees: rotationDegrees(of: value))
-            }
-            .onEnded { _ in
-                let transform = draft.endPinch()
-                onCommit(transform.scaleFactor, transform.rotationDegrees)
-            }
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        context.coordinator.attach(to: view)
+        return view
     }
 
-    private func magnification(of value: SimultaneousGesture<MagnifyGesture, RotateGesture>.Value) -> Double? {
-        value.first.map { Double($0.magnification) }
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.overlay = self
+        uiView.isUserInteractionEnabled = context.environment.isEnabled
     }
 
-    private func rotationDegrees(of value: SimultaneousGesture<MagnifyGesture, RotateGesture>.Value) -> Double? {
-        value.second?.rotation.degrees
+    func makeCoordinator() -> Coordinator {
+        Coordinator(overlay: self)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var overlay: ToppingTransformGestureOverlay
+        private var transformRecognizers: [UIGestureRecognizer] = []
+
+        init(overlay: ToppingTransformGestureOverlay) {
+            self.overlay = overlay
+        }
+
+        func attach(to view: UIView) {
+            let move = UIPanGestureRecognizer(target: self, action: #selector(handleMove))
+            move.maximumNumberOfTouches = 2
+
+            let magnify = UIPinchGestureRecognizer(target: self, action: #selector(handleMagnify))
+            let rotate = UIRotationGestureRecognizer(target: self, action: #selector(handleRotate))
+
+            transformRecognizers = [move, magnify, rotate]
+            for recognizer in transformRecognizers {
+                recognizer.delegate = self
+                view.addGestureRecognizer(recognizer)
+            }
+
+            view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+        }
+
+        @objc private func handleMove(_ recognizer: UIPanGestureRecognizer) {
+            switch recognizer.state {
+            case .changed:
+                let translation = recognizer.translation(in: nil)
+                overlay.onMove(CGSize(width: translation.x, height: translation.y))
+                recognizer.setTranslation(.zero, in: nil)
+            case .ended, .cancelled, .failed:
+                commitIfTransformIdle()
+            default:
+                break
+            }
+        }
+
+        @objc private func handleMagnify(_ recognizer: UIPinchGestureRecognizer) {
+            switch recognizer.state {
+            case .changed:
+                overlay.onMagnify(Double(recognizer.scale))
+                recognizer.scale = 1
+            case .ended, .cancelled, .failed:
+                commitIfTransformIdle()
+            default:
+                break
+            }
+        }
+
+        @objc private func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
+            switch recognizer.state {
+            case .changed:
+                overlay.onRotate(Double(recognizer.rotation) * 180 / .pi)
+                recognizer.rotation = 0
+            case .ended, .cancelled, .failed:
+                commitIfTransformIdle()
+            default:
+                break
+            }
+        }
+
+        @objc private func handleTap() {
+            overlay.onTap?()
+        }
+
+        /// 세 인식기 중 마지막 하나가 끝나는 시점에 한 번만 커밋한다.
+        private func commitIfTransformIdle() {
+            let isTransforming = transformRecognizers.contains {
+                $0.state == .began || $0.state == .changed
+            }
+            guard !isTransforming else { return }
+            overlay.onTransformEnded()
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool {
+            other.view === gestureRecognizer.view && !(other is UITapGestureRecognizer)
+        }
     }
 }
