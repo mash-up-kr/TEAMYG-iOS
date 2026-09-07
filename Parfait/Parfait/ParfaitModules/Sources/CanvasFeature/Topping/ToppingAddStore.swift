@@ -68,7 +68,7 @@ final class ToppingAddStore: MVIStore {
              .photoEditTapped, .cutoutConfirmed:
             handleAnalysisIntent(intent)
 
-        case .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
+        case .borderPreviewLongEdgeChanged, .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
              .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderAreaTabTapped,
              .borderConfirmed:
             handleBorderIntent(intent)
@@ -77,8 +77,7 @@ final class ToppingAddStore: MVIStore {
              .maskRedoTapped, .manualCutoutClosed, .manualCutoutConfirmed:
             handleManualCutoutIntent(intent)
 
-        case .placementCanvasResized, .placementMoved, .placementScaled, .placementRotated,
-             .placementClosed, .placementConfirmed:
+        case .placementCanvasResized, .placementTransformed, .placementClosed, .placementConfirmed:
             handlePlacementIntent(intent)
         }
     }
@@ -104,17 +103,12 @@ final class ToppingAddStore: MVIStore {
 
     private func handleBorderIntent(_ intent: Intent) {
         switch intent {
+        case .borderPreviewLongEdgeChanged(let longEdge):
+            guard state.borderPreviewLongEdge != longEdge else { break }
+            state.borderPreviewLongEdge = longEdge
+            renderBorderSilhouette()
         case .borderEditClosed:
-            switch state.cutoutPath {
-            case .manual:
-                state.screen = .manualCutout
-            case .recentUpload:
-                // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
-                releaseExtractedTopping()
-                state.screen = .gallery
-            case .automatic:
-                state.screen = .candidateSelection
-            }
+            closeBorderEdit()
         case .borderAreaTabTapped:
             guard state.extractedTopping != nil, state.cutoutPath != .recentUpload else { break }
             state.cutoutPath = .manual
@@ -123,10 +117,24 @@ final class ToppingAddStore: MVIStore {
             guard let extractedTopping = state.extractedTopping else { break }
             state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
             state.screen = .placement
+            renderBorderSilhouette()
         default:
             if state.borderEditor.apply(intent) {
                 renderBorderSilhouette()
             }
+        }
+    }
+
+    private func closeBorderEdit() {
+        switch state.cutoutPath {
+        case .manual:
+            state.screen = .manualCutout
+        case .recentUpload:
+            // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
+            releaseExtractedTopping()
+            state.screen = .gallery
+        case .automatic:
+            state.screen = .candidateSelection
         }
     }
 
@@ -391,13 +399,20 @@ private extension ToppingAddStore {
 
     func renderBorderSilhouette() {
         borderRenderTask?.cancel()
-        guard let topping = state.extractedTopping, state.borderEditor.border.isVisible else {
+        guard let topping = state.extractedTopping, state.borderEditor.border.isVisible,
+              state.borderRenderLongEdge > 0
+        else {
             state.borderSilhouette = nil
             return
         }
         let width = state.borderEditor.border.width
+        let renderedLongEdge = state.borderRenderLongEdge
         borderRenderTask = Task { [weak self, borderRenderer] in
-            let image = await borderRenderer.silhouette(of: topping, width: width)
+            let image = await borderRenderer.silhouette(
+                of: topping,
+                width: width,
+                renderedLongEdge: renderedLongEdge
+            )
             guard !Task.isCancelled, let image else { return }
             self?.state.borderSilhouette = BorderSilhouette(image: image)
         }
@@ -480,10 +495,14 @@ private extension ToppingAddStore {
         case .placementClosed:
             guard state.saveState != .saving else { break }
             state.screen = .borderEdit
+            renderBorderSilhouette()
         case .placementConfirmed:
             saveTopping()
         default:
+            let longEdgeBeforeApply = state.borderRenderLongEdge
             state.placementEditor.apply(intent)
+            guard state.borderRenderLongEdge != longEdgeBeforeApply else { break }
+            renderBorderSilhouette()
         }
     }
 
@@ -492,21 +511,31 @@ private extension ToppingAddStore {
         // 이미 저장 중이면 조용히 무시한다 — 진행 중인 저장을 실패로 보고하면 안 된다.
         guard state.saveState != .saving else { return }
         guard let topping = state.extractedTopping,
-              let parfaitID = dependencies.parfaitID,
-              let pngData = ToppingImageEncoder.encodePNG(topping.image)
+              let parfaitID = dependencies.parfaitID
         else {
             eventChannel.send(.saveFailed)
             return
         }
 
-        let draft = ToppingDraft(
-            image: .topping(pngData: pngData),
-            placement: state.placementEditor.placementValues(zOrder: nextZOrder),
-            border: state.borderEditor.border.style
-        )
+        let placementEditor = state.placementEditor
+        let zOrder = nextZOrder
+        let border = state.borderEditor.border.style
         state.saveState = .saving
 
         saveTask = Task { [weak self, dependencies] in
+            guard let upload = await Self.encodedUpload(from: topping.image) else {
+                guard let self else { return }
+                state.saveState = .idle
+                eventChannel.send(.saveFailed)
+                return
+            }
+            let pngData = upload.pngData
+            let draft = ToppingDraft(
+                image: .topping(pngData: pngData),
+                placement: placementEditor.placementValues(zOrder: zOrder, scaleFactor: upload.scaleFactor),
+                border: border
+            )
+
             do {
                 _ = try await dependencies.toppingUseCase.place(
                     draft,
@@ -526,6 +555,17 @@ private extension ToppingAddStore {
                 eventChannel.send(.saveFailed)
             }
         }
+    }
+
+    static func encodedUpload(from image: CGImage) async -> (pngData: Data, scaleFactor: Double)? {
+        await Task.detached(priority: .userInitiated) {
+            let cropped = image.croppedRemovingSymmetricMargin()
+            guard let pngData = ToppingImageEncoder.encodePNG(cropped) else { return nil }
+
+            let scaleFactor = Double(max(cropped.width, cropped.height))
+                / Double(max(image.width, image.height))
+            return (pngData, scaleFactor)
+        }.value
     }
 
     /// 새 토핑은 항상 맨 위에 얹는다.

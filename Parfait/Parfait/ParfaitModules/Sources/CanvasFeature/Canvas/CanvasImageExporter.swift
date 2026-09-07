@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+import Core
 import CoreGraphics
 import Foundation
 import SwiftUI
@@ -24,11 +25,11 @@ public struct CanvasImageExporter: Sendable {
     private static let backgroundLongEdgePixelSize = 2160
 
     private let toppingRenderer: CanvasToppingRenderer
-    private let session: URLSession
+    private let imageProvider: ImageProvider
 
-    public init(toppingRenderer: CanvasToppingRenderer, session: URLSession = .shared) {
+    public init(toppingRenderer: CanvasToppingRenderer, imageProvider: ImageProvider) {
         self.toppingRenderer = toppingRenderer
-        self.session = session
+        self.imageProvider = imageProvider
     }
 
     func image(of content: CanvasStore.CanvasContent) async -> UIImage? {
@@ -84,8 +85,11 @@ public struct CanvasImageExporter: Sendable {
             return .color(hex: hex)
 
         case .image(let url):
-            guard let (imageData, _) = try? await session.data(from: url) else { return nil }
-            return decodedBackground(from: imageData)
+            guard let image = await imageProvider.image(
+                at: url,
+                maxPixelSize: Self.backgroundLongEdgePixelSize
+            ) else { return nil }
+            return .image(image)
 
         case .imageData(let imageData):
             return decodedBackground(from: imageData)
@@ -102,10 +106,10 @@ public struct CanvasImageExporter: Sendable {
 
     private func preparedTopping(_ canvasImage: CanvasStore.CanvasImage) async -> PreparedTopping? {
         // 저장본에 그려질 크기로만 받는다 — 화면과 같은 식이되 배율이 `renderScale` 이다.
-        let neededLongEdge = ToppingPlacement(canvasImage).longSide(in: Self.canvasSize) * Self.renderScale
+        let longSide = ToppingPlacement(canvasImage).longSide(in: Self.canvasSize)
         guard let image = await toppingRenderer.topping(
             at: canvasImage.imageURL,
-            neededLongEdge: neededLongEdge
+            neededLongEdge: longSide * Self.renderScale
         ) else { return nil }
 
         var silhouette: CGImage?
@@ -113,7 +117,8 @@ public struct CanvasImageExporter: Sendable {
             silhouette = await toppingRenderer.silhouette(
                 of: image,
                 at: canvasImage.imageURL,
-                width: border.width
+                width: border.width,
+                renderedLongEdge: longSide
             )
         }
 
@@ -175,6 +180,7 @@ private struct CanvasSnapshotView: View {
             topping: topping.image,
             silhouette: topping.silhouette,
             borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
+            borderWidth: topping.canvasImage.border.map { CGFloat($0.width) } ?? 0,
             placement: ToppingPlacement(topping.canvasImage),
             canvasSize: canvasSize
         )

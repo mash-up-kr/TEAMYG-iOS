@@ -23,6 +23,8 @@ struct ToppingBorderEditView: View {
     let onWidthChange: (Double) -> Void
     let onWidthEditingChange: (Bool) -> Void
     let onColorSelect: (ToppingBorderColor) -> Void
+    let onPreviewLongEdgeChange: (CGFloat) -> Void
+    let placementScale: Double?
     let showsAreaTab: Bool
     let singleTitle: String
     let onAreaTabTap: () -> Void
@@ -30,6 +32,8 @@ struct ToppingBorderEditView: View {
     let onConfirmTap: () -> Void
 
     @State private var selectedTab = 1
+    @State private var previewAreaSize: CGSize = .zero
+    @State private var toppingMargin: CGSize = .zero
 
     init(
         topping: CGImage?,
@@ -42,6 +46,8 @@ struct ToppingBorderEditView: View {
         onWidthChange: @escaping (Double) -> Void,
         onWidthEditingChange: @escaping (Bool) -> Void,
         onColorSelect: @escaping (ToppingBorderColor) -> Void,
+        onPreviewLongEdgeChange: @escaping (CGFloat) -> Void,
+        placementScale: Double?,
         showsAreaTab: Bool,
         singleTitle: String = "테두리",
         onAreaTabTap: @escaping () -> Void,
@@ -58,6 +64,8 @@ struct ToppingBorderEditView: View {
         self.onWidthChange = onWidthChange
         self.onWidthEditingChange = onWidthEditingChange
         self.onColorSelect = onColorSelect
+        self.onPreviewLongEdgeChange = onPreviewLongEdgeChange
+        self.placementScale = placementScale
         self.showsAreaTab = showsAreaTab
         self.singleTitle = singleTitle
         self.onAreaTabTap = onAreaTabTap
@@ -113,26 +121,99 @@ struct ToppingBorderEditView: View {
 
     private var preview: some View {
         ZStack {
-            if let silhouette, let strokeColor = border.color.strokeColor {
-                Image(decorative: silhouette, scale: 1, orientation: .up)
-                    .resizable()
-                    .renderingMode(.template)
-                    .foregroundStyle(strokeColor)
-                    .scaledToFit()
-            }
-
             if let topping {
-                Image(decorative: topping, scale: 1, orientation: .up)
-                    .resizable()
-                    .scaledToFit()
+                ToppingBorderedImage(
+                    topping: topping,
+                    silhouette: silhouette,
+                    borderColor: border.color.strokeColor,
+                    borderWidth: previewBorderWidth,
+                    size: fittedToppingSize
+                )
             } else {
                 ProgressView()
                     .tint(.gray500)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { previewAreaSize = $0 }
+        .task(id: topping.map(ObjectIdentifier.init)) {
+            toppingMargin = await Self.opaqueMargin(of: topping)
+        }
+        .onChange(of: placedLongSide, initial: true) { _, longSide in
+            onPreviewLongEdgeChange(longSide)
+        }
         .padding(.horizontal, .padding7)
         .padding(.vertical, .padding6)
+    }
+
+    private var toppingPixelSize: CGSize {
+        guard let topping, topping.width > 0, topping.height > 0 else { return .zero }
+        return CGSize(width: topping.width, height: topping.height)
+    }
+
+    private var placedLongSide: CGFloat {
+        let pixelSize = toppingPixelSize
+        guard pixelSize.width > 0, previewAreaSize.width > 0 else { return 0 }
+
+        let canvasSize = CGSize(
+            width: previewAreaSize.width,
+            height: previewAreaSize.width / CanvasArea.aspectRatio
+        )
+        let scale = placementScale
+            ?? ToppingPlacement.initial(toppingPixelSize: pixelSize, canvasSize: canvasSize).scale
+
+        return ToppingPlacement(scale: scale).longSide(in: canvasSize)
+    }
+
+    private var previewZoom: CGFloat {
+        let previewLongSide = max(fittedToppingSize.width, fittedToppingSize.height)
+        guard placedLongSide > 0, previewLongSide > 0 else { return 1 }
+
+        return previewLongSide / placedLongSide
+    }
+
+    private var previewBorderWidth: CGFloat {
+        CGFloat(border.width) * previewZoom
+    }
+
+    /// 굵기·색을 바꿔도 이미지 크기가 출렁이지 않도록, 항상 **최대 굵기**만큼 자리를 예약한
+    /// 고정 크기로 보여준다. 테두리는 예약된 여백 안에서만 자라서 잘리지 않는다.
+    private var fittedToppingSize: CGSize {
+        let pixelSize = toppingPixelSize
+        guard pixelSize.width > 0, previewAreaSize.width > 0, previewAreaSize.height > 0
+        else { return .zero }
+
+        let aspectFit = min(previewAreaSize.width / pixelSize.width, previewAreaSize.height / pixelSize.height)
+        let scale = min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize))
+
+        return CGSize(width: pixelSize.width * scale, height: pixelSize.height * scale)
+    }
+
+    private func maximumScaleFittingBorder(pixelSize: CGSize) -> CGFloat {
+        let objectHalfWidth = pixelSize.width / 2 - toppingMargin.width
+        let objectHalfHeight = pixelSize.height / 2 - toppingMargin.height
+        guard objectHalfWidth > 0, objectHalfHeight > 0, placedLongSide > 0
+        else { return .greatestFiniteMagnitude }
+
+        let borderPixels = CGFloat(ToppingBorder.widthRange.upperBound)
+            * max(pixelSize.width, pixelSize.height) / placedLongSide
+
+        return min(
+            previewAreaSize.width / 2 / (objectHalfWidth + borderPixels),
+            previewAreaSize.height / 2 / (objectHalfHeight + borderPixels)
+        )
+    }
+
+    private static func opaqueMargin(of image: CGImage?) async -> CGSize {
+        guard let image else { return .zero }
+
+        return await Task.detached(priority: .userInitiated) {
+            guard let bounds = image.opaqueBounds() else { return .zero }
+            return CGSize(
+                width: min(bounds.minX, CGFloat(image.width) - bounds.maxX),
+                height: min(bounds.minY, CGFloat(image.height) - bounds.maxY)
+            )
+        }.value
     }
 
     private var editArea: some View {
@@ -140,26 +221,30 @@ struct ToppingBorderEditView: View {
             Text("테두리 굵기")
                 .suit(.caption01Medium)
                 .foregroundStyle(.gray800)
+                .padding(.horizontal, .padding7)
 
             YGSlider(
                 value: Binding(get: { border.width }, set: { onWidthChange($0) }),
                 in: ToppingBorder.widthRange,
                 onEditingChanged: onWidthEditingChange
             )
+            .padding(.horizontal, .padding7)
 
             palette
         }
-        .padding(.horizontal, .padding7)
         .padding(.bottom, .padding6)
     }
 
     private var palette: some View {
-        HStack(spacing: .gap3) {
-            ForEach(ToppingBorderColor.allCases) { color in
-                paletteChip(color)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: .gap3) {
+                ForEach(ToppingBorderColor.allCases) { color in
+                    paletteChip(color)
+                }
             }
+            .padding(.horizontal, .padding7)
+            .padding(.vertical, .padding2)
         }
-        .padding(.vertical, .padding2)
     }
 
     private func paletteChip(_ color: ToppingBorderColor) -> some View {

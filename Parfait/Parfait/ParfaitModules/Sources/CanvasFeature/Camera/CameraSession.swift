@@ -22,6 +22,7 @@ actor CameraSession {
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     private var rotationObservers: [NSKeyValueObservation] = []
     private var isConfigured = false
+    private var flashMode: CameraFlashMode = .off
     /// 지금까지 처리한 켜기/끄기 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 요청이므로 버린다.
     private var latestGeneration = 0
 
@@ -44,16 +45,23 @@ actor CameraSession {
         if let device = videoInput?.device {
             updateRotationCoordinator(for: device)
         }
+        applyTorch(flashMode)
         return true
     }
 
     func stop(generation: Int) {
         guard acceptsRequest(generation) else { return }
+        applyTorch(.off)
         if captureSession.isRunning {
             captureSession.stopRunning()
         }
         previewFrameReceiver.pauseAndClear()
         cancelPendingPhotoCapture()
+    }
+
+    func setFlashMode(_ requestedFlashMode: CameraFlashMode) {
+        flashMode = requestedFlashMode
+        applyTorch(requestedFlashMode)
     }
 
     func switchCamera() -> CameraPosition? {
@@ -82,6 +90,10 @@ actor CameraSession {
         cameraPosition = nextPosition
         captureSession.commitConfiguration()
         updateRotationCoordinator(for: nextInput.device)
+        if nextPosition == .front {
+            flashMode = .off
+        }
+        applyTorch(flashMode)
         return nextPosition
     }
 
@@ -89,10 +101,10 @@ actor CameraSession {
         previewFrameReceiver.latestFrame()
     }
 
-    func capturePhoto(flashMode requestedFlashMode: CameraFlashMode) async -> Data? {
+    func capturePhoto() async -> Data? {
         guard photoCaptureDelegate == nil else { return nil }
 
-        let settings = makePhotoSettings(flashMode: requestedFlashMode)
+        let settings = makePhotoSettings()
         let captureDelegate = CameraPhotoCaptureDelegate()
         photoCaptureDelegate = captureDelegate
 
@@ -113,14 +125,26 @@ actor CameraSession {
         return true
     }
 
-    private func makePhotoSettings(flashMode requestedFlashMode: CameraFlashMode) -> AVCapturePhotoSettings {
+    private func makePhotoSettings() -> AVCapturePhotoSettings {
         let settings = AVCapturePhotoSettings()
         settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
         settings.photoQualityPrioritization = .speed
-        if photoOutput.supportedFlashModes.contains(requestedFlashMode.avFoundationMode) {
-            settings.flashMode = requestedFlashMode.avFoundationMode
-        }
+        settings.flashMode = .off
         return settings
+    }
+
+    private func applyTorch(_ requestedFlashMode: CameraFlashMode) {
+        let torchMode = requestedFlashMode.avFoundationTorchMode
+        guard let device = videoInput?.device, device.hasTorch, device.isTorchModeSupported(torchMode) else {
+            return
+        }
+        do {
+            try device.lockForConfiguration()
+        } catch {
+            return
+        }
+        device.torchMode = torchMode
+        device.unlockForConfiguration()
     }
 
     private func restorePreviousInput() {

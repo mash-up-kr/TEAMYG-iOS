@@ -87,13 +87,13 @@ extension ToppingPlacement {
     func handleCenter(
         horizontal: CGFloat,
         vertical: CGFloat,
-        renderedSize: CGSize,
+        frameSize: CGSize,
         cornerOffset: CGFloat,
         in canvasSize: CGSize
     ) -> CGPoint {
         let corner = CGSize(
-            width: horizontal * (renderedSize.width / 2 + cornerOffset),
-            height: vertical * (renderedSize.height / 2 + cornerOffset)
+            width: horizontal * (frameSize.width / 2 + cornerOffset),
+            height: vertical * (frameSize.height / 2 + cornerOffset)
         )
         let radians = rotationDegrees * .pi / 180
         let placementCenter = center(in: canvasSize)
@@ -153,19 +153,17 @@ struct ToppingPlacementEditor: Equatable, Sendable {
     mutating func apply(_ intent: ToppingAddStore.Intent) {
         switch intent {
         case .placementCanvasResized(let canvasSize): resize(to: canvasSize)
-        case .placementMoved(let translation): placement = placement.moved(by: translation, in: canvasSize)
-        case .placementScaled(let factor): placement = placement.magnified(by: factor)
-        case .placementRotated(let degrees): placement = placement.rotated(by: degrees)
+        case .placementTransformed(let transform): placement = transform.applied(to: placement, in: canvasSize)
         default: break
         }
     }
 
-    func placementValues(zOrder: Int) -> ToppingPlacementValues {
+    func placementValues(zOrder: Int, scaleFactor: Double) -> ToppingPlacementValues {
         ToppingPlacementValues(
             positionX: placement.positionX,
             positionY: placement.positionY,
             positionZ: zOrder,
-            scale: placement.scale,
+            scale: placement.scale * scaleFactor,
             rotation: placement.rotationDegrees
         )
     }

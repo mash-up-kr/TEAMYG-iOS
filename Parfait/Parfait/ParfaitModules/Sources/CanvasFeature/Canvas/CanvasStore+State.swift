@@ -58,7 +58,6 @@ public extension CanvasStore {
         var canvasEditDestination: CanvasEditDestination?
         /// 현재 그려진 캔버스의 서버 ID. 토핑 배치·편집이 이 값을 쓴다.
         public var parfaitID: Int?
-        public var status: ParfaitStatus?
         /// C-001-Save-Preview. 날짜 바의 저장 버튼을 누르면 열리고, 저장하거나 닫으면 `nil` 로 돌아간다.
         var savePreview: SavePreview?
         /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
@@ -98,11 +97,14 @@ public extension CanvasStore {
             calendar.selectedDate != calendar.today
         }
 
-        /// SY-001-New 안내 — 오늘 캔버스가 아직 발급만 되고 비어 있을 때만 최근 완성 캔버스를 알린다.
+        var toppingCount: Int {
+            canvasContent?.images.count ?? 0
+        }
+
+        /// SY-001-New 안내 — 오늘 캔버스에 토핑이 없고 최근 마감된 캔버스가 있을 때만 알린다.
         var pastParfaitNudge: PastParfaitNudge? {
             guard !isClosedCanvas,
-                  contentState != .loading,
-                  status == .empty,
+                  toppingCount == 0,
                   let lastClosedDate
             else { return nil }
 

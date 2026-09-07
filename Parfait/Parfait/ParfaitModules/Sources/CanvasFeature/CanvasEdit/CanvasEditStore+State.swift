@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import CoreGraphics
 import Foundation
 
 extension CanvasEditStore {
@@ -18,6 +19,9 @@ extension CanvasEditStore {
         var screen: Screen = .background
         var selectedToppingID: Int?
         var borderEditor = ToppingBorderEditor()
+        var borderTopping: CGImage?
+        var borderSilhouette: BorderSilhouette?
+        var borderPreviewLongEdge: CGFloat = 0
         var backgroundImageSource: BackgroundImagePickerStore.PhotoSource?
         var selectedBackgroundImageSource: BackgroundImagePickerStore.PhotoSource?
         var pendingUploadedBackground: UploadedImage?
@@ -132,6 +136,7 @@ extension CanvasEditStore {
         let canvasUseCase: any CanvasUseCase
         let toppingUseCase: any ToppingUseCase
         let imageUploadRepository: any ImageUploadRepository
+        let toppingRenderer: CanvasToppingRenderer
         let onDismiss: @MainActor @Sendable () -> Void
         let onSaved: @MainActor @Sendable () -> Void
     }
@@ -165,6 +170,7 @@ extension CanvasEditStore {
         case toppingPlacementChanged(toppingID: Int, placement: ToppingPlacement)
         case toppingDeleteTapped(Int)
         case toppingBorderEditTapped(Int)
+        case borderPreviewLongEdgeChanged(CGFloat)
         case borderWidthChanged(Double)
         case borderWidthEditingChanged(Bool)
         case borderColorSelected(ToppingBorderColor)

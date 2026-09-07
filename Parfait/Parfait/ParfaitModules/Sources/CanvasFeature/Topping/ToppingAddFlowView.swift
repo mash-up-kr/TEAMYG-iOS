@@ -37,7 +37,6 @@ struct ToppingAddFlowView: View {
                 galleryFlow
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .task {
             store.send(.screenAppeared)
@@ -76,46 +75,47 @@ struct ToppingAddFlowView: View {
     @ViewBuilder
     private var cameraFlow: some View {
         switch store.state.screen {
-        case .camera:
-            ToppingCameraView(
-                dateText: store.state.canvasDateText,
-                weekdayText: store.state.canvasWeekdayText,
-                flashMode: store.cameraState.flashMode,
-                isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                isCameraReady: store.cameraState.isReady,
-                showsToast: store.state.showsToast,
-                previewSource: store.previewSource,
-                onToastDismissed: { store.send(.toastDismissed) },
-                onFlashTap: { store.send(.flashTapped) },
-                onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                onSwitchCameraTap: { store.send(.cameraPositionTapped) }
-            )
-
-        case .cameraConfirmation:
-            ToppingCameraConfirmationView(
-                previewFrame: store.cameraState.previewFrame,
-                photoData: store.cameraState.capturedPhotoData,
-                viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                isNextEnabled: store.cameraState.hasCapture,
-                onRetakeTap: { store.send(.retakeTapped) },
-                onNextTap: { store.send(.photoConfirmed) }
-            )
+        case .camera, .cameraConfirmation:
+            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
+                ToppingCameraView(
+                    dateText: store.state.canvasDateText,
+                    weekdayText: store.state.canvasWeekdayText,
+                    flashMode: store.cameraState.flashMode,
+                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
+                    isCameraReady: store.cameraState.isReady,
+                    showsToast: store.state.showsToast,
+                    previewSource: store.previewSource,
+                    onToastDismissed: { store.send(.toastDismissed) },
+                    onFlashTap: { store.send(.flashTapped) },
+                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
+                    onSwitchCameraTap: { store.send(.cameraPositionTapped) }
+                )
+            } confirmation: {
+                ToppingCameraConfirmationView(
+                    previewFrame: store.cameraState.previewFrame,
+                    photoData: store.cameraState.capturedPhotoData,
+                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
+                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
+                    isNextEnabled: store.cameraState.hasCapture,
+                    onRetakeTap: { store.send(.retakeTapped) },
+                    onNextTap: { store.send(.photoConfirmed) }
+                )
+            }
 
         case .cameraPermissionError:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
-                actionTitle: "설정으로 이동",
-                onActionTap: { store.send(.settingsTapped) }
+                buttonTitle: "설정으로 이동",
+                action: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
-                actionTitle: "다시 시도",
-                onActionTap: { store.send(.cameraRetryTapped) }
+                buttonTitle: "다시 시도",
+                action: { store.send(.cameraRetryTapped) }
             )
 
         default:
@@ -212,6 +212,8 @@ struct ToppingAddFlowView: View {
                     onWidthChange: { store.send(.borderWidthChanged($0)) },
                     onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                     onColorSelect: { store.send(.borderColorSelected($0)) },
+                    onPreviewLongEdgeChange: { store.send(.borderPreviewLongEdgeChanged($0)) },
+                    placementScale: nil,
                     showsAreaTab: store.state.cutoutPath != .recentUpload,
                     onAreaTabTap: { store.send(.borderAreaTabTapped) },
                     onCloseTap: { store.send(.borderEditClosed) },
@@ -226,12 +228,11 @@ struct ToppingAddFlowView: View {
                     topping: extractedTopping,
                     silhouette: store.state.borderSilhouette?.image,
                     borderColor: store.state.borderEditor.border.color.strokeColor,
+                    borderWidth: CGFloat(store.state.borderEditor.border.width),
                     editor: store.state.placementEditor,
                     isSaving: store.state.saveState == .saving,
                     onCanvasResize: { store.send(.placementCanvasResized($0)) },
-                    onMove: { store.send(.placementMoved(translation: $0)) },
-                    onScale: { store.send(.placementScaled(factor: $0)) },
-                    onRotate: { store.send(.placementRotated(degrees: $0)) },
+                    onTransform: { store.send(.placementTransformed($0)) },
                     onCloseTap: { store.send(.placementClosed) },
                     onConfirmTap: { store.send(.placementConfirmed) }
                 )

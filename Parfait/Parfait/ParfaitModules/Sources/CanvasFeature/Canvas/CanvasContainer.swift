@@ -12,9 +12,17 @@ struct CanvasContainer: View {
     let state: CanvasStore.State
     let send: (CanvasStore.Intent) -> Void
 
+    /// SY-001-New 안내는 노출 후 일정 시간이 지나면 내린다 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
+    @State private var isPastParfaitNudgeExpired = false
+
     var body: some View {
         ZStack(alignment: .top) {
             GeometryReader { proxy in
+                let contentSize = CGSize(
+                    width: max(proxy.size.width - .padding7 * 2, 0),
+                    height: max(proxy.size.height - .padding6 * 2, 0)
+                )
+
                 // Pull-to-Refresh 를 걸기 위한 스크롤 컨테이너. 내용 높이를 뷰포트에 맞춰
                 // 실제 스크롤은 일어나지 않고 당겨서 새로고침만 동작한다
                 // (`canvas-policy.md` §4.2 — 다른 그룹원의 토핑을 받아오는 유일한 경로).
@@ -45,27 +53,46 @@ struct CanvasContainer: View {
 
                         menuBar
                     }
-                    .frame(width: CanvasArea.width(fitting: proxy.size))
-                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                    .frame(width: CanvasArea.width(fitting: contentSize))
+                    .frame(maxWidth: .infinity, minHeight: contentSize.height)
+                    .padding(.horizontal, .padding7)
+                    .padding(.vertical, .padding6)
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.always)
                 .refreshable { send(.refreshRequested) }
             }
-            .padding(.horizontal, .padding7)
-            .padding(.vertical, .padding6)
 
-            if let pastParfaitNudge = state.pastParfaitNudge {
-                CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
-                    send(.pastParfaitNudgeTapped)
-                }
-                .padding(.top, .padding6)
-            }
+            pastParfaitNudgeLayer
 
             if state.calendar.presentation != .closed {
                 calendarLayer
             }
         }
+    }
+
+    /// Store 조건(오늘·토핑 없음·마감 이력)과 뷰 로컬 만료를 합친 최종 노출 여부 — 슬라이드 애니메이션 트리거.
+    private var isPastParfaitNudgeShown: Bool {
+        state.pastParfaitNudge != nil && !isPastParfaitNudgeExpired
+    }
+
+    /// SY-001-New 안내 — 위에서 내려와 3초 머물다 위로 올라간다.
+    private var pastParfaitNudgeLayer: some View {
+        ZStack(alignment: .top) {
+            if let pastParfaitNudge = state.pastParfaitNudge, !isPastParfaitNudgeExpired {
+                CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
+                    send(.pastParfaitNudgeTapped)
+                }
+                .padding(.top, .padding6)
+                .transition(.move(edge: .top))
+                .task {
+                    // 시간이 다 되기 전에 뷰가 내려가면(과거 이동 등) 취소된다 — 그때는 만료로 치지 않는다.
+                    guard (try? await Task.sleep(for: CanvasPastParfaitNudge.displayDuration)) != nil else { return }
+                    isPastParfaitNudgeExpired = true
+                }
+            }
+        }
+        .animation(CanvasPastParfaitNudge.slideAnimation, value: isPastParfaitNudgeShown)
     }
 
     /// 과거 캔버스는 열람 전용이라 토핑 추가·캔버스 편집 대신 오늘 가기를 제공한다 (`canvas-policy.md` §7.2).

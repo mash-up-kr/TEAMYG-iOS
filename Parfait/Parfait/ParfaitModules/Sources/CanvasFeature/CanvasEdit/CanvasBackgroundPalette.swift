@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+import Core
 import CoreGraphics
 import SwiftUI
 import UIComponent
@@ -113,7 +114,7 @@ private struct CanvasBackgroundThumbnail: View {
             Color(hex: hex)
 
         case .image(let url):
-            AsyncImage(url: url) { phase in
+            YGImageView(url: url) { phase in
                 if case .success(let image) = phase {
                     image
                         .resizable()

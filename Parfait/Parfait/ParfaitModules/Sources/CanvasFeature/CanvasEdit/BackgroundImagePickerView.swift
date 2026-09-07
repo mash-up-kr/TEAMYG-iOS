@@ -68,46 +68,47 @@ struct BackgroundImagePickerView: View {
     @ViewBuilder
     private var content: some View {
         switch store.state.screen {
-        case .camera:
-            ToppingCameraView(
-                dateText: store.state.dateText,
-                weekdayText: store.state.weekdayText,
-                flashMode: store.cameraState.flashMode,
-                isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                isCameraReady: store.cameraState.isReady,
-                showsToast: false,
-                previewSource: store.previewSource,
-                onToastDismissed: { store.send(.cameraGuideDismissed) },
-                onFlashTap: { store.send(.flashTapped) },
-                onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                onSwitchCameraTap: { store.send(.cameraPositionTapped) }
-            )
-
-        case .cameraConfirmation:
-            ToppingCameraConfirmationView(
-                previewFrame: store.cameraState.previewFrame,
-                photoData: store.cameraState.capturedPhotoData,
-                viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
-                onRetakeTap: { store.send(.retakeTapped) },
-                onNextTap: { store.send(.photoConfirmed) }
-            )
+        case .camera, .cameraConfirmation:
+            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
+                ToppingCameraView(
+                    dateText: store.state.dateText,
+                    weekdayText: store.state.weekdayText,
+                    flashMode: store.cameraState.flashMode,
+                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
+                    isCameraReady: store.cameraState.isReady,
+                    showsToast: false,
+                    previewSource: store.previewSource,
+                    onToastDismissed: { store.send(.cameraGuideDismissed) },
+                    onFlashTap: { store.send(.flashTapped) },
+                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
+                    onSwitchCameraTap: { store.send(.cameraPositionTapped) }
+                )
+            } confirmation: {
+                ToppingCameraConfirmationView(
+                    previewFrame: store.cameraState.previewFrame,
+                    photoData: store.cameraState.capturedPhotoData,
+                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
+                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
+                    isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
+                    onRetakeTap: { store.send(.retakeTapped) },
+                    onNextTap: { store.send(.photoConfirmed) }
+                )
+            }
 
         case .cameraPermissionError:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
-                actionTitle: "설정으로 이동",
-                onActionTap: { store.send(.settingsTapped) }
+                buttonTitle: "설정으로 이동",
+                action: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
-                actionTitle: "다시 시도",
-                onActionTap: { store.send(.cameraRetryTapped) }
+                buttonTitle: "다시 시도",
+                action: { store.send(.cameraRetryTapped) }
             )
 
         case .gallery:

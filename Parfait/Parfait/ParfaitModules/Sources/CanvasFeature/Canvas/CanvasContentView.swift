@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import Core
 import CoreGraphics
 import SwiftUI
 import UIComponent
@@ -38,7 +39,11 @@ struct CanvasContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
+                // 저장본(`CanvasSnapshotView`)과 같은 가운데 크롭이 되도록 배경을 캔버스 크기에 고정한다.
+                // `scaledToFill` 결과를 캔버스보다 큰 채로 두면 ZStack 이 그만큼 커져 크롭 기준이 어긋난다.
                 background
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
 
                 if spotlightedToppingID != nil {
                     Color.black50
@@ -77,7 +82,7 @@ struct CanvasContentView: View {
             Color(hex: hex)
 
         case .image(let url):
-            AsyncImage(url: url) { phase in
+            YGImageView(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -87,8 +92,6 @@ struct CanvasContentView: View {
                     ProgressView()
                         .tint(.gray500)
                 case .failure:
-                    Color.gray100
-                @unknown default:
                     Color.gray100
                 }
             }
@@ -116,6 +119,9 @@ private struct LocalCanvasBackgroundImage: View {
                     Color.gray100
                 }
             }
+            // GeometryReader 는 자식을 좌상단에 앉히므로, 프레임으로 감싸 가운데 크롭을 보장한다 — 저장본과 같은 기준.
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
             .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
                 let maxPixelSize = proxy.size.longEdgePixelSize(scale: displayScale)
                 image = await Task.detached(priority: .userInitiated) {
@@ -148,7 +154,9 @@ struct CanvasPlacedImage: View {
 
     var body: some View {
         content
-            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge)) { await load() }
+            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge, borderRedrawKey: borderRedrawKey)) {
+                await load()
+            }
     }
 
     @ViewBuilder
@@ -158,6 +166,7 @@ struct CanvasPlacedImage: View {
                 topping: topping,
                 silhouette: silhouette,
                 borderColor: canvasImage.border.map { Color(hex: $0.colorHex) },
+                borderWidth: canvasImage.border.map { CGFloat($0.width) } ?? 0,
                 placement: placement,
                 canvasSize: canvasSize,
                 isSelected: isSelected,
@@ -192,7 +201,12 @@ struct CanvasPlacedImage: View {
             silhouette = nil
             return
         }
-        let rendered = await renderer.silhouette(of: loaded, at: canvasImage.imageURL, width: border.width)
+        let rendered = await renderer.silhouette(
+            of: loaded,
+            at: canvasImage.imageURL,
+            width: border.width,
+            renderedLongEdge: longSide
+        )
         guard !Task.isCancelled else { return }
         silhouette = rendered
     }
@@ -215,17 +229,24 @@ struct CanvasPlacedImage: View {
         ToppingDecodeBucket.longEdge(covering: neededLongEdgePixels)
     }
 
+    private var borderRedrawKey: Int {
+        guard let border = canvasImage.border, longSide > 0 else { return 0 }
+        return Int((CGFloat(border.width) / longSide * decodeLongEdge).rounded())
+    }
+
     /// 확대해서 버킷이 올라가면 다시 받아야 하므로 해상도도 키에 넣는다.
     /// 버킷 안에서 배율만 오르내리는 동안에는 값이 그대로라 재디코딩이 일어나지 않는다.
     private struct LoadKey: Equatable {
         let imageURL: URL
         let border: CanvasStore.CanvasImageBorder?
         let decodeLongEdge: CGFloat
+        let borderRedrawKey: Int
 
-        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat) {
+        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat, borderRedrawKey: Int) {
             imageURL = canvasImage.imageURL
             border = canvasImage.border
             self.decodeLongEdge = decodeLongEdge
+            self.borderRedrawKey = borderRedrawKey
         }
     }
 }

@@ -92,8 +92,7 @@ private struct ToppingImage: View {
 
     var body: some View {
         if let thumbnailURL = group.thumbnailURL {
-            // ponytail: Core 에 이미지 캐싱이 생기면 교체 — 지금은 매번 다시 받는다.
-            AsyncImage(url: thumbnailURL) { phase in
+            YGImageView(url: thumbnailURL) { phase in
                 switch phase {
                 case .success(let image):
                     // 누끼는 오브젝트 자체가 내용이라 잘라내면 뭔지 알 수 없게 된다.
@@ -103,8 +102,6 @@ private struct ToppingImage: View {
                     // 조회 실패 — 칩은 그대로 두고 이미지 자리만 물음표 그래픽으로.
                     fitted(.templateError)
                 case .empty:
-                    Color.clear
-                @unknown default:
                     Color.clear
                 }
             }

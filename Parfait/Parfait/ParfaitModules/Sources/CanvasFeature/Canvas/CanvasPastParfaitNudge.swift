@@ -9,6 +9,11 @@ import SwiftUI
 import UIComponent
 
 struct CanvasPastParfaitNudge: View {
+    /// 노출 유지 시간 — 이 시간이 지나면 자동으로 내려간다.
+    static let displayDuration: Duration = .seconds(3)
+    /// 위에서 내려오는 등장, 위로 올라가는 퇴장 슬라이드.
+    static let slideAnimation: Animation = .easeInOut(duration: 0.3)
+
     let nudge: CanvasStore.PastParfaitNudge
     let onOpenTap: () -> Void
 

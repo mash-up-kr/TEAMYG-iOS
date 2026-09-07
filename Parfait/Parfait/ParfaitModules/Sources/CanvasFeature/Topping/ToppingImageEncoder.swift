@@ -21,19 +21,6 @@ enum ToppingImageEncoder {
         return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
-    /// 원본 크기 비트맵을 만들지 않고 `longEdge` 로 줄이며 디코딩한다.
-    /// `CGImage.downscaled(longEdge:)` 와 달리 알파를 보존하므로 누끼에 쓸 수 있다.
-    static func decode(_ imageData: Data, longEdge: CGFloat) -> CGImage? {
-        guard let source = CGImageSourceCreateWithData(imageData as CFData, nil) else { return nil }
-
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceShouldCacheImmediately: true,
-            kCGImageSourceThumbnailMaxPixelSize: max(1, Int(longEdge.rounded()))
-        ]
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
-    }
-
     /// 누끼는 알파가 살아 있어야 한다 — `CGImage.downscaled(longEdge:)` 는 알파를 버리므로 쓰지 않는다.
     static func encodePNG(_ image: CGImage) -> Data? {
         let resized = image.downscaledPreservingAlpha(longEdge: maximumLongEdge)

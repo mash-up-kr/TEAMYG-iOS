@@ -5,28 +5,22 @@
 //  Created by 박서연 on 8/24/26.
 //
 
+import Core
 import CoreGraphics
 import Foundation
 import SwiftUI
 
-/// 서버에 저장된 토핑을 캔버스에 그리기 위한 디코딩·테두리 실루엣 캐시.
+/// 서버에 저장된 토핑을 캔버스에 그리기 위한 디코딩 버킷 정책 + 테두리 실루엣 캐시.
 ///
-/// 테두리는 이미지에 굽지 않고 색·굵기 값으로만 오므로(확정 규약), 그릴 때마다 알파 실루엣을
-/// 다시 떠야 한다. `AsyncImage` 는 `CGImage` 를 내주지 않고 캔버스를 열 때마다 다시 받으므로
-/// 여기서 직접 받아 캐시한다. 캔버스를 나갔다 들어와도 캐시가 살아 있도록 앱 루트가 하나를 소유한다.
+/// 다운로드·다운샘플링·메모리 캐시는 `ImageProvider` 가 담당하고, 여기는 토핑 전용 정책만 남는다 —
+/// 필요 해상도를 버킷으로 끊는 것과, 테두리 실루엣(색·굵기 값으로만 오는 확정 규약) 렌더링.
+/// 캔버스를 나갔다 들어와도 캐시가 살아 있도록 앱 루트가 하나를 소유한다.
 public actor CanvasToppingRenderer {
-    /// 디코딩한 토핑 비트맵 총량 상한. 한 장의 크기가 배율에 따라 달라지므로 장수가 아니라 바이트로 잡는다.
-    private static let cacheByteLimit = 48 * 1024 * 1024
-
-    private let session: URLSession
+    private let imageProvider: ImageProvider
     private let borderRenderer = ToppingBorderRenderer()
-    /// 앱이 끝까지 들고 있는 캐시라 메모리 경고에 스스로 반응해야 한다 — `NSCache` 가 그 일을 한다.
-    private let toppings = NSCache<NSString, CGImage>()
-    private var loads: [NSString: Task<CGImage?, Never>] = [:]
 
-    public init(session: URLSession = .shared) {
-        self.session = session
-        toppings.totalCostLimit = Self.cacheByteLimit
+    public init(imageProvider: ImageProvider) {
+        self.imageProvider = imageProvider
     }
 
     /// `neededLongEdge` 는 이 토핑이 화면에 그려질 긴 변의 **픽셀** 수.
@@ -34,36 +28,22 @@ public actor CanvasToppingRenderer {
     /// 같은 URL·같은 버킷을 여러 토핑이 동시에 요청해도 내려받기는 한 번만 한다.
     func topping(at url: URL, neededLongEdge: CGFloat) async -> CGImage? {
         let longEdge = ToppingDecodeBucket.longEdge(covering: neededLongEdge)
-        let key = Self.cacheKey(url: url, longEdge: longEdge)
-
-        if let cached = toppings.object(forKey: key) { return cached }
-        if let load = loads[key] { return await load.value }
-
-        let load = Task.detached { [session, longEdge] () -> CGImage? in
-            guard let (imageData, _) = try? await session.data(from: url) else { return nil }
-            return ToppingImageEncoder.decode(imageData, longEdge: longEdge)
-        }
-        loads[key] = load
-
-        let topping = await load.value
-        loads[key] = nil
-        guard let topping else { return nil }
-
-        toppings.setObject(topping, forKey: key, cost: topping.byteCount)
-        return topping
+        return await imageProvider.image(at: url, maxPixelSize: Int(longEdge))
     }
 
     /// 실루엣은 넘겨받은 비트맵에서 뜨므로 버킷마다 결과 크기가 다르다 — 캐시 키에 그 크기를 섞는다.
-    func silhouette(of topping: CGImage, at url: URL, width: Double) async -> CGImage? {
+    func silhouette(
+        of topping: CGImage,
+        at url: URL,
+        width: Double,
+        renderedLongEdge: CGFloat
+    ) async -> CGImage? {
         await borderRenderer.silhouette(
             of: topping,
             source: "\(url.absoluteString)#\(topping.width)x\(topping.height)",
-            width: width
+            width: width,
+            renderedLongEdge: renderedLongEdge
         )
-    }
-
-    private static func cacheKey(url: URL, longEdge: CGFloat) -> NSString {
-        "\(url.absoluteString)#\(Int(longEdge))" as NSString
     }
 }
 
