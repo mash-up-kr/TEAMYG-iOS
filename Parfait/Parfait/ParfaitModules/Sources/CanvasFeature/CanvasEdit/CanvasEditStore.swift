@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import CoreGraphics
 import Foundation
 import Observation
 import UIComponent
@@ -18,6 +19,9 @@ final class CanvasEditStore: MVIStore {
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
+
+    @ObservationIgnored private var borderToppingLoadTask: Task<Void, Never>?
+    @ObservationIgnored private var borderSilhouetteRenderTask: Task<Void, Never>?
 
     init(state: State, dependencies: Dependencies) {
         self.state = state
@@ -39,8 +43,9 @@ final class CanvasEditStore: MVIStore {
         case .toppingTapped, .toppingPlacementChanged, .toppingDeleteTapped,
              .toppingBorderEditTapped:
             handleToppingIntent(intent)
-        case .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
-             .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderEditConfirmed:
+        case .borderPreviewLongEdgeChanged, .borderWidthChanged, .borderWidthEditingChanged,
+             .borderColorSelected, .borderUndoTapped, .borderRedoTapped, .borderEditClosed,
+             .borderEditConfirmed:
             handleBorderIntent(intent)
         case .confirmTapped:
             saveChanges()
@@ -110,20 +115,30 @@ final class CanvasEditStore: MVIStore {
 
     private func handleBorderIntent(_ intent: Intent) {
         switch intent {
+        case .borderPreviewLongEdgeChanged(let longEdge):
+            guard state.borderPreviewLongEdge != longEdge else { break }
+            state.borderPreviewLongEdge = longEdge
+            renderBorderSilhouette()
         case .borderWidthChanged(let width):
             state.borderEditor.changeWidth(width)
+            renderBorderSilhouette()
         case .borderWidthEditingChanged(let isEditing):
             state.borderEditor.updateWidthEditing(isEditing)
         case .borderColorSelected(let color):
             state.borderEditor.select(color)
+            renderBorderSilhouette()
         case .borderUndoTapped:
             state.borderEditor.undo()
+            renderBorderSilhouette()
         case .borderRedoTapped:
             state.borderEditor.redo()
+            renderBorderSilhouette()
         case .borderEditClosed:
             state.screen = .toppings
+            stopBorderRendering()
         case .borderEditConfirmed:
             applyBorderDraft()
+            stopBorderRendering()
         default:
             break
         }
@@ -151,6 +166,8 @@ final class CanvasEditStore: MVIStore {
         state.selectedToppingID = toppingID
         state.borderEditor = ToppingBorderEditor(border: topping.border)
         state.screen = .border(toppingID: toppingID)
+        loadBorderTopping(of: topping)
+        renderBorderSilhouette()
     }
 
     private func applyBorderDraft() {
@@ -173,6 +190,68 @@ final class CanvasEditStore: MVIStore {
     private func updateTopping(_ toppingID: Int, update: (inout EditableTopping) -> Void) {
         guard let index = state.toppings.firstIndex(where: { $0.id == toppingID }) else { return }
         update(&state.toppings[index])
+    }
+}
+
+extension CanvasEditStore {
+    /// 토핑 이미지와 테두리 실루엣은 **따로** 로드한다. 한 흐름으로 묶으면 굵기 슬라이더를
+    /// 움직일 때마다 토핑까지 다시 로드하며 미리보기가 스피너로 깜빡인다.
+    fileprivate func loadBorderTopping(of topping: EditableTopping) {
+        borderToppingLoadTask?.cancel()
+        // 이미 그려 둔 토핑은 새 이미지가 도착할 때까지 그대로 둔다 — 화면이 비지 않게.
+        borderToppingLoadTask = Task { [self] in
+            let image = await dependencies.toppingRenderer.topping(
+                at: topping.imageURL,
+                neededLongEdge: ToppingImageEncoder.maximumLongEdge
+            )
+            guard !Task.isCancelled, let image else { return }
+            state.borderTopping = image
+        }
+    }
+
+    /// 굵기·색이 바뀔 때마다 여기만 다시 돈다. 토핑 이미지는 건드리지 않는다.
+    fileprivate func renderBorderSilhouette() {
+        borderSilhouetteRenderTask?.cancel()
+        guard let topping = state.borderEditingTopping,
+              state.borderEditor.border.isVisible,
+              state.borderPreviewLongEdge > 0
+        else {
+            state.borderSilhouette = nil
+            return
+        }
+
+        let imageURL = topping.imageURL
+        let width = state.borderEditor.border.width
+        let renderedLongEdge = state.borderPreviewLongEdge
+        let loadedTopping = state.borderTopping
+        borderSilhouetteRenderTask = Task { [self] in
+            // 토핑 로드가 아직 안 끝났을 수 있다 — 캐시에서 다시 받아 온다(대개 즉시 반환).
+            var toppingImage = loadedTopping
+            if toppingImage == nil {
+                toppingImage = await dependencies.toppingRenderer.topping(
+                    at: imageURL,
+                    neededLongEdge: ToppingImageEncoder.maximumLongEdge
+                )
+            }
+            guard !Task.isCancelled, let toppingImage else { return }
+
+            let silhouette = await dependencies.toppingRenderer.silhouette(
+                of: toppingImage,
+                at: imageURL,
+                width: width,
+                renderedLongEdge: renderedLongEdge
+            )
+            guard !Task.isCancelled, let silhouette else { return }
+            state.borderSilhouette = BorderSilhouette(image: silhouette)
+        }
+    }
+
+    /// 테두리 화면을 떠날 때 로드를 끊고 비운다 — 다른 토핑으로 재진입할 때 이전 이미지가 비치지 않게.
+    fileprivate func stopBorderRendering() {
+        borderToppingLoadTask?.cancel()
+        borderSilhouetteRenderTask?.cancel()
+        state.borderTopping = nil
+        state.borderSilhouette = nil
     }
 }
 
@@ -301,37 +380,4 @@ extension CanvasEditStore {
         }
     }
 
-    private func saveConcurrently(
-        _ toppingIDs: [Int],
-        request: @escaping @Sendable (Int) async throws -> Void,
-        promote: (Int) -> Void
-    ) async throws {
-        guard !toppingIDs.isEmpty else { return }
-
-        let savedIDs = await withTaskGroup(of: Int?.self) { group in
-            for toppingID in toppingIDs {
-                group.addTask {
-                    do {
-                        try await request(toppingID)
-                        return toppingID
-                    } catch {
-                        return nil
-                    }
-                }
-            }
-
-            var succeeded: [Int] = []
-            for await toppingID in group {
-                if let toppingID { succeeded.append(toppingID) }
-            }
-            return succeeded
-        }
-
-        savedIDs.forEach(promote)
-        guard savedIDs.count == toppingIDs.count else { throw SaveFailure.someRequestsFailed }
-    }
-}
-
-private enum SaveFailure: Error {
-    case someRequestsFailed
 }

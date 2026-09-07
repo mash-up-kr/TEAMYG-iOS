@@ -14,9 +14,6 @@ struct CanvasEditView: View {
 
     @State private var store: CanvasEditStore
     @State private var toasts: [YGToastItem] = []
-    @State private var borderTopping: CGImage?
-    @State private var borderSilhouette: CGImage?
-    @State private var borderPreviewLongEdge: CGFloat = 0
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingRenderer: CanvasToppingRenderer
 
@@ -82,14 +79,6 @@ struct CanvasEditView: View {
                 }
             }
         }
-        // 토핑 이미지와 테두리 실루엣을 **따로** 받는다. 한 task 로 묶으면 굵기 슬라이더를
-        // 움직일 때마다 토핑까지 다시 로드하며 미리보기가 스피너로 깜빡인다.
-        .task(id: store.state.borderEditingTopping?.imageURL) {
-            await loadBorderTopping()
-        }
-        .task(id: borderSilhouetteKey) {
-            await loadBorderSilhouette()
-        }
     }
 
     private var backgroundEditor: some View {
@@ -98,7 +87,7 @@ struct CanvasEditView: View {
                 VStack(spacing: 0) {
                     backgroundCanvasBoard
                         .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
-                        .frame(width: backgroundContentWidth(fitting: proxy.size))
+                        .frame(width: contentWidth(fitting: proxy.size, reservedHeight: CanvasBackgroundPalette.height))
 
                     CanvasBackgroundPalette(
                         background: store.state.background,
@@ -133,7 +122,7 @@ struct CanvasEditView: View {
                     onBorderEditTap: { store.send(.toppingBorderEditTapped($0)) }
                 )
                 .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
-                .frame(width: toppingContentWidth(fitting: proxy.size))
+                .frame(width: contentWidth(fitting: proxy.size, reservedHeight: Self.toppingCanvasTopSpacing))
                 .padding(.top, Self.toppingCanvasTopSpacing)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
@@ -147,8 +136,8 @@ struct CanvasEditView: View {
     private var borderEditor: some View {
         if store.state.borderEditingTopping != nil {
             ToppingBorderEditView(
-                topping: borderTopping,
-                silhouette: borderSilhouette,
+                topping: store.state.borderTopping,
+                silhouette: store.state.borderSilhouette?.image,
                 border: store.state.borderEditor.border,
                 canUndo: store.state.borderEditor.canUndo,
                 canRedo: store.state.borderEditor.canRedo,
@@ -157,7 +146,7 @@ struct CanvasEditView: View {
                 onWidthChange: { store.send(.borderWidthChanged($0)) },
                 onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
                 onColorSelect: { store.send(.borderColorSelected($0)) },
-                onPreviewLongEdgeChange: { borderPreviewLongEdge = $0 },
+                onPreviewLongEdgeChange: { store.send(.borderPreviewLongEdgeChanged($0)) },
                 placementScale: store.state.borderEditingTopping?.placement.scale,
                 showsAreaTab: false,
                 singleTitle: "테두리 편집",
@@ -204,11 +193,7 @@ struct CanvasEditView: View {
                 )
             )
         }
-        .clipped()
-        .overlay {
-            Rectangle()
-                .strokeBorder(.gray500, lineWidth: 1)
-        }
+        .canvasBoardFrame()
     }
 }
 
@@ -239,72 +224,8 @@ private extension CanvasEditView {
         )
     }
 
-    func backgroundContentWidth(fitting availableSize: CGSize) -> CGFloat {
-        let availableBoardHeight = max(availableSize.height - CanvasBackgroundPalette.height, 0)
+    func contentWidth(fitting availableSize: CGSize, reservedHeight: CGFloat) -> CGFloat {
+        let availableBoardHeight = max(availableSize.height - reservedHeight, 0)
         return min(availableSize.width - (.padding7 * 2), availableBoardHeight * CanvasArea.aspectRatio)
-    }
-
-    func toppingContentWidth(fitting availableSize: CGSize) -> CGFloat {
-        let availableBoardHeight = max(availableSize.height - Self.toppingCanvasTopSpacing, 0)
-        return min(availableSize.width - (.padding7 * 2), availableBoardHeight * CanvasArea.aspectRatio)
-    }
-
-    var borderSilhouetteKey: BorderSilhouetteKey? {
-        guard let topping = store.state.borderEditingTopping,
-              store.state.borderEditor.border.isVisible,
-              borderPreviewLongEdge > 0
-        else { return nil }
-        return BorderSilhouetteKey(
-            imageURL: topping.imageURL,
-            borderWidth: store.state.borderEditor.border.width,
-            previewLongEdge: borderPreviewLongEdge
-        )
-    }
-
-    /// 테두리 편집(C-306)은 토핑 한 장을 화면 가득 띄운다. 한 장뿐이라 원본 해상도를 그대로 쓴다.
-    func loadBorderTopping() async {
-        guard let imageURL = store.state.borderEditingTopping?.imageURL else {
-            borderTopping = nil
-            return
-        }
-        // 이미 그려 둔 토핑은 새 이미지가 도착할 때까지 그대로 둔다 — 화면이 비지 않게.
-        let topping = await toppingRenderer.topping(
-            at: imageURL,
-            neededLongEdge: ToppingImageEncoder.maximumLongEdge
-        )
-        guard !Task.isCancelled else { return }
-        borderTopping = topping
-    }
-
-    /// 굵기가 바뀔 때마다 여기만 다시 돈다. 토핑 이미지는 건드리지 않는다.
-    func loadBorderSilhouette() async {
-        guard let key = borderSilhouetteKey else {
-            borderSilhouette = nil
-            return
-        }
-        // 토핑 로드가 아직 안 끝났을 수 있다 — 캐시에서 다시 받아 온다(대개 즉시 반환).
-        var topping = borderTopping
-        if topping == nil {
-            topping = await toppingRenderer.topping(
-                at: key.imageURL,
-                neededLongEdge: ToppingImageEncoder.maximumLongEdge
-            )
-        }
-        guard !Task.isCancelled, let topping else { return }
-
-        let silhouette = await toppingRenderer.silhouette(
-            of: topping,
-            at: key.imageURL,
-            width: key.borderWidth,
-            renderedLongEdge: key.previewLongEdge
-        )
-        guard !Task.isCancelled else { return }
-        borderSilhouette = silhouette
-    }
-
-    struct BorderSilhouetteKey: Equatable {
-        let imageURL: URL
-        let borderWidth: Double
-        let previewLongEdge: CGFloat
     }
 }

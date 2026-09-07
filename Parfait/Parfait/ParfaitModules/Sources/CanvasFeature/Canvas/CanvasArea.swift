@@ -6,6 +6,8 @@
 //
 
 import CoreGraphics
+import SwiftUI
+import UIComponent
 
 enum CanvasArea {
     static let aspectRatio: CGFloat = 9 / 16
@@ -26,5 +28,18 @@ enum CanvasArea {
         return pixelSize.width >= pixelSize.height
             ? CGSize(width: longSide, height: shortSide)
             : CGSize(width: shortSide, height: longSide)
+    }
+}
+
+extension View {
+    /// 캔버스 보드 공통 프레임 — 내용을 사각형으로 자르고 1pt 회색 외곽선을 두른다.
+    /// 배치(C-106)·배경 편집·토핑 편집(C-305) 보드가 같은 틀을 쓴다.
+    func canvasBoardFrame() -> some View {
+        clipped()
+            .overlay {
+                Rectangle()
+                    .strokeBorder(Color.gray500, lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
     }
 }

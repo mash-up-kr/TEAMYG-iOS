@@ -37,7 +37,6 @@ struct ToppingAddFlowView: View {
                 galleryFlow
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .task {
             store.send(.screenAppeared)
@@ -104,19 +103,19 @@ struct ToppingAddFlowView: View {
             }
 
         case .cameraPermissionError:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
-                actionTitle: "설정으로 이동",
-                onActionTap: { store.send(.settingsTapped) }
+                buttonTitle: "설정으로 이동",
+                action: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            ToppingErrorView(
+            CameraErrorScreen(
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
-                actionTitle: "다시 시도",
-                onActionTap: { store.send(.cameraRetryTapped) }
+                buttonTitle: "다시 시도",
+                action: { store.send(.cameraRetryTapped) }
             )
 
         default:
@@ -233,9 +232,7 @@ struct ToppingAddFlowView: View {
                     editor: store.state.placementEditor,
                     isSaving: store.state.saveState == .saving,
                     onCanvasResize: { store.send(.placementCanvasResized($0)) },
-                    onMove: { store.send(.placementMoved(translation: $0)) },
-                    onScale: { store.send(.placementScaled(factor: $0)) },
-                    onRotate: { store.send(.placementRotated(degrees: $0)) },
+                    onTransform: { store.send(.placementTransformed($0)) },
                     onCloseTap: { store.send(.placementClosed) },
                     onConfirmTap: { store.send(.placementConfirmed) }
                 )

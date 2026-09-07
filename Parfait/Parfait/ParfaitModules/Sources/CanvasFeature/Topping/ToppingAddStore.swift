@@ -77,8 +77,7 @@ final class ToppingAddStore: MVIStore {
              .maskRedoTapped, .manualCutoutClosed, .manualCutoutConfirmed:
             handleManualCutoutIntent(intent)
 
-        case .placementCanvasResized, .placementMoved, .placementScaled, .placementRotated,
-             .placementClosed, .placementConfirmed:
+        case .placementCanvasResized, .placementTransformed, .placementClosed, .placementConfirmed:
             handlePlacementIntent(intent)
         }
     }

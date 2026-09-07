@@ -95,9 +95,7 @@ extension ToppingAddStore {
         case manualCutoutClosed
         case manualCutoutConfirmed
         case placementCanvasResized(CGSize)
-        case placementMoved(translation: CGSize)
-        case placementScaled(factor: Double)
-        case placementRotated(degrees: Double)
+        case placementTransformed(ToppingTransformDraft)
         case placementClosed
         case placementConfirmed
     }

@@ -6,19 +6,18 @@
 //
 
 import CanvasDomain
+import Core
 import Photos
 import SwiftUI
 import UIComponent
 
 /// 사진 선택 화면 (Figma C-102-Reselect). 우상단 닫기 버튼은 컨테이너(AlbumView) 소유.
+/// 상단 제목은 사진이 있을 때만 닫기 버튼과 같은 라인에 표시한다 — 빈 화면은 제목 숨김.
 public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
     @Namespace private var zoomNamespace
     @State private var toasts: [YGToastItem] = []
     private let showsSelectionGuide: Bool
-
-    /// 플로팅 닫기 버튼 영역(60) 아래로 목록을 시작한다.
-    private static let contentTopInset: CGFloat = 60 + .padding6
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .gap4), count: 3)
 
@@ -29,34 +28,41 @@ public struct AlbumPickerView: View {
 
     public var body: some View {
         ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: .gap7) {
-                    if !store.state.recentUploads.isEmpty {
-                        recentUploadsSection
+            VStack(spacing: 0) {
+                if hasContent {
+                    topBar
+                }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: .gap7) {
+                        if !store.state.recentUploads.isEmpty {
+                            recentUploadsSection
+                        }
+                        ForEach(store.state.sections) { section in
+                            daySection(section)
+                        }
                     }
-                    ForEach(store.state.sections) { section in
-                        daySection(section)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, .padding7)
+                    .padding(.top, .padding6)
+                }
+                .background(Color.whiteFixed)
+                .overlay {
+                    if !hasContent {
+                        emptyView
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .padding7)
-                .padding(.top, Self.contentTopInset)
-            }
-            .background(Color.whiteFixed)
-            .overlay {
-                if store.state.recentUploads.isEmpty && store.state.sections.isEmpty {
-                    emptyView
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if store.state.isLimited {
-                    YGButton("사진 재선택", variant: .mediumPrimary) {
-                        store.send(.reselectTapped)
+                .safeAreaInset(edge: .bottom) {
+                    if store.state.isLimited {
+                        YGButton("사진 재선택", variant: .mediumPrimary) {
+                            store.send(.reselectTapped)
+                        }
+                        .padding(.vertical, .padding6)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.whiteFixed)
                     }
-                    .padding(.vertical, .padding6)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.whiteFixed)
                 }
+                // 상단 바 아래에 붙여 토스트가 바를 가리지 않게 한다 (CanvasView 와 같은 패턴).
+                .ygToastOverlay($toasts)
             }
 
             if let selectedPhoto = store.state.selectedPhoto {
@@ -82,7 +88,21 @@ public struct AlbumPickerView: View {
             }
         }
         .onDisappear { store.send(.disappeared) }
-        .ygToastOverlay($toasts)
+    }
+
+    private var hasContent: Bool {
+        !store.state.recentUploads.isEmpty || !store.state.sections.isEmpty
+    }
+
+    /// 네비게이션 바 형태의 상단 바 — 닫기 버튼(44, AlbumView 소유)과 같은 라인에 가운데 제목.
+    private var topBar: some View {
+        Text("오늘 찍은 사진")
+            .suit(.body01Regular)
+            .foregroundStyle(Color.gray900)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .padding(.top, .padding6)
+            .background(Color.whiteFixed)
     }
 
     /// 빈 상태 (Figma C-102-Empty) — 최근 업로드·앨범 사진이 모두 없을 때 중앙 표시.

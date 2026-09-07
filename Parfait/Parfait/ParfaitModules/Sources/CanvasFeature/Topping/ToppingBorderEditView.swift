@@ -176,15 +176,15 @@ struct ToppingBorderEditView: View {
         CGFloat(border.width) * previewZoom
     }
 
+    /// 굵기·색을 바꿔도 이미지 크기가 출렁이지 않도록, 항상 **최대 굵기**만큼 자리를 예약한
+    /// 고정 크기로 보여준다. 테두리는 예약된 여백 안에서만 자라서 잘리지 않는다.
     private var fittedToppingSize: CGSize {
         let pixelSize = toppingPixelSize
         guard pixelSize.width > 0, previewAreaSize.width > 0, previewAreaSize.height > 0
         else { return .zero }
 
         let aspectFit = min(previewAreaSize.width / pixelSize.width, previewAreaSize.height / pixelSize.height)
-        let scale = border.isVisible
-            ? min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize))
-            : aspectFit
+        let scale = min(aspectFit, maximumScaleFittingBorder(pixelSize: pixelSize))
 
         return CGSize(width: pixelSize.width * scale, height: pixelSize.height * scale)
     }
@@ -195,7 +195,8 @@ struct ToppingBorderEditView: View {
         guard objectHalfWidth > 0, objectHalfHeight > 0, placedLongSide > 0
         else { return .greatestFiniteMagnitude }
 
-        let borderPixels = CGFloat(border.width) * max(pixelSize.width, pixelSize.height) / placedLongSide
+        let borderPixels = CGFloat(ToppingBorder.widthRange.upperBound)
+            * max(pixelSize.width, pixelSize.height) / placedLongSide
 
         return min(
             previewAreaSize.width / 2 / (objectHalfWidth + borderPixels),

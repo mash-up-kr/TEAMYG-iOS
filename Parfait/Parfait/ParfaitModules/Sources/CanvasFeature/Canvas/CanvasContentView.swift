@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import Core
 import CoreGraphics
 import SwiftUI
 import UIComponent
@@ -38,7 +39,11 @@ struct CanvasContentView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
+                // 저장본(`CanvasSnapshotView`)과 같은 가운데 크롭이 되도록 배경을 캔버스 크기에 고정한다.
+                // `scaledToFill` 결과를 캔버스보다 큰 채로 두면 ZStack 이 그만큼 커져 크롭 기준이 어긋난다.
                 background
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
 
                 if spotlightedToppingID != nil {
                     Color.black50
@@ -77,7 +82,7 @@ struct CanvasContentView: View {
             Color(hex: hex)
 
         case .image(let url):
-            AsyncImage(url: url) { phase in
+            YGImageView(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -87,8 +92,6 @@ struct CanvasContentView: View {
                     ProgressView()
                         .tint(.gray500)
                 case .failure:
-                    Color.gray100
-                @unknown default:
                     Color.gray100
                 }
             }
@@ -116,6 +119,9 @@ private struct LocalCanvasBackgroundImage: View {
                     Color.gray100
                 }
             }
+            // GeometryReader 는 자식을 좌상단에 앉히므로, 프레임으로 감싸 가운데 크롭을 보장한다 — 저장본과 같은 기준.
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .clipped()
             .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
                 let maxPixelSize = proxy.size.longEdgePixelSize(scale: displayScale)
                 image = await Task.detached(priority: .userInitiated) {

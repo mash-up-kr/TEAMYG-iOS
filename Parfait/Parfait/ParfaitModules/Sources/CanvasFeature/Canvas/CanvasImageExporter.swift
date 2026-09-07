@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+import Core
 import CoreGraphics
 import Foundation
 import SwiftUI
@@ -24,11 +25,11 @@ public struct CanvasImageExporter: Sendable {
     private static let backgroundLongEdgePixelSize = 2160
 
     private let toppingRenderer: CanvasToppingRenderer
-    private let session: URLSession
+    private let imageProvider: ImageProvider
 
-    public init(toppingRenderer: CanvasToppingRenderer, session: URLSession = .shared) {
+    public init(toppingRenderer: CanvasToppingRenderer, imageProvider: ImageProvider) {
         self.toppingRenderer = toppingRenderer
-        self.session = session
+        self.imageProvider = imageProvider
     }
 
     func image(of content: CanvasStore.CanvasContent) async -> UIImage? {
@@ -84,8 +85,11 @@ public struct CanvasImageExporter: Sendable {
             return .color(hex: hex)
 
         case .image(let url):
-            guard let (imageData, _) = try? await session.data(from: url) else { return nil }
-            return decodedBackground(from: imageData)
+            guard let image = await imageProvider.image(
+                at: url,
+                maxPixelSize: Self.backgroundLongEdgePixelSize
+            ) else { return nil }
+            return .image(image)
 
         case .imageData(let imageData):
             return decodedBackground(from: imageData)

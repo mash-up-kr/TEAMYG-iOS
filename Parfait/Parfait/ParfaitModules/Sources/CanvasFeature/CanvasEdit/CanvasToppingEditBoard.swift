@@ -52,14 +52,8 @@ struct CanvasToppingEditBoard: View {
             }
             .coordinateSpace(.named(Self.canvasSpace))
         }
-        .clipped()
-        .overlay {
-            Rectangle()
-                .strokeBorder(.gray500, lineWidth: 1)
-                .allowsHitTesting(false)
-        }
+        .canvasBoardFrame()
     }
-
 }
 
 private struct CanvasEditableTopping: View {
@@ -87,50 +81,36 @@ private struct CanvasEditableTopping: View {
             toppingHitTarget
 
             if isSelected {
-                handles
+                ToppingEditHandles(
+                    placement: topping.placement,
+                    canvasSize: canvasSize,
+                    toppingPixelSize: toppingPixelSize,
+                    coordinateSpace: coordinateSpace,
+                    draft: $draft,
+                    onCommit: commit,
+                    onDeleteTap: onDeleteTap,
+                    onBorderEditTap: onBorderEditTap
+                )
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
     }
 
     private var toppingHitTarget: some View {
-        Color.clear
-            .frame(width: renderedSize.width, height: renderedSize.height)
-            .contentShape(.rect)
-            .rotationEffect(.degrees(previewPlacement.rotationDegrees))
-            .position(center)
-            .onTapGesture(perform: onTap)
-            .gesture(moveGesture, isEnabled: isSelected)
-            .simultaneousGesture(pinchGesture, isEnabled: isSelected)
-    }
-
-    private var handles: some View {
-        ZStack {
-            actionHandle(.icClose, action: onDeleteTap)
-                .position(handleCenter(horizontal: -1, vertical: -1))
-
-            gestureHandle(.icRotate, gesture: rotateGesture)
-                .position(handleCenter(horizontal: 1, vertical: -1))
-
-            actionHandle(.icEdit, action: onBorderEditTap)
-                .position(handleCenter(horizontal: -1, vertical: 1))
-
-            gestureHandle(.icScale, gesture: scaleGesture)
-                .position(handleCenter(horizontal: 1, vertical: 1))
+        Group {
+            if isSelected {
+                ToppingTransformGestureOverlay(draft: $draft, onTap: onTap, onCommit: commit)
+            } else {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture(perform: onTap)
+            }
         }
+        .frame(width: renderedSize.width, height: renderedSize.height)
+        .rotationEffect(.degrees(previewPlacement.rotationDegrees))
+        .position(center)
     }
 
-    private func actionHandle(_ icon: Image, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            ToppingHandleIcon(icon)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func gestureHandle(_ icon: Image, gesture: some Gesture) -> some View {
-        ToppingHandleIcon(icon)
-            .gesture(gesture)
-    }
 }
 
 private extension CanvasEditableTopping {
@@ -149,52 +129,7 @@ private extension CanvasEditableTopping {
         previewPlacement.center(in: canvasSize)
     }
 
-    func handleCenter(horizontal: CGFloat, vertical: CGFloat) -> CGPoint {
-        previewPlacement.handleCenter(
-            horizontal: horizontal,
-            vertical: vertical,
-            frameSize: ToppingSelectionFrame.size(around: renderedSize),
-            cornerOffset: ToppingHandle.cornerOffset,
-            in: canvasSize
-        )
-    }
-
-    var moveGesture: some Gesture {
-        DragGesture(coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.drag(translation: $0.translation) }
-            .onEnded { _ in
-                guard let translation = draft.endDrag() else { return }
-                onPlacementChange(topping.placement.moved(by: translation, in: canvasSize))
-            }
-    }
-
-    var pinchGesture: some Gesture {
-        ToppingPinchGesture(draft: $draft) { scaleFactor, rotationDegrees in
-            onPlacementChange(topping.placement.magnified(by: scaleFactor).rotated(by: rotationDegrees))
-        }
-    }
-
-    var scaleGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
-            .onEnded { _ in
-                onPlacementChange(topping.placement.magnified(by: draft.endScaleByHandle()))
-            }
-    }
-
-    var rotateGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
-            .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
-            .onEnded { _ in
-                onPlacementChange(topping.placement.rotated(by: draft.endRotateByHandle()))
-            }
-    }
-
-    func magnification(for value: DragGesture.Value) -> Double {
-        topping.placement.magnification(from: value.startLocation, to: value.location, in: canvasSize)
-    }
-
-    func rotation(for value: DragGesture.Value) -> Double {
-        topping.placement.rotation(from: value.startLocation, to: value.location, in: canvasSize)
+    func commit(_ transform: ToppingTransformDraft) {
+        onPlacementChange(transform.applied(to: topping.placement, in: canvasSize))
     }
 }

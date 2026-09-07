@@ -104,7 +104,7 @@ public struct CanvasView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
-        .navigationDestination(item: toppingAddSourceBinding) { source in
+        .fullScreenCover(item: toppingAddSourceBinding) { source in
             switch source {
             case .camera(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
@@ -112,8 +112,11 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
             }
         }
-        .navigationDestination(item: canvasEditDestinationBinding) { destination in
-            canvasEditFlow(destination)
+        .fullScreenCover(item: canvasEditDestinationBinding) { destination in
+            // 내부에서 배경 이미지 피커를 push 하므로(CanvasEditView) 스택이 필요하다.
+            NavigationStack {
+                canvasEditFlow(destination)
+            }
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
@@ -170,6 +173,7 @@ public struct CanvasView: View {
                         canvasUseCase: store.canvasUseCase,
                         toppingUseCase: toppingUseCase,
                         imageUploadRepository: imageUploadRepository,
+                        toppingRenderer: toppingRenderer,
                         onDismiss: { store.send(.canvasEditFlowDismissed) },
                         onSaved: { store.send(.canvasEditSaved) }
                     )
