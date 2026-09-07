@@ -152,9 +152,8 @@ struct AppDependencies {
         )
     }
 
-    func makeCanvasStore(groupID: Int, groupName: String) -> CanvasStore {
+    func makeCanvasStore(groupID: Int) -> CanvasStore {
         CanvasStore(
-            state: .init(groupName: groupName),
             dependencies: .init(
                 groupID: groupID,
                 canvasUseCase: CanvasUseCaseImpl(

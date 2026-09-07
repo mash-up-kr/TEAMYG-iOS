@@ -8,6 +8,7 @@
 /// `GetTodayParfaitResponse` — 오늘 조회와 과거 상세가 같은 스키마를 쓴다.
 struct ParfaitDTO: Decodable, Sendable {
     let parfaitId: Int
+    let groupName: String?
     let date: String
     let status: String
     let lastClosedDate: String?

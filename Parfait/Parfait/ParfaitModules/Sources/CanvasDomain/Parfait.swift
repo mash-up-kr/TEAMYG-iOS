@@ -10,6 +10,8 @@ import Foundation
 /// 하루치 캔버스.
 public struct Parfait: Identifiable, Equatable, Sendable {
     public let id: Int
+    /// 캔버스가 속한 그룹 이름. 과거 스키마 응답엔 없을 수 있다.
+    public let groupName: String?
     public let date: ParfaitDate
     public let status: ParfaitStatus
     /// 가장 최근에 마감된 캔버스 날짜. SY-001-New 안내 노출 판단에 쓴다.
@@ -25,6 +27,7 @@ public struct Parfait: Identifiable, Equatable, Sendable {
 
     public init(
         id: Int,
+        groupName: String?,
         date: ParfaitDate,
         status: ParfaitStatus,
         lastClosedDate: ParfaitDate?,
@@ -33,6 +36,7 @@ public struct Parfait: Identifiable, Equatable, Sendable {
         toppings: [PlacedTopping]
     ) {
         self.id = id
+        self.groupName = groupName
         self.date = date
         self.status = status
         self.lastClosedDate = lastClosedDate
