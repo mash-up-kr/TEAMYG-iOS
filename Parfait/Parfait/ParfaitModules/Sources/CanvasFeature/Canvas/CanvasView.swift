@@ -15,6 +15,8 @@ public struct CanvasView: View {
     @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    /// 캔버스 최초 진입 1회만 튜토리얼을 덮는다. 마지막 장 "시작하기" 를 누르면 다시 안 뜬다.
+    @AppStorage(CanvasTutorialView.hasSeenDefaultsKey) private var hasSeenTutorial = false
 
     /// 사이드메뉴(S-101)로 나가는 통로. 피처 밖 화면이라 `AppRoute` 로 간다.
     private let router: any Router
@@ -67,6 +69,10 @@ public struct CanvasView: View {
                     send: { store.send($0) }
                 )
                 .ygToastOverlay($toasts)
+            }
+
+            if !hasSeenTutorial {
+                CanvasTutorialView { hasSeenTutorial = true }
             }
         }
         .task {
