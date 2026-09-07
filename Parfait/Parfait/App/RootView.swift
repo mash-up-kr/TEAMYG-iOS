@@ -46,6 +46,7 @@ struct RootView: View {
                     destination(for: route)
                 }
         }
+        .environment(\.ygImageLoader, diContainer.ygImageLoader)
         .task {
             // 세션 만료(리프레시 토큰까지 거절) → 스택을 로그인으로 재시작한다.
             for await _ in await diContainer.sessionExpirations() {

@@ -82,7 +82,7 @@ struct CanvasContentView: View {
             Color(hex: hex)
 
         case .image(let url):
-            AsyncImage(url: url) { phase in
+            YGImageView(url: url) { phase in
                 switch phase {
                 case .success(let image):
                     image
@@ -92,8 +92,6 @@ struct CanvasContentView: View {
                     ProgressView()
                         .tint(.gray500)
                 case .failure:
-                    Color.gray100
-                @unknown default:
                     Color.gray100
                 }
             }

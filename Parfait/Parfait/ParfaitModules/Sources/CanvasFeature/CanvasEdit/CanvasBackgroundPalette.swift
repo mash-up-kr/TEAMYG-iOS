@@ -114,7 +114,7 @@ private struct CanvasBackgroundThumbnail: View {
             Color(hex: hex)
 
         case .image(let url):
-            AsyncImage(url: url) { phase in
+            YGImageView(url: url) { phase in
                 if case .success(let image) = phase {
                     image
                         .resizable()

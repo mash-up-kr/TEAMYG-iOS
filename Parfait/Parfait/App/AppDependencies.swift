@@ -21,6 +21,7 @@ import LoginFeature
 import MemberData
 import MemberDomain
 import SettingFeature
+import UIComponent
 
 /// 앱 시작 시 1회 조립하는 의존성 그래프. 싱글톤 아님 — 앱 루트가 소유.
 struct AppDependencies {
@@ -32,6 +33,8 @@ struct AppDependencies {
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
     /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
     private let imageProvider = ImageProvider(session: URLSession(configuration: .imageTraffic))
+    /// `YGImageView` 환경에 얹는 로더 — UIComponent 가 Core 를 모르므로 여기서 클로저로 감싼다.
+    let ygImageLoader: YGImageLoader
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
 
@@ -42,6 +45,9 @@ struct AppDependencies {
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
         canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
+        ygImageLoader = { [imageProvider] url, maxPixelSize in
+            await imageProvider.image(at: url, maxPixelSize: maxPixelSize)
+        }
     }
 
     /// 저장된 액세스 토큰 존재 여부 — 자동로그인(로그인 화면 스킵) 판단용.
