@@ -292,6 +292,10 @@ public final class CanvasStore: MVIStore {
 
     private func apply(_ parfait: Parfait) {
         state.parfaitID = parfait.id
+        // 그룹명은 응답 값을 우선 사용한다. 없으면(과거 스키마) 진입점이 들고 온 값을 유지한다.
+        if let groupName = parfait.groupName {
+            state.groupName = groupName
+        }
         state.lastClosedDate = parfait.lastClosedDate.map(CalendarDate.init)
         state.members = parfait.members.map(Member.init)
         parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id

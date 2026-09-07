@@ -21,6 +21,7 @@ extension ParfaitDTO {
         }
         return Parfait(
             id: parfaitId,
+            groupName: groupName,
             date: date,
             status: ParfaitStatus(serverValue: status),
             lastClosedDate: lastClosedDate.flatMap(ParfaitDate.init(isoText:)),

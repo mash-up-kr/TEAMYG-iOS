@@ -117,9 +117,7 @@ private struct PushPayload {
         case "group":
             return .group
         case "canvas":
-            // ponytail: 푸시 페이로드에 groupName 이 없어 빈 제목으로 들어간다 —
-            //           서버가 페이로드에 이름을 실어주면 그때 채운다.
-            return groupID.map { AppRoute.canvas(groupID: $0, groupName: "") }
+            return groupID.map { AppRoute.canvas(groupID: $0) }
         default:
             return nil
         }

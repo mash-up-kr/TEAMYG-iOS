@@ -48,7 +48,8 @@ public extension CanvasStore {
     }
 
     struct State: Equatable, Sendable {
-        public var groupName: String
+        /// 캔버스 응답(`Parfait.groupName`)이 채운다. 로딩 전엔 빈 제목.
+        public var groupName: String = ""
         public var members: [Member]
         public var contentState: ContentState
         public var canvasContent: CanvasContent?
@@ -66,7 +67,6 @@ public extension CanvasStore {
         var spotlightedToppingID: Int?
 
         public init(
-            groupName: String = "그룹이름",
             members: [Member] = [],
             contentState: ContentState? = nil,
             canvasContent: CanvasContent? = nil,
@@ -74,7 +74,6 @@ public extension CanvasStore {
             calendar: CalendarState = CalendarState(),
             toppingAddSource: ToppingAddSource? = nil
         ) {
-            self.groupName = groupName
             self.members = members
             self.contentState = contentState ?? calendar.contentState(for: calendar.selectedDate)
             self.canvasContent = canvasContent
