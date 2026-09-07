@@ -17,7 +17,7 @@ struct MyParfaitGroupDTO: Decodable, Sendable {
     /// 마지막 토핑 업로드 시각. `Date` 가 아니라 문자열로 받는다 — 이유는 `ServerDate` 주석 참고.
     let recentImageUploadedAt: String?
     /// 마지막으로 토핑을 올린 그룹원의 Nametag 계열. 값은 `NametagChipCode` 참고.
-    let lastPlacedByNametagChip: String?
+    let lastPlacedByNameTagChip: String?
 }
 
 extension MyParfaitGroupDTO {
@@ -29,7 +29,7 @@ extension MyParfaitGroupDTO {
             name: groupName,
             thumbnailURL: recentImageUrl.flatMap { URL(string: $0) },
             lastActivityAt: recentImageUploadedAt.flatMap { ServerDate.date(from: $0) },
-            lastActorNametagType: lastPlacedByNametagChip.flatMap { NametagChipCode.nametagType(from: $0) }
+            lastActorNametagType: lastPlacedByNameTagChip.flatMap { NametagChipCode.nametagType(from: $0) }
         )
     }
 }

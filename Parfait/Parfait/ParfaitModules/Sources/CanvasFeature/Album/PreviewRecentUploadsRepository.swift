@@ -5,7 +5,6 @@
 //  Created by 김남수 on 8/5/26.
 //
 
-#if DEBUG
 import CanvasDomain
 import Foundation
 
@@ -17,4 +16,3 @@ struct PreviewRecentUploadsRepository: RecentUploadsRepository {
 
     func loadRecent(limit: Int, within window: DateInterval?) -> [StoredImage] { [] }
 }
-#endif

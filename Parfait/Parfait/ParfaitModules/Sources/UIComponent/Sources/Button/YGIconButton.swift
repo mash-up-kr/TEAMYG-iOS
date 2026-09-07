@@ -30,17 +30,28 @@ public struct YGIconButton: View {
         }
     }
 
+    /// 아이콘 색. Figma 는 `Button-Icon` 껍데기는 그대로 두고 안의 아이콘 색만 자리마다 덮어 쓴다.
+    public enum Tone {
+        /// gray300 → pressed gray400. 상단 바 등 기본값.
+        case normal
+        /// gray800 → pressed gray900. 캔버스 날짜 바 저장 버튼처럼 강조되는 자리.
+        case strong
+    }
+
     private let icon: Image
     private let size: Size
+    private let tone: Tone
     private let action: () -> Void
 
     public init(
         _ icon: Image,
         size: Size,
+        tone: Tone = .normal,
         action: @escaping () -> Void
     ) {
         self.icon = icon
         self.size = size
+        self.tone = tone
         self.action = action
     }
 
@@ -51,13 +62,14 @@ public struct YGIconButton: View {
                 .resizable()
                 .frame(width: size.iconLength, height: size.iconLength)
         }
-        .buttonStyle(YGIconButtonStyle(size: size))
+        .buttonStyle(YGIconButtonStyle(size: size, tone: tone))
     }
 }
 
 private struct YGIconButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     let size: YGIconButton.Size
+    let tone: YGIconButton.Tone
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -66,10 +78,13 @@ private struct YGIconButtonStyle: ButtonStyle {
             .contentShape(.rect)
     }
 
-    /// default → gray300 · pressed → gray400 · disabled → gray200
+    /// disabled 는 톤과 무관하게 gray200.
     private func iconColor(isPressed: Bool) -> Color {
         guard isEnabled else { return .gray200 }
-        return isPressed ? .gray400 : .gray300
+        switch tone {
+        case .normal: return isPressed ? .gray400 : .gray300
+        case .strong: return isPressed ? .gray900 : .gray800
+        }
     }
 }
 
@@ -85,6 +100,11 @@ private struct YGIconButtonStyle: ButtonStyle {
             YGIconButton(.icClose, size: .large) {}
             YGIconButton(.icHamburger, size: .large) {}
             YGIconButton(.icHamburger, size: .large) {}
+                .disabled(true)
+        }
+        HStack(spacing: .gap5) {
+            YGIconButton(.icSave, size: .small, tone: .strong) {}
+            YGIconButton(.icSave, size: .small, tone: .strong) {}
                 .disabled(true)
         }
     }

@@ -52,6 +52,10 @@ struct ToppingView: View {
                 width: ParfaitLayout.toppingImageSize * scale,
                 height: ParfaitLayout.toppingImageSize * scale
             )
+            // 96 밖으로는 무슨 일이 있어도 새어 나가지 않게 잘라 둔다.
+            // 클립은 프레임이 확정된 여기서 걸어야 한다 — AsyncImage 안쪽에 걸면
+            // AsyncImage 가 이미지 원본 크기를 자기 크기로 잡아 아무것도 안 잘린다.
+            .clipped()
             .rotationEffect(.degrees(variant.rotation))
             .offset(x: imageOffset.width * scale, y: imageOffset.height * scale)
     }
@@ -91,7 +95,9 @@ private struct ToppingImage: View {
             YGImageView(url: thumbnailURL) { phase in
                 switch phase {
                 case .success(let image):
-                    image.resizable().scaledToFill()
+                    // 누끼는 오브젝트 자체가 내용이라 잘라내면 뭔지 알 수 없게 된다.
+                    // 비율이 제각각이므로(펜 같은 3:1 도 있다) 전체를 담는 fit 으로 그린다.
+                    fitted(image)
                 case .failure:
                     // 조회 실패 — 칩은 그대로 두고 이미지 자리만 물음표 그래픽으로.
                     fitted(.templateError)
@@ -99,7 +105,6 @@ private struct ToppingImage: View {
                     Color.clear
                 }
             }
-            .clipShape(.rect)
         } else {
             // 첫 토핑이 올라오기 전까지 보여줄 템플릿 — 그룹마다 한 번 정해지면 바뀌지 않는다.
             fitted(Self.templates[StableAssignment.index(for: group.id, count: Self.templates.count)])

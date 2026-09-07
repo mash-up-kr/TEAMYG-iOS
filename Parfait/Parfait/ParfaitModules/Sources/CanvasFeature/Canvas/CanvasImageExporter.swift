@@ -12,7 +12,7 @@ import SwiftUI
 import UIComponent
 import UIKit
 
-/// 캔버스를 한 장의 이미지로 합성한다 — SY-001-Closed 의 `갤러리에 저장` 이 쓴다.
+/// 캔버스를 한 장의 이미지로 합성한다 — C-001-Save-Preview 가 띄우고 그대로 앨범에 넣는 그 이미지다.
 ///
 /// 저장본에는 잘린 모서리와 날짜 헤더를 넣지 않고 직사각형 Canvas-Area 만 담는다 (`canvas-policy.md` §4.3).
 /// 배경·토핑을 모두 받아 둔 뒤 한 번에 그리므로, 하나라도 못 받으면 저장을 실패로 돌린다 —
