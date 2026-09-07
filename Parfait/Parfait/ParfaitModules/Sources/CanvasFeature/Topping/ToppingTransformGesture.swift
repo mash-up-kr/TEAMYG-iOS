@@ -46,20 +46,8 @@ struct ToppingTransformDraft: Equatable {
         scaleFactor = magnification
     }
 
-    mutating func endScaleByHandle() -> Double {
-        let committed = scaleFactor
-        resetTransform()
-        return committed
-    }
-
     mutating func rotateByHandle(rawDegrees: Double) {
         accumulateRotation(rawDegrees: rawDegrees)
-    }
-
-    mutating func endRotateByHandle() -> Double {
-        let committed = rotationDegrees
-        resetTransform()
-        return committed
     }
 
     mutating func move(by delta: CGSize) {
@@ -75,6 +63,8 @@ struct ToppingTransformDraft: Equatable {
         rotationDegrees += degrees
     }
 
+    /// 핸들·오버레이 공용의 유일한 커밋 지점. 커밋 값은 프리뷰와 같은 `applied(to:in:)` 로
+    /// 반영하므로 프리뷰와 확정 결과가 구조적으로 일치한다.
     mutating func endTransform() -> ToppingTransformDraft {
         let committed = self
         resetTransform()
@@ -99,11 +89,9 @@ struct ToppingTransformDraft: Equatable {
 ///
 /// 델타는 window 좌표로 읽는다 — 이 면이 토핑을 따라 회전해도(C-305) 이동 방향이 뒤틀리지 않는다.
 struct ToppingTransformGestureOverlay: UIViewRepresentable {
+    @Binding var draft: ToppingTransformDraft
     var onTap: (() -> Void)?
-    let onMove: (CGSize) -> Void
-    let onMagnify: (Double) -> Void
-    let onRotate: (Double) -> Void
-    let onTransformEnded: () -> Void
+    let onCommit: (ToppingTransformDraft) -> Void
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
@@ -149,7 +137,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
             switch recognizer.state {
             case .changed:
                 let translation = recognizer.translation(in: nil)
-                overlay.onMove(CGSize(width: translation.x, height: translation.y))
+                overlay.draft.move(by: CGSize(width: translation.x, height: translation.y))
                 recognizer.setTranslation(.zero, in: nil)
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
@@ -161,7 +149,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         @objc private func handleMagnify(_ recognizer: UIPinchGestureRecognizer) {
             switch recognizer.state {
             case .changed:
-                overlay.onMagnify(Double(recognizer.scale))
+                overlay.draft.magnify(by: Double(recognizer.scale))
                 recognizer.scale = 1
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
@@ -173,7 +161,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         @objc private func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
             switch recognizer.state {
             case .changed:
-                overlay.onRotate(Double(recognizer.rotation) * 180 / .pi)
+                overlay.draft.rotate(byDegrees: Double(recognizer.rotation) * 180 / .pi)
                 recognizer.rotation = 0
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
@@ -192,7 +180,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
                 $0.state == .began || $0.state == .changed
             }
             guard !isTransforming else { return }
-            overlay.onTransformEnded()
+            overlay.onCommit(overlay.draft.endTransform())
         }
 
         func gestureRecognizer(

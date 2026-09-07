@@ -233,9 +233,7 @@ struct ToppingAddFlowView: View {
                     editor: store.state.placementEditor,
                     isSaving: store.state.saveState == .saving,
                     onCanvasResize: { store.send(.placementCanvasResized($0)) },
-                    onMove: { store.send(.placementMoved(translation: $0)) },
-                    onScale: { store.send(.placementScaled(factor: $0)) },
-                    onRotate: { store.send(.placementRotated(degrees: $0)) },
+                    onTransform: { store.send(.placementTransformed($0)) },
                     onCloseTap: { store.send(.placementClosed) },
                     onConfirmTap: { store.send(.placementConfirmed) }
                 )

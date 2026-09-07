@@ -153,9 +153,7 @@ struct ToppingPlacementEditor: Equatable, Sendable {
     mutating func apply(_ intent: ToppingAddStore.Intent) {
         switch intent {
         case .placementCanvasResized(let canvasSize): resize(to: canvasSize)
-        case .placementMoved(let translation): placement = placement.moved(by: translation, in: canvasSize)
-        case .placementScaled(let factor): placement = placement.magnified(by: factor)
-        case .placementRotated(let degrees): placement = placement.rotated(by: degrees)
+        case .placementTransformed(let transform): placement = transform.applied(to: placement, in: canvasSize)
         default: break
         }
     }

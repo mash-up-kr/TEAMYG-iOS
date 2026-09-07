@@ -96,13 +96,7 @@ private struct CanvasEditableTopping: View {
     private var toppingHitTarget: some View {
         Group {
             if isSelected {
-                ToppingTransformGestureOverlay(
-                    onTap: onTap,
-                    onMove: { draft.move(by: $0) },
-                    onMagnify: { draft.magnify(by: $0) },
-                    onRotate: { draft.rotate(byDegrees: $0) },
-                    onTransformEnded: commitTransform
-                )
+                ToppingTransformGestureOverlay(draft: $draft, onTap: onTap, onCommit: commit)
             } else {
                 Color.clear
                     .contentShape(.rect)
@@ -169,30 +163,20 @@ private extension CanvasEditableTopping {
         )
     }
 
-    func commitTransform() {
-        let transform = draft.endTransform()
-        onPlacementChange(
-            topping.placement
-                .moved(by: transform.translation, in: canvasSize)
-                .magnified(by: transform.scaleFactor)
-                .rotated(by: transform.rotationDegrees)
-        )
+    func commit(_ transform: ToppingTransformDraft) {
+        onPlacementChange(transform.applied(to: topping.placement, in: canvasSize))
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
             .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
-            .onEnded { _ in
-                onPlacementChange(topping.placement.magnified(by: draft.endScaleByHandle()))
-            }
+            .onEnded { _ in commit(draft.endTransform()) }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(coordinateSpace))
             .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
-            .onEnded { _ in
-                onPlacementChange(topping.placement.rotated(by: draft.endRotateByHandle()))
-            }
+            .onEnded { _ in commit(draft.endTransform()) }
     }
 
     func magnification(for value: DragGesture.Value) -> Double {

@@ -21,9 +21,7 @@ struct ToppingPlacementView: View {
     let editor: ToppingPlacementEditor
     let isSaving: Bool
     let onCanvasResize: (CGSize) -> Void
-    let onMove: (CGSize) -> Void
-    let onScale: (Double) -> Void
-    let onRotate: (Double) -> Void
+    let onTransform: (ToppingTransformDraft) -> Void
     let onCloseTap: () -> Void
     let onConfirmTap: () -> Void
 
@@ -144,29 +142,19 @@ private extension ToppingPlacementView {
     /// 배치 화면은 토핑이 하나뿐이라 캔버스 전체를 제스처 면으로 쓴다 —
     /// 두 번째 손가락이 토핑 밖에 닿아도 핀치가 잡힌다.
     var transformGestureOverlay: some View {
-        ToppingTransformGestureOverlay(
-            onMove: { draft.move(by: $0) },
-            onMagnify: { draft.magnify(by: $0) },
-            onRotate: { draft.rotate(byDegrees: $0) },
-            onTransformEnded: {
-                let transform = draft.endTransform()
-                onMove(transform.translation)
-                onScale(transform.scaleFactor)
-                onRotate(transform.rotationDegrees)
-            }
-        )
+        ToppingTransformGestureOverlay(draft: $draft, onCommit: onTransform)
     }
 
     var scaleGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
             .onChanged { draft.scaleByHandle(magnification: magnification(for: $0)) }
-            .onEnded { _ in onScale(draft.endScaleByHandle()) }
+            .onEnded { _ in onTransform(draft.endTransform()) }
     }
 
     var rotateGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
             .onChanged { draft.rotateByHandle(rawDegrees: rotation(for: $0)) }
-            .onEnded { _ in onRotate(draft.endRotateByHandle()) }
+            .onEnded { _ in onTransform(draft.endTransform()) }
     }
 
     func magnification(for value: DragGesture.Value) -> Double {
