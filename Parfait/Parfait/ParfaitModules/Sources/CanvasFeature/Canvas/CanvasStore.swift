@@ -272,6 +272,7 @@ public final class CanvasStore: MVIStore {
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
         state.parfaitID = nil
+        state.status = nil
 
         let isToday = date == state.calendar.today
         let parfaitID = parfaitIDsByDate[date]
@@ -292,6 +293,7 @@ public final class CanvasStore: MVIStore {
 
     private func apply(_ parfait: Parfait) {
         state.parfaitID = parfait.id
+        state.status = parfait.status
         state.lastClosedDate = parfait.lastClosedDate.map(CalendarDate.init)
         state.members = parfait.members.map(Member.init)
         parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id

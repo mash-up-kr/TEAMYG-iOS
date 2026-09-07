@@ -5,6 +5,7 @@
 //  Created by 신상우 on 9/6/26.
 //
 
+import Core
 import SwiftUI
 import UIComponent
 
@@ -106,7 +107,10 @@ struct CanvasSavePreviewView: View {
             state: .init(dateText: "May 20", weekdayText: "(Wed)", image: .parfaitCup),
             dependencies: .init(
                 canvasContent: .init(background: .color(hex: "#FFDDE5")),
-                canvasImageExporter: CanvasImageExporter(toppingRenderer: CanvasToppingRenderer()),
+                canvasImageExporter: CanvasImageExporter(
+                    toppingRenderer: CanvasToppingRenderer(imageProvider: ImageProvider()),
+                    imageProvider: ImageProvider()
+                ),
                 onClose: { _ in }
             )
         )
@@ -119,7 +123,10 @@ struct CanvasSavePreviewView: View {
             state: .init(dateText: "May 20", weekdayText: "(Wed)"),
             dependencies: .init(
                 canvasContent: .init(background: .color(hex: "#FFDDE5")),
-                canvasImageExporter: CanvasImageExporter(toppingRenderer: CanvasToppingRenderer()),
+                canvasImageExporter: CanvasImageExporter(
+                    toppingRenderer: CanvasToppingRenderer(imageProvider: ImageProvider()),
+                    imageProvider: ImageProvider()
+                ),
                 onClose: { _ in }
             )
         )
