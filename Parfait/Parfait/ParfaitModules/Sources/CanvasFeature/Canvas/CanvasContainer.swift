@@ -240,20 +240,25 @@ struct CanvasDateHeader: View {
 
     var body: some View {
         HStack(spacing: .gap1) {
-            Text(dateText)
-                .foregroundStyle(.gray800)
-            Text(weekdayText)
-                .foregroundStyle(.gray300)
-
-            Spacer()
-
             Button(action: onCalendarTap) {
-                Image.icCalendar
-                    .frame(width: 16, height: 16)
-                    .frame(width: 44, height: 44)
-                    .contentShape(.rect)
+                HStack(spacing: .gap2) {
+                    Image.icCalendar
+                        .resizable()
+                        .frame(width: 16, height: 16)
+                        .frame(width: 24, height: 24)
+                        .contentShape(.rect)
+                        .foregroundStyle(.gray500)
+                    HStack(spacing: .gap1) {
+                        Text(dateText)
+                            .foregroundStyle(.gray800)
+                        Text(weekdayText)
+                            .foregroundStyle(.gray300)
+                    }
+                }
             }
             .buttonStyle(.plain)
+            
+            Spacer()
 
             YGIconButton(.icSave, size: .small, tone: .strong, action: onSaveTap)
         }
