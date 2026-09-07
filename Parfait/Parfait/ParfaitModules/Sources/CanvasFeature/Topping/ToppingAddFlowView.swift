@@ -37,7 +37,6 @@ struct ToppingAddFlowView: View {
                 galleryFlow
             }
         }
-        .toolbar(.hidden, for: .navigationBar)
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .task {
             store.send(.screenAppeared)
