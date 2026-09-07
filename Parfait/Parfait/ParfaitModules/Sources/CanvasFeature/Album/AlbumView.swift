@@ -10,6 +10,7 @@ import UIComponent
 import UIKit
 
 /// 앨범 플로우 진입점 — 권한 3분기로 화면을 전환하고 우상단 닫기 버튼을 소유한다.
+/// 상단 제목("오늘 찍은 사진")은 사진이 있을 때만 AlbumPickerView 가 같은 라인에 표시한다.
 public struct AlbumView: View {
     @State private var store = AlbumStore()
     @Environment(\.dismiss) private var dismiss
@@ -63,8 +64,8 @@ public struct AlbumView: View {
         }
         .overlay(alignment: .topTrailing) {
             YGCircleButton(.icClose, variant: .default) { dismiss() }
-                .padding(.top, 16)
-                .padding(.trailing, 20)
+                .padding(.top, .padding6)
+                .padding(.trailing, .padding7)
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { store.send(.appeared) }

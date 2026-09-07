@@ -12,13 +12,14 @@ import SwiftUI
 import UIComponent
 
 /// 사진 선택 화면 (Figma C-102-Reselect). 우상단 닫기 버튼은 컨테이너(AlbumView) 소유.
+/// 상단 제목은 사진이 있을 때만 닫기 버튼과 같은 라인에 표시한다 — 빈 화면은 제목 숨김.
 public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
     @Namespace private var zoomNamespace
     @State private var toasts: [YGToastItem] = []
     private let showsSelectionGuide: Bool
 
-    /// 플로팅 닫기 버튼 영역(60) 아래로 목록을 시작한다.
+    /// 상단 바 영역(60) 아래로 목록을 시작한다.
     private static let contentTopInset: CGFloat = 60 + .padding6
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .gap4), count: 3)
@@ -74,6 +75,11 @@ public struct AlbumPickerView: View {
                 .zIndex(1) // 축소(제거) 애니메이션 동안 그리드 위에 유지
             }
         }
+        .overlay(alignment: .top) {
+            if hasContent {
+                topBar
+            }
+        }
         .onAppear {
             store.send(.appeared)
             if showsSelectionGuide {
@@ -84,6 +90,21 @@ public struct AlbumPickerView: View {
         }
         .onDisappear { store.send(.disappeared) }
         .ygToastOverlay($toasts)
+    }
+
+    private var hasContent: Bool {
+        !store.state.recentUploads.isEmpty || !store.state.sections.isEmpty
+    }
+
+    /// 네비게이션 바 형태의 상단 바 — 닫기 버튼(44, AlbumView 소유)과 같은 라인에 가운데 제목.
+    private var topBar: some View {
+        Text("오늘 찍은 사진")
+            .suit(.body01Regular)
+            .foregroundStyle(Color.gray900)
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .padding(.top, .padding6)
+            .background(Color.whiteFixed)
     }
 
     /// 빈 상태 (Figma C-102-Empty) — 최근 업로드·앨범 사진이 모두 없을 때 중앙 표시.
