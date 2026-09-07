@@ -171,6 +171,7 @@ private struct RecentUploadCell: View {
                     }
                 }
                 .clipped()
+                .contentShape(.rect) // clipped 는 그리기만 자름 — 넘친 이미지가 이웃 셀 탭을 가로채지 않도록 히트 영역 제한
                 .matchedGeometryEffect(id: upload.zoomIdentifier, in: zoomNamespace, isSource: isZoomSource)
         }
         .buttonStyle(.plain)
@@ -217,6 +218,7 @@ private struct PhotoAssetCell: View {
                 .overlay {
                     Rectangle().strokeBorder(Color.black5, lineWidth: 1)
                 }
+                .contentShape(.rect) // clipped 는 그리기만 자름 — 넘친 이미지가 이웃 셀 탭을 가로채지 않도록 히트 영역 제한
                 .matchedGeometryEffect(id: asset.localIdentifier, in: zoomNamespace, isSource: isZoomSource)
         }
         .buttonStyle(.plain)
