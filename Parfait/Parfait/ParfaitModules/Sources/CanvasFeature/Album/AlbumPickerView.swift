@@ -19,9 +19,6 @@ public struct AlbumPickerView: View {
     @State private var toasts: [YGToastItem] = []
     private let showsSelectionGuide: Bool
 
-    /// 상단 바 영역(60) 아래로 목록을 시작한다.
-    private static let contentTopInset: CGFloat = 60 + .padding6
-
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .gap4), count: 3)
 
     public init(store: AlbumPickerStore, showsSelectionGuide: Bool = true) {
@@ -31,34 +28,41 @@ public struct AlbumPickerView: View {
 
     public var body: some View {
         ZStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: .gap7) {
-                    if !store.state.recentUploads.isEmpty {
-                        recentUploadsSection
+            VStack(spacing: 0) {
+                if hasContent {
+                    topBar
+                }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: .gap7) {
+                        if !store.state.recentUploads.isEmpty {
+                            recentUploadsSection
+                        }
+                        ForEach(store.state.sections) { section in
+                            daySection(section)
+                        }
                     }
-                    ForEach(store.state.sections) { section in
-                        daySection(section)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, .padding7)
+                    .padding(.top, .padding6)
+                }
+                .background(Color.whiteFixed)
+                .overlay {
+                    if !hasContent {
+                        emptyView
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, .padding7)
-                .padding(.top, Self.contentTopInset)
-            }
-            .background(Color.whiteFixed)
-            .overlay {
-                if store.state.recentUploads.isEmpty && store.state.sections.isEmpty {
-                    emptyView
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if store.state.isLimited {
-                    YGButton("사진 재선택", variant: .mediumPrimary) {
-                        store.send(.reselectTapped)
+                .safeAreaInset(edge: .bottom) {
+                    if store.state.isLimited {
+                        YGButton("사진 재선택", variant: .mediumPrimary) {
+                            store.send(.reselectTapped)
+                        }
+                        .padding(.vertical, .padding6)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.whiteFixed)
                     }
-                    .padding(.vertical, .padding6)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.whiteFixed)
                 }
+                // 상단 바 아래에 붙여 토스트가 바를 가리지 않게 한다 (CanvasView 와 같은 패턴).
+                .ygToastOverlay($toasts)
             }
 
             if let selectedPhoto = store.state.selectedPhoto {
@@ -75,11 +79,6 @@ public struct AlbumPickerView: View {
                 .zIndex(1) // 축소(제거) 애니메이션 동안 그리드 위에 유지
             }
         }
-        .overlay(alignment: .top) {
-            if hasContent {
-                topBar
-            }
-        }
         .onAppear {
             store.send(.appeared)
             if showsSelectionGuide {
@@ -89,7 +88,6 @@ public struct AlbumPickerView: View {
             }
         }
         .onDisappear { store.send(.disappeared) }
-        .ygToastOverlay($toasts)
     }
 
     private var hasContent: Bool {
