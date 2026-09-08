@@ -8,6 +8,7 @@
 // swiftlint:disable file_length
 
 import CanvasDomain
+import Common
 import CoreGraphics
 import Foundation
 import Observation

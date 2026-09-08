@@ -1,6 +1,6 @@
 //
 //  CGImage+AlphaBounds.swift
-//  CanvasFeature
+//  Common
 //
 //  Created by 박서연 on 9/5/26.
 //
@@ -8,7 +8,7 @@
 import CoreGraphics
 
 extension CGImage {
-    func croppedRemovingSymmetricMargin() -> CGImage {
+    public func croppedRemovingSymmetricMargin() -> CGImage {
         guard let bounds = opaqueBounds() else { return self }
 
         let horizontal = min(bounds.minX, CGFloat(width) - bounds.maxX).rounded(.down)
@@ -22,7 +22,7 @@ extension CGImage {
         return cropping(to: cropped) ?? self
     }
 
-    func opaqueBounds(threshold: UInt8 = 8) -> CGRect? {
+    public func opaqueBounds(threshold: UInt8 = 8) -> CGRect? {
         guard let context = CGContext(
             data: nil,
             width: width,

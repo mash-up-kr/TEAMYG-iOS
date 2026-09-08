@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/24/26.
 //
 
+import Common
 import CoreGraphics
 import Foundation
 import ImageIO

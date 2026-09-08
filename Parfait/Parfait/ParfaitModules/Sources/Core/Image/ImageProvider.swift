@@ -5,6 +5,7 @@
 //  Created by 김남수 on 9/7/26.
 //
 
+import Common
 import CoreGraphics
 import Foundation
 
@@ -54,13 +55,5 @@ public actor ImageProvider {
 
     private static func cacheKey(url: URL, maxPixelSize: Int) -> NSString {
         "\(url.absoluteString)#\(maxPixelSize)" as NSString
-    }
-}
-
-private extension CGImage {
-    /// 비트맵이 실제로 차지하는 바이트. 캐시 비용 단위 —
-    /// 장수로 세면 큰 이미지 몇 장에 메모리가 쏠려도 상한에 걸리지 않는다.
-    var byteCount: Int {
-        height * bytesPerRow
     }
 }
