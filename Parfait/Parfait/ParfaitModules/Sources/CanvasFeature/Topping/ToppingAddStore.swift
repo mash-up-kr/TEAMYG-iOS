@@ -181,6 +181,8 @@ final class ToppingAddStore: MVIStore {
         borderRenderTask?.cancel()
         maskRenderTask?.cancel()
         baseMask = nil
+        // 추출 태스크를 취소하고 새 흐름을 시작하는 모든 경로가 여길 지난다 — 오버레이가 남지 않게 정리.
+        state.extractionState = .idle
         state.extractedTopping = nil
         state.cutoutHasArea = true
         state.borderSilhouette = nil
@@ -229,37 +231,6 @@ final class ToppingAddStore: MVIStore {
                 state.analysis = analysis
                 state.screen = .candidateSelection
                 camera.releaseFreezeFrame()
-            } catch is CancellationError {
-                return
-            } catch {
-                guard let self, !Task.isCancelled else { return }
-                state.screen = .analysisError
-            }
-        }
-    }
-
-    private func extractCandidate(at normalizedPoint: CGPoint) {
-        guard state.screen == .candidateSelection,
-              let candidate = state.analysis?.candidate(at: normalizedPoint)
-        else { return }
-
-        // 같은 후보를 다시 고르면 수동 마스크 초안이 살아 있어야 한다 (`topping_ui.md` §6.4).
-        guard state.extractedTopping?.candidateID != candidate.id else {
-            state.screen = .cutoutResult
-            return
-        }
-
-        analysisTask?.cancel()
-        releaseExtractedTopping()
-        state.screen = .analysisLoading
-
-        analysisTask = Task { [weak self, objectExtractor] in
-            do {
-                let topping = try await objectExtractor.extractTopping(candidateID: candidate.id)
-                guard let self, !Task.isCancelled else { return }
-                baseMask = topping.mask
-                state.extractedTopping = topping
-                state.screen = .cutoutResult
             } catch is CancellationError {
                 return
             } catch {
@@ -348,6 +319,45 @@ extension ToppingAddStore {
     }
 }
 
+/// C-103 후보 선택 → 누끼 추출.
+private extension ToppingAddStore {
+    func extractCandidate(at normalizedPoint: CGPoint) {
+        // 추출 중 재진입 금지 — 화면이 안 바뀌므로 상태로 막는다.
+        guard state.screen == .candidateSelection,
+              state.extractionState == .idle,
+              let candidate = state.analysis?.candidate(at: normalizedPoint)
+        else { return }
+
+        // 같은 후보를 다시 고르면 수동 마스크 초안이 살아 있어야 한다 (`topping_ui.md` §6.4).
+        guard state.extractedTopping?.candidateID != candidate.id else {
+            state.screen = .cutoutResult
+            return
+        }
+
+        analysisTask?.cancel()
+        releaseExtractedTopping()
+        // 추출은 이미 분석된 세션에서 마스크만 뽑는 짧은 작업 — 후보 화면 위 오버레이로 보여준다.
+        state.extractionState = .extracting
+
+        analysisTask = Task { [weak self, objectExtractor] in
+            do {
+                let topping = try await objectExtractor.extractTopping(candidateID: candidate.id)
+                guard let self, !Task.isCancelled else { return }
+                baseMask = topping.mask
+                state.extractedTopping = topping
+                state.extractionState = .idle
+                state.screen = .cutoutResult
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                state.extractionState = .idle
+                state.screen = .analysisError
+            }
+        }
+    }
+}
+
 /// C-103-Error 분석 실패 화면의 복구 동작 — 다시 시도·편집 없이 사용.
 private extension ToppingAddStore {
     func retryAnalysis() {
@@ -362,7 +372,8 @@ private extension ToppingAddStore {
         analysisTask?.cancel()
         state.analysis = nil
         resetToppingDraft()
-        state.screen = .analysisLoading
+        // 빈 누끼 생성은 짧은 로컬 작업 — 실패 화면 위 오버레이로 보여준다.
+        state.extractionState = .extracting
 
         analysisTask = Task { [weak self, objectExtractor] in
             do {
@@ -376,12 +387,14 @@ private extension ToppingAddStore {
                 state.cutoutHasArea = false
                 state.cutoutPath = .withoutEdit
                 _ = state.maskEditor.apply(.brushModeSelected(.fill))
+                state.extractionState = .idle
                 state.screen = .manualCutout
                 camera.releaseFreezeFrame()
             } catch is CancellationError {
                 return
             } catch {
                 guard let self, !Task.isCancelled else { return }
+                state.extractionState = .idle
                 state.screen = .analysisError
             }
         }

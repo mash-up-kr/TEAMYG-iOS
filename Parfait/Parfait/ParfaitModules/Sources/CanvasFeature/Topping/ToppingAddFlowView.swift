@@ -44,6 +44,8 @@ struct ToppingAddFlowView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        // 후보 추출·빈 누끼 생성 같은 짧은 작업은 전용 로딩 화면 대신 현재 화면 위 오버레이로.
+        .ygLoading(store.state.extractionState == .extracting)
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {

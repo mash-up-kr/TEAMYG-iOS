@@ -28,6 +28,7 @@ extension ToppingAddStore {
         var cutoutHasArea = true
         var showsToast = true
         var saveState: SaveState = .idle
+        var extractionState: ExtractionState = .idle
 
         init(
             canvasDate: CalendarDate,
@@ -183,5 +184,13 @@ extension ToppingAddStore {
     enum SaveState: Equatable, Sendable {
         case idle
         case saving
+    }
+
+    /// 후보 추출·빈 누끼 생성처럼 짧은 로컬 작업의 진행 상태.
+    /// 전용 로딩 화면(C-103-Loading)이 아니라 현재 화면 위 `.ygLoading` 오버레이로 보여준다 —
+    /// 수백 ms 작업에 화면 전체가 갈리는 flash 를 막는다.
+    enum ExtractionState: Equatable, Sendable {
+        case idle
+        case extracting
     }
 }
