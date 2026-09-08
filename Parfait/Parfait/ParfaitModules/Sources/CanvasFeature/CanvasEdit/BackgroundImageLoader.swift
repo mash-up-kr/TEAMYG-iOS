@@ -17,15 +17,13 @@ enum BackgroundImageLoader {
         photoData: Data,
         viewFinderRegion: ViewFinderRegion?
     ) async -> Data? {
-        await Task.detached(priority: .userInitiated) {
-            guard let normalizedImage = ImageDownsampling.decodedImage(
-                from: photoData,
-                maxPixelSize: maximumLongEdge
-            ) else { return nil }
+        guard let normalizedImage = await ImageDownsampling.decodedImage(
+            from: photoData,
+            maxPixelSize: maximumLongEdge
+        ) else { return nil }
 
-            let backgroundImage = viewFinderRegion?.croppedImage(from: normalizedImage) ?? normalizedImage
-            return UIImage(cgImage: backgroundImage).jpegData(compressionQuality: jpegCompressionQuality)
-        }.value
+        let backgroundImage = viewFinderRegion?.croppedImage(from: normalizedImage) ?? normalizedImage
+        return UIImage(cgImage: backgroundImage).jpegData(compressionQuality: jpegCompressionQuality)
     }
 
     static func galleryJPEG(assetIdentifier: String) async -> Data? {
@@ -41,12 +39,10 @@ enum BackgroundImageLoader {
     }
 
     private static func normalizedJPEG(_ imageData: Data) async -> Data? {
-        await Task.detached(priority: .userInitiated) {
-            guard let normalizedImage = ImageDownsampling.decodedImage(
-                from: imageData,
-                maxPixelSize: maximumLongEdge
-            ) else { return nil }
-            return UIImage(cgImage: normalizedImage).jpegData(compressionQuality: jpegCompressionQuality)
-        }.value
+        guard let normalizedImage = await ImageDownsampling.decodedImage(
+            from: imageData,
+            maxPixelSize: maximumLongEdge
+        ) else { return nil }
+        return UIImage(cgImage: normalizedImage).jpegData(compressionQuality: jpegCompressionQuality)
     }
 }

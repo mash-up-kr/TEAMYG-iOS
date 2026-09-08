@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+import Common
 import Core
 import SwiftUI
 import UIComponent
@@ -102,19 +103,16 @@ struct ToppingCameraConfirmationView: View {
         guard let photoData, areaSize != .zero else { return nil }
 
         let coverageRatio = viewFinderRegion?.previewCoverageRatio ?? 1
-        let maxPixelSize = Int((max(areaSize.width, areaSize.height) * displayScale / coverageRatio).rounded(.up))
-        return await Task.detached(priority: .userInitiated) {
-            guard let downsampledImage = ImageDownsampling.decodedImage(
-                from: photoData,
-                maxPixelSize: maxPixelSize
-            ) else { return nil }
+        guard let downsampledImage = await ImageDownsampling.decodedImage(
+            from: photoData,
+            maxPixelSize: areaSize.longEdgePixelSize(scale: displayScale / coverageRatio)
+        ) else { return nil }
 
-            guard let viewFinderRegion,
-                  let croppedImage = viewFinderRegion.croppedImage(from: downsampledImage)
-            else { return UIImage(cgImage: downsampledImage) }
+        guard let viewFinderRegion,
+              let croppedImage = viewFinderRegion.croppedImage(from: downsampledImage)
+        else { return UIImage(cgImage: downsampledImage) }
 
-            return UIImage(cgImage: croppedImage)
-        }.value
+        return UIImage(cgImage: croppedImage)
     }
 
     private struct DisplayRequest: Equatable {

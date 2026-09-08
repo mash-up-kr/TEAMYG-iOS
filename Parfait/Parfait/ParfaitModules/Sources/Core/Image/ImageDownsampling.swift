@@ -32,11 +32,22 @@ public enum ImageDownsampling {
         ]
         return CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary)
     }
-}
 
-extension CGSize {
-    /// 이 크기(포인트)가 화면 배율에서 차지하는 긴 변의 픽셀 수 — 다운샘플링 상한 계산용.
-    public func longEdgePixelSize(scale: CGFloat) -> Int {
-        Int((max(width, height) * scale).rounded(.up))
+    /// 디코딩을 백그라운드 태스크로 보내는 async 버전 — 호출부가 `Task.detached` 를 직접 감싸지 않는다.
+    /// 디코딩 결과에 크롭·인코딩 같은 CPU 작업을 이어 붙일 때만 sync 버전을 직접 쓴다.
+    public static func decodedImage(
+        from imageData: Data,
+        maxPixelSize: Int,
+        applyOrientationTransform: Bool = true
+    ) async -> CGImage? {
+        // 동기 클로저로 감싸 sync 오버로드를 고른다 — async 컨텍스트에선 async 쪽이 잡혀 재귀가 된다.
+        let decode: @Sendable () -> CGImage? = {
+            decodedImage(
+                from: imageData,
+                maxPixelSize: maxPixelSize,
+                applyOrientationTransform: applyOrientationTransform
+            )
+        }
+        return await Task.detached(priority: .userInitiated) { decode() }.value
     }
 }

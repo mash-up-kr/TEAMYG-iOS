@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+import Common
 import Core
 import CoreGraphics
 import SwiftUI
@@ -148,10 +149,10 @@ private struct LocalBackgroundThumbnail: View {
                 }
             }
             .task(id: DecodeRequest(imageData: imageData, size: proxy.size, displayScale: displayScale)) {
-                let maxPixelSize = proxy.size.longEdgePixelSize(scale: displayScale)
-                image = await Task.detached(priority: .userInitiated) {
-                    ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
-                }.value
+                image = await ImageDownsampling.decodedImage(
+                    from: imageData,
+                    maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
+                )
             }
         }
     }

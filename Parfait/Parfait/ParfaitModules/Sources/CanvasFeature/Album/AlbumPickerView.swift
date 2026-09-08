@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Common
 import Core
 import Photos
 import SwiftUI
@@ -261,11 +262,8 @@ private struct PhotoAssetCell: View {
 
 extension StoredImage {
     func downsampledImage(maxPixelSize: Int) async -> UIImage? {
-        let imageData = imageData
-        let decodedImage = await Task.detached(priority: .userInitiated) {
-            ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
-        }.value
-        return decodedImage.map { UIImage(cgImage: $0) }
+        await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+            .map { UIImage(cgImage: $0) }
     }
 }
 
