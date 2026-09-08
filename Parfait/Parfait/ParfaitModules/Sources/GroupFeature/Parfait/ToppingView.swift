@@ -102,7 +102,11 @@ private struct ToppingImage: View {
                     // 조회 실패 — 칩은 그대로 두고 이미지 자리만 물음표 그래픽으로.
                     fitted(.templateError)
                 case .empty:
-                    Color.clear
+                    // 다운로드 중 스피너. 컨테이너를 채워 측정 크기를 유지한다 — 44 로 두면
+                    // YGImageView 가 스피너 크기(44pt) 기준으로 디코딩 예산을 잡는다.
+                    YGLottieView(.loadingDark)
+                        .frame(width: 44, height: 44)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         } else {
