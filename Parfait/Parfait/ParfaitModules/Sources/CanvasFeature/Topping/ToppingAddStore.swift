@@ -30,6 +30,8 @@ final class ToppingAddStore: MVIStore {
     @ObservationIgnored private lazy var maskRenderer = ToppingMaskRenderer()
     /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
     private var baseMask: CGImage?
+    /// 분석 실패 화면(C-103-Error)의 "다시 시도"·"편집 없이 사용"이 되짚어 갈 마지막 분석 소스.
+    private var lastAnalysisSource: PhotoAnalysisSource?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
     private var borderRenderTask: Task<Void, Never>?
@@ -64,8 +66,8 @@ final class ToppingAddStore: MVIStore {
             handleCameraIntent(intent)
 
         case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
-             .candidateSelectionBackTapped, .analysisErrorClosed, .cutoutResultClosed,
-             .photoEditTapped, .cutoutConfirmed:
+             .candidateSelectionBackTapped, .analysisErrorClosed, .analysisRetryTapped, .useWithoutEditTapped,
+             .cutoutResultClosed, .photoEditTapped, .cutoutConfirmed:
             handleAnalysisIntent(intent)
 
         case .borderPreviewLongEdgeChanged, .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
@@ -96,6 +98,10 @@ final class ToppingAddStore: MVIStore {
             extractCandidate(at: normalizedPoint)
         case .candidateSelectionBackTapped, .analysisErrorClosed:
             returnToPhotoConfirm()
+        case .analysisRetryTapped:
+            retryAnalysis()
+        case .useWithoutEditTapped:
+            usePhotoWithoutEdit()
         default:
             handleCutoutResultIntent(intent)
         }
@@ -110,8 +116,11 @@ final class ToppingAddStore: MVIStore {
         case .borderEditClosed:
             closeBorderEdit()
         case .borderAreaTabTapped:
-            guard state.extractedTopping != nil, state.cutoutPath != .recentUpload else { break }
-            state.cutoutPath = .manual
+            guard state.extractedTopping != nil, state.cutoutPath.allowsAreaEdit else { break }
+            // 편집 없이 사용 경로는 유지한다 — C-104 닫기 목적지가 다르다.
+            if state.cutoutPath == .automatic {
+                state.cutoutPath = .manual
+            }
             state.screen = .manualCutout
         case .borderConfirmed:
             guard let extractedTopping = state.extractedTopping else { break }
@@ -133,6 +142,9 @@ final class ToppingAddStore: MVIStore {
             // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
             releaseExtractedTopping()
             state.screen = .gallery
+        case .withoutEdit:
+            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 닫으면 영역 편집으로 돌아간다.
+            state.screen = .manualCutout
         case .automatic:
             state.screen = .candidateSelection
         }
@@ -141,8 +153,10 @@ final class ToppingAddStore: MVIStore {
     private func handleManualCutoutIntent(_ intent: Intent) {
         switch intent {
         case .manualCutoutClosed:
-            state.screen = .candidateSelection
+            closeManualCutout()
         case .manualCutoutConfirmed:
+            // 포함 영역이 하나도 없으면 다음 단계로 못 간다 — 빈 토핑이 C-105·저장까지 흘러가는 것을 막는다.
+            guard state.cutoutHasArea else { break }
             state.screen = .borderEdit
             tightenCutout()
         default:
@@ -152,11 +166,23 @@ final class ToppingAddStore: MVIStore {
         }
     }
 
+    private func closeManualCutout() {
+        switch state.cutoutPath {
+        case .withoutEdit:
+            // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 다시 시도를 고를 수 있다.
+            releaseExtractedTopping()
+            state.screen = .analysisError
+        case .automatic, .manual, .recentUpload:
+            state.screen = .candidateSelection
+        }
+    }
+
     private func releaseExtractedTopping() {
         borderRenderTask?.cancel()
         maskRenderTask?.cancel()
         baseMask = nil
         state.extractedTopping = nil
+        state.cutoutHasArea = true
         state.borderSilhouette = nil
         state.maskEditor.reset()
         state.placementEditor.reset()
@@ -188,6 +214,7 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func startAnalysis(of source: PhotoAnalysisSource) {
+        lastAnalysisSource = source
         analysisTask?.cancel()
         state.analysis = nil
         resetToppingDraft()
@@ -245,6 +272,8 @@ final class ToppingAddStore: MVIStore {
     /// 최근 업로드 누끼는 이미 잘라낸 결과물이라 분석·후보 선택을 건너뛰고 곧장 테두리 편집으로 간다
     /// (`canvas-policy.md` §5.3). 원본 사진이 없으므로 영역 편집은 이 경로에서 제공하지 않는다.
     private func openRecentUpload(_ upload: StoredImage) {
+        // 이 경로는 분석 소스가 없다 — 실패 화면의 다시 시도·편집 없이 사용이 옛 소스를 되짚지 않게 비운다.
+        lastAnalysisSource = nil
         analysisTask?.cancel()
         state.analysis = nil
         resetToppingDraft()
@@ -254,7 +283,7 @@ final class ToppingAddStore: MVIStore {
             return
         }
         state.extractedTopping = ExtractedTopping(
-            candidateID: Self.recentUploadCandidateID,
+            candidateID: Self.noCandidateID,
             image: image,
             photo: image,
             mask: image
@@ -264,8 +293,9 @@ final class ToppingAddStore: MVIStore {
         renderBorderSilhouette()
     }
 
-    /// 최근 업로드에는 후보 번호가 없다. 실루엣 캐시 키로만 쓰이며 `resetToppingDraft` 가 매번 캐시를 비운다.
-    private static let recentUploadCandidateID = -1
+    /// 후보 번호가 없는 경로(최근 업로드·편집 없이 사용)의 자리표시자.
+    /// 실루엣 캐시 키로만 쓰이며 `resetToppingDraft` 가 매번 캐시를 비운다.
+    private static let noCandidateID = -1
 
     private func returnToPhotoConfirm() {
         cancelAnalysis()
@@ -318,6 +348,46 @@ extension ToppingAddStore {
     }
 }
 
+/// C-103-Error 분석 실패 화면의 복구 동작 — 다시 시도·편집 없이 사용.
+private extension ToppingAddStore {
+    func retryAnalysis() {
+        guard let lastAnalysisSource else { return }
+        startAnalysis(of: lastAnalysisSource)
+    }
+
+    /// 분석 없이 원본 사진으로 C-104 영역 편집을 시작한다 (C-103-Error "편집 없이 사용").
+    /// 전부 제외 상태의 빈 마스크에서 출발하므로 브러시도 "영역 채우기"로 맞춰 준다.
+    func usePhotoWithoutEdit() {
+        guard let lastAnalysisSource else { return }
+        analysisTask?.cancel()
+        state.analysis = nil
+        resetToppingDraft()
+        state.screen = .analysisLoading
+
+        analysisTask = Task { [weak self, objectExtractor] in
+            do {
+                let topping = try await objectExtractor.makeEmptyCutout(
+                    from: lastAnalysisSource,
+                    candidateID: Self.noCandidateID
+                )
+                guard let self, !Task.isCancelled else { return }
+                baseMask = topping.mask
+                state.extractedTopping = topping
+                state.cutoutHasArea = false
+                state.cutoutPath = .withoutEdit
+                _ = state.maskEditor.apply(.brushModeSelected(.fill))
+                state.screen = .manualCutout
+                camera.releaseFreezeFrame()
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                state.screen = .analysisError
+            }
+        }
+    }
+}
+
 /// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
 private extension ToppingAddStore {
     func handleCutoutResultIntent(_ intent: Intent) {
@@ -356,6 +426,7 @@ private extension ToppingAddStore {
             guard !Task.isCancelled, let self, let cutout else { return }
 
             state.extractedTopping = topping.replacingCutout(image: cutout.image, mask: cutout.mask)
+            state.cutoutHasArea = cutout.hasArea
             // 실루엣 캐시는 후보 ID 로만 구분한다 — 마스크가 바뀌면 통째로 버려야 한다.
             await borderRenderer.reset()
         }

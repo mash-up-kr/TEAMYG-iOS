@@ -19,6 +19,14 @@ struct TightenedCutout: Sendable {
     let strokeOffset: CGPoint
 }
 
+/// 스트로크를 재생해 새로 합성한 누끼 한 벌.
+struct RenderedCutout: Sendable {
+    let mask: CGImage
+    let image: CGImage
+    /// 포함 픽셀이 하나라도 있는지. 비어 있으면 C-104 확인을 막는 근거가 된다.
+    let hasArea: Bool
+}
+
 actor ToppingMaskRenderer {
     private let context = CIContext(options: [.cacheIntermediates: false])
 
@@ -26,12 +34,16 @@ actor ToppingMaskRenderer {
         photo: CGImage,
         baseMask: CGImage,
         strokes: [ToppingBrushStroke]
-    ) -> (mask: CGImage, image: CGImage)? {
+    ) -> RenderedCutout? {
         guard let mask = paint(baseMask: baseMask, strokes: strokes),
               let image = ToppingCutoutCompositor.composite(photo: photo, mask: mask, context: context)
         else { return nil }
 
-        return (mask, image)
+        return RenderedCutout(
+            mask: mask,
+            image: image,
+            hasArea: InstanceMaskScanner.metrics(of: mask) != nil
+        )
     }
 
     /// 편집이 끝난 마스크에 맞춰 추출 캔버스를 다시 잘라낸다. 지운 영역이 투명 여백으로 남아
