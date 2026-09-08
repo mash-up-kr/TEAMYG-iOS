@@ -55,8 +55,10 @@ public final class CanvasStore: MVIStore {
              .refreshRequested:
             handleLifecycleIntent(intent)
 
-        case .toppingTapped(let toppingID):
-            handleToppingTap(toppingID)
+        case .toppingTapped,
+             .toppingImageLoaded,
+             .toppingImageLoadFailed:
+            handleToppingIntent(intent)
 
         case .spotlightDismissed:
             state.spotlightedToppingID = nil
@@ -268,6 +270,8 @@ public final class CanvasStore: MVIStore {
         state.contentState = .loading
         state.canvasContent = nil
         state.spotlightedToppingID = nil
+        state.loadedToppingImageIDs = []
+        state.failedToppingImageIDs = []
         toppingAuthorsByID = [:]
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
@@ -341,6 +345,19 @@ private extension CanvasStore {
             cancelTasks()
         case .refreshRequested:
             refreshCanvas()
+        default:
+            break
+        }
+    }
+
+    func handleToppingIntent(_ intent: Intent) {
+        switch intent {
+        case .toppingTapped(let toppingID):
+            handleToppingTap(toppingID)
+        case .toppingImageLoaded(let toppingID):
+            state.loadedToppingImageIDs.insert(toppingID)
+        case .toppingImageLoadFailed(let toppingID):
+            state.failedToppingImageIDs.insert(toppingID)
         default:
             break
         }

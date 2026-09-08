@@ -65,6 +65,10 @@ public extension CanvasStore {
         public var lastClosedDate: CalendarDate?
         /// C-202 Spotlight 로 강조된 타인의 토핑 (`canvas-policy.md` §4.2).
         var spotlightedToppingID: Int?
+        /// 다운로드가 끝난 토핑 이미지 — 캔버스의 토핑이 전부 모여야 로딩 딤(C-001-Loading)을 걷는다.
+        var loadedToppingImageIDs: Set<Int> = []
+        /// 다운로드에 실패한 토핑 이미지 — 하나라도 있으면 에러 딤(C-001-Error)으로 바꾼다.
+        var failedToppingImageIDs: Set<Int> = []
 
         public init(
             members: [Member] = [],
@@ -109,6 +113,27 @@ public extension CanvasStore {
 
             return PastParfaitNudge(date: lastClosedDate, friendCount: members.count)
         }
+
+        /// 캔버스 조회부터 토핑 이미지 다운로드까지를 덮는 전체 화면 딤의 단계.
+        var loadingOverlay: LoadingOverlay {
+            guard failedToppingImageIDs.isEmpty else { return .imageLoadFailed }
+            if contentState == .loading { return .loading }
+            if contentState == .filled,
+               let images = canvasContent?.images,
+               !images.allSatisfy({ loadedToppingImageIDs.contains($0.id) }) {
+                return .loading
+            }
+            return .hidden
+        }
+    }
+
+    /// 캔버스 로드 진행을 덮는 전체 화면 딤 (C-001-Loading / C-001-Error).
+    enum LoadingOverlay: Equatable, Sendable {
+        case hidden
+        /// 캔버스 조회 중이거나, 조회는 끝났지만 토핑 이미지가 아직 다 안 내려왔다.
+        case loading
+        /// 토핑 이미지 다운로드가 하나라도 실패했다.
+        case imageLoadFailed
     }
 
     struct PastParfaitNudge: Equatable, Sendable {
@@ -235,6 +260,8 @@ public extension CanvasStore {
         case sceneBecameActive
         case screenDisappeared
         case toppingTapped(Int)
+        case toppingImageLoaded(Int)
+        case toppingImageLoadFailed(Int)
         case spotlightDismissed
         case canvasEditTapped
         case canvasEditFlowDismissed

@@ -71,6 +71,8 @@ public struct CanvasView: View {
                 .ygToastOverlay($toasts)
             }
 
+            loadingOverlay
+
             if !hasSeenTutorial {
                 CanvasTutorialView { hasSeenTutorial = true }
             }
@@ -139,6 +141,36 @@ public struct CanvasView: View {
         }
         // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
+    }
+
+    /// 캔버스 조회부터 토핑 이미지 다운로드까지 화면 전체를 덮는다 (C-001-Loading / C-001-Error).
+    private var loadingOverlay: some View {
+        ZStack {
+            switch store.state.loadingOverlay {
+            case .hidden:
+                EmptyView()
+            case .loading:
+                YGLoadingView(
+                    animation: .topping,
+                    message: "캔버스를 불러오는 중이에요\n고화질일수록 더 오래 걸릴 수 있어요"
+                )
+                .transition(.opacity)
+            case .imageLoadFailed:
+                ZStack {
+                    Color.black75.ignoresSafeArea()
+                    YGErrorView(
+                        tone: .onDim,
+                        title: "캔버스를 불러오지 못했어요",
+                        message: "아래 버튼을 눌러 다시 시도해 주세요",
+                        buttonTitle: "다시 시도"
+                    ) {
+                        store.send(.refreshRequested)
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: store.state.loadingOverlay)
     }
 
     private func savePreviewFlow(_ savePreview: CanvasStore.SavePreview) -> some View {

@@ -39,7 +39,9 @@ struct CanvasContainer: View {
                             onSaveTap: { send(.savePreviewRequested) },
                             onToppingTap: { send(.toppingTapped($0)) },
                             onSpotlightDismiss: { send(.spotlightDismissed) },
-                            onDimTap: { send(.menuDimTapped) }
+                            onDimTap: { send(.menuDimTapped) },
+                            onToppingImageLoaded: { send(.toppingImageLoaded($0)) },
+                            onToppingImageLoadFailed: { send(.toppingImageLoadFailed($0)) }
                         )
                         .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
                         .overlay(alignment: .bottom) {
@@ -151,6 +153,8 @@ private struct CanvasBoard: View {
     let onToppingTap: (Int) -> Void
     let onSpotlightDismiss: () -> Void
     let onDimTap: () -> Void
+    let onToppingImageLoaded: (Int) -> Void
+    let onToppingImageLoadFailed: (Int) -> Void
 
     var body: some View {
         ZStack {
@@ -167,10 +171,9 @@ private struct CanvasBoard: View {
                 case .failed:
                     message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")
 
+                // 조회 중에는 전체 화면 로딩 딤(C-001-Loading)이 덮고 있어 보드에는 아무것도 그리지 않는다.
                 case .loading:
-                    YGLottieView(.loadingDark)
-                        .frame(width: 44, height: 44)
-                        .padding(.top, CanvasDateHeader.height)
+                    Color.clear
 
                 case .filled:
                     if let canvasContent {
@@ -178,7 +181,9 @@ private struct CanvasBoard: View {
                             content: canvasContent,
                             spotlightedToppingID: spotlightedToppingID,
                             onImageTap: { onToppingTap($0.id) },
-                            onDimTap: onSpotlightDismiss
+                            onDimTap: onSpotlightDismiss,
+                            onToppingImageLoaded: onToppingImageLoaded,
+                            onToppingImageLoadFailed: onToppingImageLoadFailed
                         )
                     } else {
                         Color.clear

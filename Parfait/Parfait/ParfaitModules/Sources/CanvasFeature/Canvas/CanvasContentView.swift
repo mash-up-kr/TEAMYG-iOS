@@ -23,17 +23,24 @@ struct CanvasContentView: View {
     var spotlightedToppingID: Int?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
     var onDimTap: (() -> Void)?
+    /// 토핑 이미지 다운로드 결과 — 로딩 딤(C-001-Loading)이 전부 모일 때까지 기다린다.
+    var onToppingImageLoaded: ((Int) -> Void)?
+    var onToppingImageLoadFailed: ((Int) -> Void)?
 
     init(
         content: CanvasStore.CanvasContent,
         spotlightedToppingID: Int? = nil,
         onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
-        onDimTap: (() -> Void)? = nil
+        onDimTap: (() -> Void)? = nil,
+        onToppingImageLoaded: ((Int) -> Void)? = nil,
+        onToppingImageLoadFailed: ((Int) -> Void)? = nil
     ) {
         self.content = content
         self.spotlightedToppingID = spotlightedToppingID
         self.onImageTap = onImageTap
         self.onDimTap = onDimTap
+        self.onToppingImageLoaded = onToppingImageLoaded
+        self.onToppingImageLoadFailed = onToppingImageLoadFailed
     }
 
     var body: some View {
@@ -56,7 +63,9 @@ struct CanvasContentView: View {
                     CanvasPlacedImage(
                         canvasImage: canvasImage,
                         canvasSize: proxy.size,
-                        onTap: imageTapAction(for: canvasImage)
+                        onTap: imageTapAction(for: canvasImage),
+                        onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
+                        onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
                     )
                         .zIndex(zIndex(for: canvasImage, order: order))
                 }
@@ -145,6 +154,7 @@ struct CanvasPlacedImage: View {
     var isSelected = false
     var onTap: (() -> Void)?
     var onToppingLoaded: ((CGSize) -> Void)?
+    var onToppingLoadFailed: (() -> Void)?
 
     @Environment(\.canvasToppingRenderer) private var renderer
     @Environment(\.displayScale) private var displayScale
@@ -195,6 +205,8 @@ struct CanvasPlacedImage: View {
         topping = loaded
         if let loaded {
             onToppingLoaded?(CGSize(width: loaded.width, height: loaded.height))
+        } else {
+            onToppingLoadFailed?()
         }
 
         guard let loaded, let border = canvasImage.border, border.width > 0 else {
