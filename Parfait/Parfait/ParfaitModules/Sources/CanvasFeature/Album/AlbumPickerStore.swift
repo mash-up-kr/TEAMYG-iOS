@@ -11,11 +11,13 @@ import PhotosUI
 import SwiftUI
 import UIComponent
 
+/// 앨범 선택 화면 Store 팩토리.
+/// `onRecentUploadConfirmed` 는 `showsRecentUploads` 가 `false` 인 화면(배경 편집)에서는 `nil` 이다.
 public typealias AlbumPickerStoreFactory = (
     _ isLimited: Bool,
     _ showsRecentUploads: Bool,
     _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
-    _ onRecentUploadConfirmed: @escaping (StoredImage) -> Void
+    _ onRecentUploadConfirmed: ((StoredImage) -> Void)?
 ) -> AlbumPickerStore
 
 @Observable @MainActor
@@ -23,7 +25,7 @@ public final class AlbumPickerStore: MVIStore {
     public private(set) var state: State
     private let recentUploadsRepository: any RecentUploadsRepository
     private let onPhotoConfirmed: (_ assetIdentifier: String) -> Void
-    private let onRecentUploadConfirmed: (StoredImage) -> Void
+    private let onRecentUploadConfirmed: ((StoredImage) -> Void)?
     private var recentUploadsTask: Task<Void, Never>?
     private var limitedPickerTask: Task<Void, Never>?
     private var changeRelay: PhotoLibraryChangeRelay?
@@ -33,7 +35,7 @@ public final class AlbumPickerStore: MVIStore {
         showsRecentUploads: Bool = true,
         recentUploadsRepository: any RecentUploadsRepository,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
-        onRecentUploadConfirmed: @escaping (StoredImage) -> Void
+        onRecentUploadConfirmed: ((StoredImage) -> Void)?
     ) {
         self.recentUploadsRepository = recentUploadsRepository
         self.onPhotoConfirmed = onPhotoConfirmed
@@ -61,7 +63,7 @@ public final class AlbumPickerStore: MVIStore {
                 thumbnail: thumbnail
             )
         case let .recentUploadTapped(upload, _):
-            onRecentUploadConfirmed(upload)
+            onRecentUploadConfirmed?(upload)
         case .confirmReselectTapped:
             state.selectedPhoto = nil
         case .confirmNextTapped:

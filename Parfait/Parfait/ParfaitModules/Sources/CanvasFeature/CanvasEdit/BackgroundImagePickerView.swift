@@ -5,7 +5,6 @@
 //  Created by 박서연 on 8/26/26.
 //
 
-import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -106,12 +105,13 @@ struct BackgroundImagePickerView: View {
         case .gallery:
             AlbumView(
                 makeAlbumPickerStore: { isLimited in
-                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다.
+                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 — 섹션을 감추고
+                    // 핸들러도 주지 않는다. 핸들러를 남겨두면 섹션을 되살릴 때 검은 배경으로 조용히 돌아온다.
                     makeAlbumPickerStore(
                         isLimited,
                         false,
                         confirmGalleryPhoto,
-                        confirmRecentUpload
+                        nil
                     )
                 },
                 showsSelectionGuide: false
@@ -121,9 +121,5 @@ struct BackgroundImagePickerView: View {
 
     private func confirmGalleryPhoto(_ assetIdentifier: String) {
         store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
-    }
-
-    private func confirmRecentUpload(_ upload: StoredImage) {
-        store.send(.recentUploadConfirmed(upload))
     }
 }

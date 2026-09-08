@@ -5,7 +5,6 @@
 //  Created by 박서연 on 8/26/26.
 //
 
-import CanvasDomain
 import Foundation
 import Observation
 import UIKit
@@ -49,7 +48,7 @@ final class BackgroundImagePickerStore: MVIStore {
              .cameraGuideDismissed, .flashTapped, .cameraPositionTapped, .shutterTapped,
              .retakeTapped, .cameraRetryTapped:
             handleCameraIntent(intent)
-        case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed:
+        case .photoConfirmed, .galleryPhotoConfirmed:
             handleImageSelectionIntent(intent)
         case .settingsTapped:
             openSystemSettings()
@@ -62,8 +61,6 @@ final class BackgroundImagePickerStore: MVIStore {
             prepareCapturedPhoto()
         case .galleryPhotoConfirmed(let assetIdentifier):
             prepareGalleryPhoto(assetIdentifier: assetIdentifier)
-        case .recentUploadConfirmed(let upload):
-            prepareRecentUpload(upload)
         default:
             break
         }
@@ -84,10 +81,7 @@ final class BackgroundImagePickerStore: MVIStore {
 
     private func prepareCameraPhoto(_ photoData: Data, viewFinderRegion: ViewFinderRegion?) {
         prepareImage(source: .camera) {
-            await BackgroundImageLoader.cameraJPEG(
-                photoData: photoData,
-                viewFinderRegion: viewFinderRegion
-            )
+            await BackgroundImageLoader.normalizedJPEG(photoData, croppedTo: viewFinderRegion)
         }
     }
 
@@ -97,15 +91,10 @@ final class BackgroundImagePickerStore: MVIStore {
         }
     }
 
-    private func prepareRecentUpload(_ upload: StoredImage) {
-        prepareImage(source: .gallery) {
-            await BackgroundImageLoader.recentUploadJPEG(upload.imageData)
-        }
-    }
-
     private func prepareImage(
         source: PhotoSource,
-        operation: @escaping @MainActor @Sendable () async -> Data?
+        // 무거운 이미지 변환이 들어오는 자리다 — `@MainActor` 를 붙이지 않는다.
+        operation: @escaping @Sendable () async -> Data?
     ) {
         imagePreparationTask?.cancel()
         state.isPreparingImage = true

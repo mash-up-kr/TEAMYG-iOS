@@ -171,7 +171,7 @@ struct AppDependencies {
         isLimited: Bool,
         showsRecentUploads: Bool,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
-        onRecentUploadConfirmed: @escaping (StoredImage) -> Void
+        onRecentUploadConfirmed: ((StoredImage) -> Void)?
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,
