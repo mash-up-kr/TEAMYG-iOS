@@ -60,6 +60,7 @@ public struct GroupView: View {
         .animation(Self.overlayAnimation, value: store.state.isTooltipVisible)
         .animation(Self.overlayAnimation, value: store.state.isAddGroupMenuPresented)
         .background(background)
+        .ygLoading(store.state.phase == .idle || store.state.phase == .loading)
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
             case .inviteCode:
@@ -103,8 +104,8 @@ public struct GroupView: View {
     private var content: some View {
         switch store.state.phase {
         case .idle, .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // 로딩 딤은 루트의 `.ygLoading` 이 상단 바까지 덮는다 — 콘텐츠 자리는 비워 둔다.
+            Color.clear
         case .loaded(let groups):
             parfaitScroll(groups: groups)
         case .failed:

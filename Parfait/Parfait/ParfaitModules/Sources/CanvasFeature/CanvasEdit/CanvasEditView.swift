@@ -40,6 +40,8 @@ struct CanvasEditView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .environment(\.canvasToppingRenderer, toppingRenderer)
+        // 루트에 걸어야 딤이 하단 플로팅 바까지 덮는다.
+        .ygLoading(store.state.saveState == .saving)
         .navigationDestination(item: backgroundImageSourceBinding) { source in
             BackgroundImagePickerView(
                 store: BackgroundImagePickerStore(
@@ -163,13 +165,6 @@ struct CanvasEditView: View {
                 .ignoresSafeArea()
 
             content()
-
-            if store.state.saveState == .saving {
-                Color.black25
-                    .ignoresSafeArea()
-                ProgressView()
-                    .tint(.whiteFixed)
-            }
         }
         .disabled(store.state.saveState == .saving)
     }

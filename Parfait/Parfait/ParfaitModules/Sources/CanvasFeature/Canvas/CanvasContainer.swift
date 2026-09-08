@@ -168,8 +168,8 @@ private struct CanvasBoard: View {
                     message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")
 
                 case .loading:
-                    ProgressView()
-                        .tint(.gray500)
+                    YGLottieView(.loadingDark)
+                        .frame(width: 44, height: 44)
                         .padding(.top, CanvasDateHeader.height)
 
                 case .filled:

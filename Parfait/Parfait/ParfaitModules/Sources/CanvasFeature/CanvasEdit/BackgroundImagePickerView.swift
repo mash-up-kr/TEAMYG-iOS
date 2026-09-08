@@ -25,44 +25,36 @@ struct BackgroundImagePickerView: View {
     }
 
     var body: some View {
-        ZStack {
-            content
-
-            if store.state.isPreparingImage {
-                Color.black25
-                    .ignoresSafeArea()
-                ProgressView()
-                    .tint(.whiteFixed)
-            }
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .ygToastOverlay($toasts)
-        .task {
-            store.send(.screenAppeared)
-            for await event in store.eventStream() {
-                switch event {
-                case .imagePreparationFailed:
-                    toasts.append(
-                        YGToastItem(kind: .error, message: "사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
-                    )
+        content
+            .ygLoading(store.state.isPreparingImage)
+            .toolbar(.hidden, for: .navigationBar)
+            .ygToastOverlay($toasts)
+            .task {
+                store.send(.screenAppeared)
+                for await event in store.eventStream() {
+                    switch event {
+                    case .imagePreparationFailed:
+                        toasts.append(
+                            YGToastItem(kind: .error, message: "사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        )
+                    }
                 }
             }
-        }
-        .onDisappear {
-            store.send(.screenDisappeared)
-        }
-        .onChange(of: scenePhase) { _, newScenePhase in
-            switch newScenePhase {
-            case .active:
-                store.send(.sceneBecameActive)
-            case .background:
-                store.send(.sceneEnteredBackground)
-            case .inactive:
-                break
-            @unknown default:
-                break
+            .onDisappear {
+                store.send(.screenDisappeared)
             }
-        }
+            .onChange(of: scenePhase) { _, newScenePhase in
+                switch newScenePhase {
+                case .active:
+                    store.send(.sceneBecameActive)
+                case .background:
+                    store.send(.sceneEnteredBackground)
+                case .inactive:
+                    break
+                @unknown default:
+                    break
+                }
+            }
     }
 
     @ViewBuilder

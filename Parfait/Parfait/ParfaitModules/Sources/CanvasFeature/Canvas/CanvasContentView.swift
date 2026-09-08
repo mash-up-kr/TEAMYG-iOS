@@ -89,8 +89,8 @@ struct CanvasContentView: View {
                         .resizable()
                         .scaledToFill()
                 case .empty:
-                    ProgressView()
-                        .tint(.gray500)
+                    YGLottieView(.loadingDark)
+                        .frame(width: 44, height: 44)
                 case .failure:
                     Color.gray100
                 }
@@ -173,8 +173,8 @@ struct CanvasPlacedImage: View {
                 onTap: onTap
             )
         } else if isLoading {
-            ProgressView()
-                .tint(.gray500)
+            YGLottieView(.loadingDark)
+                .frame(width: 44, height: 44)
                 .position(placement.center(in: canvasSize))
         }
     }

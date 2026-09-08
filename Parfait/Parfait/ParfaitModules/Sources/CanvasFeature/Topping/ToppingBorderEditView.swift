@@ -130,8 +130,8 @@ struct ToppingBorderEditView: View {
                     size: fittedToppingSize
                 )
             } else {
-                ProgressView()
-                    .tint(.gray500)
+                YGLottieView(.loadingDark)
+                    .frame(width: 44, height: 44)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

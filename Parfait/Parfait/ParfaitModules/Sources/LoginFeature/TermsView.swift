@@ -74,7 +74,8 @@ public struct TermsView: View {
     private var content: some View {
         switch store.state.phase {
         case .idle, .loading:
-            ProgressView()
+            YGLottieView(.loadingDark)
+                .frame(width: 44, height: 44)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 80)
         case .failed:
