@@ -133,6 +133,7 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func closeBorderEdit() {
+        resetBorderDraft()
         switch state.cutoutPath {
         case .automatic:
             state.screen = .cutoutResult
@@ -163,6 +164,7 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func closeManualCutout() {
+        resetBorderDraft()
         switch state.cutoutPath {
         case .withoutEdit:
             // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 다시 시도를 고를 수 있다.
@@ -171,6 +173,11 @@ final class ToppingAddStore: MVIStore {
         case .automatic, .recentUpload:
             state.screen = .cutoutResult
         }
+    }
+
+    private func resetBorderDraft() {
+        state.borderEditor = ToppingBorderEditor()
+        renderBorderSilhouette()
     }
 
     private func releaseExtractedTopping() {
@@ -182,6 +189,7 @@ final class ToppingAddStore: MVIStore {
         state.extractedTopping = nil
         state.cutoutHasArea = true
         state.borderSilhouette = nil
+        state.borderEditor = ToppingBorderEditor()
         state.maskEditor.reset()
         state.placementEditor.reset()
         state.placementReturnScreen = .cutoutResult
@@ -190,7 +198,6 @@ final class ToppingAddStore: MVIStore {
 
     private func resetToppingDraft() {
         releaseExtractedTopping()
-        state.borderEditor = ToppingBorderEditor()
         Task { [borderRenderer] in await borderRenderer.reset() }
     }
 
