@@ -118,14 +118,11 @@ final class ToppingAddStore: MVIStore {
             closeBorderEdit()
         case .borderAreaTabTapped:
             guard state.extractedTopping != nil, state.cutoutPath.allowsAreaEdit else { break }
-            // 편집 없이 사용 경로는 유지한다 — C-104 닫기 목적지가 다르다.
-            if state.cutoutPath == .automatic {
-                state.cutoutPath = .manual
-            }
             state.screen = .manualCutout
         case .borderConfirmed:
             guard let extractedTopping = state.extractedTopping else { break }
             state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.placementReturnScreen = .borderEdit
             state.screen = .placement
             renderBorderSilhouette()
         default:
@@ -137,17 +134,15 @@ final class ToppingAddStore: MVIStore {
 
     private func closeBorderEdit() {
         switch state.cutoutPath {
-        case .manual:
-            state.screen = .manualCutout
+        case .automatic:
+            state.screen = .cutoutResult
         case .recentUpload:
             // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
             releaseExtractedTopping()
             state.screen = .gallery
         case .withoutEdit:
-            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 닫으면 영역 편집으로 돌아간다.
+            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 돌아갈 C-103 결과 화면이 없어 영역 편집으로 간다.
             state.screen = .manualCutout
-        case .automatic:
-            state.screen = .candidateSelection
         }
     }
 
@@ -173,8 +168,8 @@ final class ToppingAddStore: MVIStore {
             // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 다시 시도를 고를 수 있다.
             releaseExtractedTopping()
             state.screen = .analysisError
-        case .automatic, .manual, .recentUpload:
-            state.screen = .candidateSelection
+        case .automatic, .recentUpload:
+            state.screen = .cutoutResult
         }
     }
 
@@ -189,6 +184,7 @@ final class ToppingAddStore: MVIStore {
         state.borderSilhouette = nil
         state.maskEditor.reset()
         state.placementEditor.reset()
+        state.placementReturnScreen = .cutoutResult
         state.cutoutPath = .automatic
     }
 
@@ -402,7 +398,7 @@ private extension ToppingAddStore {
     }
 }
 
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
+/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·배치·수동 편집.
 private extension ToppingAddStore {
     func handleCutoutResultIntent(_ intent: Intent) {
         switch intent {
@@ -411,12 +407,13 @@ private extension ToppingAddStore {
             // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
             state.screen = .candidateSelection
         case .cutoutConfirmed:
-            guard state.extractedTopping != nil else { break }
-            state.screen = .borderEdit
+            guard let extractedTopping = state.extractedTopping else { break }
+            state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.placementReturnScreen = .cutoutResult
+            state.screen = .placement
             renderBorderSilhouette()
         case .photoEditTapped:
             guard state.extractedTopping != nil else { break }
-            state.cutoutPath = .manual
             state.screen = .manualCutout
         default:
             break
@@ -579,7 +576,7 @@ private extension ToppingAddStore {
         switch intent {
         case .placementClosed:
             guard state.saveState != .saving else { break }
-            state.screen = .borderEdit
+            state.screen = state.placementReturnScreen
             renderBorderSilhouette()
         case .placementConfirmed:
             saveTopping()
