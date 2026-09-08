@@ -61,7 +61,8 @@ public extension CanvasStore {
         public var parfaitID: Int?
         /// C-001-Save-Preview. 날짜 바의 저장 버튼을 누르면 열리고, 저장하거나 닫으면 `nil` 로 돌아간다.
         var savePreview: SavePreview?
-        /// 가장 최근 마감된 캔버스 날짜 — SY-001-New 안내 판단용.
+        /// 아직 안내하지 않은 최근 마감 캔버스 날짜 — SY-001-New 안내 판단용.
+        /// 안내한 날짜는 기기에 남겨 두고 응답을 받을 때 걸러서 채운다.
         public var lastClosedDate: CalendarDate?
         /// C-202 Spotlight 로 강조된 타인의 토핑 (`canvas-policy.md` §4.2).
         var spotlightedToppingID: Int?
@@ -104,10 +105,12 @@ public extension CanvasStore {
             canvasContent?.images.count ?? 0
         }
 
-        /// SY-001-New 안내 — 오늘 캔버스에 토핑이 없고 최근 마감된 캔버스가 있을 때만 알린다.
+        /// SY-001-New 안내 — 아직 안내하지 않은 마감 캔버스가 있을 때만 알린다. 마감 날짜당 한 번.
+        /// 조회가 끝난 뒤에만 판단한다 — 로딩 중에는 직전 캔버스의 값이 남아
+        /// 편집·토핑 저장 후 리로드 때마다 안내가 다시 떠 버린다.
         var pastParfaitNudge: PastParfaitNudge? {
             guard !isClosedCanvas,
-                  toppingCount == 0,
+                  contentState == .empty || contentState == .filled,
                   let lastClosedDate
             else { return nil }
 
