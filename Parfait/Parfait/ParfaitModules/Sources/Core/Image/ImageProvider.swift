@@ -24,7 +24,7 @@ public actor ImageProvider {
     private let images = NSCache<NSString, CGImage>()
     private var loads: [NSString: Task<CGImage?, Never>] = [:]
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = URLSession(configuration: .imageTraffic)) {
         self.session = session
         images.totalCostLimit = Self.cacheByteLimit
     }
