@@ -38,6 +38,8 @@ final class ToppingAddStore: MVIStore {
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
+    private var canvasRefreshTask: Task<Void, Never>?
 
     init(
         canvasDate: CalendarDate,
@@ -62,8 +64,14 @@ final class ToppingAddStore: MVIStore {
         case .toastDismissed:
             state.showsToast = false
 
-        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground,
-             .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
+        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground:
+            handleCanvasRefreshLifecycleIntent(intent)
+            handleCameraIntent(intent)
+
+        case .canvasRefreshTicked:
+            refreshCanvasContent()
+
+        case .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
             handleCameraIntent(intent)
 
         case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
@@ -293,6 +301,8 @@ extension ToppingAddStore {
         let groupID: Int
         /// 오늘 캔버스 조회에 실패했으면 nil — 저장할 대상이 없다.
         let parfaitID: Int?
+        /// 배치 화면(C-106) 뒤에 깔리는 캔버스를 주기적으로 다시 받아오는 데 쓴다.
+        let canvasUseCase: any CanvasUseCase
         let toppingUseCase: any ToppingUseCase
         let recentUploadsRepository: any RecentUploadsRepository
         /// 저장이 끝나 캔버스로 돌아가야 할 때 호출한다.
@@ -301,12 +311,14 @@ extension ToppingAddStore {
         init(
             groupID: Int,
             parfaitID: Int?,
+            canvasUseCase: any CanvasUseCase,
             toppingUseCase: any ToppingUseCase,
             recentUploadsRepository: any RecentUploadsRepository,
             onSaved: @escaping @MainActor () -> Void
         ) {
             self.groupID = groupID
             self.parfaitID = parfaitID
+            self.canvasUseCase = canvasUseCase
             self.toppingUseCase = toppingUseCase
             self.recentUploadsRepository = recentUploadsRepository
             self.onSaved = onSaved
@@ -661,5 +673,44 @@ private extension ToppingAddStore {
     var nextZOrder: Int {
         let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
         return Int(highest.rounded()) + 1
+    }
+}
+
+/// 배치 화면(C-106) 뒤 캔버스를 5초마다 서버 값으로 맞춘다. 사용자의 배치 초안
+/// (`placementEditor`)과는 분리된 배경이라 통째로 갈아 끼워도 안전하다.
+private extension ToppingAddStore {
+    func handleCanvasRefreshLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            canvasRefreshTicker.start { [weak self] in
+                self?.send(.canvasRefreshTicked)
+            }
+        case .screenDisappeared, .sceneEnteredBackground:
+            canvasRefreshTicker.stop()
+            canvasRefreshTask?.cancel()
+            canvasRefreshTask = nil
+        default:
+            break
+        }
+    }
+
+    func refreshCanvasContent() {
+        guard state.screen == .placement,
+              let parfaitID = dependencies.parfaitID,
+              canvasRefreshTask == nil
+        else { return }
+
+        canvasRefreshTask = Task { [weak self, dependencies] in
+            let parfait = try? await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+            guard !Task.isCancelled, let self else { return }
+            canvasRefreshTask = nil
+            guard let parfait else { return }
+            // 새벽 3시 경계를 넘겨 오늘 캔버스가 바뀌었다면 남의 캔버스를 배경에 깔면 안 된다.
+            guard parfait.id == parfaitID else {
+                canvasRefreshTicker.stop()
+                return
+            }
+            state.canvasContent = CanvasStore.CanvasContent(parfait)
+        }
     }
 }

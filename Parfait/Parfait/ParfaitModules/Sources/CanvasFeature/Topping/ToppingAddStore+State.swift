@@ -13,7 +13,8 @@ extension ToppingAddStore {
     struct State: Equatable, Sendable {
         let canvasDate: CalendarDate
         let photoSource: PhotoSource
-        let canvasContent: CanvasStore.CanvasContent?
+        /// 배치 화면 뒤에 깔리는 오늘 캔버스. 5초마다 서버 값으로 갈아 끼운다.
+        var canvasContent: CanvasStore.CanvasContent?
         var screen: Screen
         var galleryAssetIdentifier: String?
         var analysis: PhotoAnalysis?
@@ -65,6 +66,7 @@ extension ToppingAddStore {
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground
+        case canvasRefreshTicked
         case toastDismissed
         case flashTapped
         case cameraPositionTapped

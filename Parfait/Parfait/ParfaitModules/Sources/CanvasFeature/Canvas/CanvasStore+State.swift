@@ -70,6 +70,9 @@ public extension CanvasStore {
         var loadedToppingImageIDs: Set<Int> = []
         /// 다운로드에 실패한 토핑 이미지 — 하나라도 있으면 에러 딤(C-001-Error)으로 바꾼다.
         var failedToppingImageIDs: Set<Int> = []
+        /// 로딩 딤이 기다리는 토핑 — 명시적 조회가 가져온 것만 담는다. 5초 주기 갱신으로 들어온
+        /// 남의 토핑까지 기다리면 화면이 멀쩡한데도 딤이 다시 덮인다.
+        var awaitedToppingImageIDs: Set<Int> = []
 
         public init(
             members: [Member] = [],
@@ -119,14 +122,11 @@ public extension CanvasStore {
 
         /// 캔버스 조회부터 토핑 이미지 다운로드까지를 덮는 전체 화면 딤의 단계.
         var loadingOverlay: LoadingOverlay {
-            guard failedToppingImageIDs.isEmpty else { return .imageLoadFailed }
-            if contentState == .loading { return .loading }
-            if contentState == .filled,
-               let images = canvasContent?.images,
-               !images.allSatisfy({ loadedToppingImageIDs.contains($0.id) }) {
-                return .loading
+            guard failedToppingImageIDs.isDisjoint(with: awaitedToppingImageIDs) else {
+                return .imageLoadFailed
             }
-            return .hidden
+            if contentState == .loading { return .loading }
+            return awaitedToppingImageIDs.isSubset(of: loadedToppingImageIDs) ? .hidden : .loading
         }
     }
 
@@ -261,7 +261,9 @@ public extension CanvasStore {
     enum Intent {
         case screenAppeared
         case sceneBecameActive
+        case sceneEnteredBackground
         case screenDisappeared
+        case canvasRefreshTicked
         case toppingTapped(Int)
         case toppingImageLoaded(Int)
         case toppingImageLoadFailed(Int)

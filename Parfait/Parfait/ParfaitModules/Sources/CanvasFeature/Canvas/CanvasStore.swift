@@ -18,7 +18,10 @@ public final class CanvasStore: MVIStore {
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
 
     private let dependencies: Dependencies
+    @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasLoadTask: Task<Void, Never>?
+    /// 5초 주기 갱신 전용 핸들. 명시적 조회(`canvasLoadTask`)와 섞으면 서로를 취소한다.
+    private var silentRefreshTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
@@ -51,8 +54,10 @@ public final class CanvasStore: MVIStore {
         switch intent {
         case .screenAppeared,
              .sceneBecameActive,
+             .sceneEnteredBackground,
              .screenDisappeared,
-             .refreshRequested:
+             .refreshRequested,
+             .canvasRefreshTicked:
             handleLifecycleIntent(intent)
 
         case .toppingTapped,
@@ -120,6 +125,7 @@ public final class CanvasStore: MVIStore {
             openToppingAddFlow { .gallery(canvasDate: $0) }
         case .toppingAddFlowDismissed:
             state.toppingAddSource = nil
+            refreshCanvasSilently()
         case .toppingSaved:
             state.toppingAddSource = nil
             loadCanvas(for: state.calendar.selectedDate)
@@ -176,6 +182,7 @@ public final class CanvasStore: MVIStore {
             state.canvasEditDestination = .background
         case .canvasEditFlowDismissed:
             state.canvasEditDestination = nil
+            refreshCanvasSilently()
         case .canvasEditSaved:
             state.canvasEditDestination = nil
             loadCanvas(for: state.calendar.selectedDate)
@@ -237,6 +244,7 @@ public final class CanvasStore: MVIStore {
         case .savePreviewClosed(let reason):
             let savedDate = state.savePreview?.date
             state.savePreview = nil
+            refreshCanvasSilently()
             guard let event = reason.event(dateText: savedDate?.koreanDateText) else { return }
             // 미리보기가 닫히는 순간에는 캔버스 화면이 아직 재구독 전일 수 있다.
             eventChannel.sendOrHold(event)
@@ -272,6 +280,7 @@ public final class CanvasStore: MVIStore {
         state.spotlightedToppingID = nil
         state.loadedToppingImageIDs = []
         state.failedToppingImageIDs = []
+        state.awaitedToppingImageIDs = []
         toppingAuthorsByID = [:]
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
@@ -292,26 +301,6 @@ public final class CanvasStore: MVIStore {
                 eventChannel.send(.canvasLoadFailed)
             }
         }
-    }
-
-    private func apply(_ parfait: Parfait) {
-        state.parfaitID = parfait.id
-        // 그룹명은 응답 값을 우선 사용한다. 없으면(과거 스키마) 진입점이 들고 온 값을 유지한다.
-        if let groupName = parfait.groupName {
-            state.groupName = groupName
-        }
-        state.lastClosedDate = unseenClosedDate(parfait.lastClosedDate.map(CalendarDate.init))
-        state.members = parfait.members.map(Member.init)
-        parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id
-
-        guard !parfait.isEmpty else {
-            state.contentState = .empty
-            state.canvasContent = nil
-            return
-        }
-        state.contentState = .filled
-        state.canvasContent = CanvasContent(parfait)
-        toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
     }
 }
 
@@ -349,15 +338,28 @@ private extension CanvasStore {
         case .screenAppeared:
             state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
             loadInitialDataIfNeeded()
+            startCanvasRefreshTicker()
         case .sceneBecameActive:
             state.spotlightedToppingID = nil
             reloadIfDayChanged()
+            startCanvasRefreshTicker()
+        case .sceneEnteredBackground:
+            canvasRefreshTicker.stop()
         case .screenDisappeared:
+            canvasRefreshTicker.stop()
             cancelTasks()
         case .refreshRequested:
             refreshCanvas()
+        case .canvasRefreshTicked:
+            refreshCanvasSilently()
         default:
             break
+        }
+    }
+
+    private func startCanvasRefreshTicker() {
+        canvasRefreshTicker.start { [weak self] in
+            self?.send(.canvasRefreshTicked)
         }
     }
 
@@ -415,14 +417,72 @@ private extension CanvasStore {
         }
     }
 
+    /// 5초 주기 자동 최신화 — 로딩 딤도 토스트도 없이 조용히 반영한다. 실패한 틱은 그냥 건너뛴다.
+    /// 덮개(토핑 추가·편집·저장 미리보기)가 올라와 있으면 그 화면이 각자 갱신한다.
+    func refreshCanvasSilently() {
+        guard !state.isClosedCanvas,
+              silentRefreshTask == nil,
+              state.loadingOverlay == .hidden,
+              state.spotlightedToppingID == nil,
+              state.toppingAddSource == nil,
+              state.canvasEditDestination == nil,
+              state.savePreview == nil
+        else { return }
+
+        let requestedDate = state.calendar.today
+        silentRefreshTask = Task { [weak self, dependencies] in
+            let parfait = try? await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+            guard !Task.isCancelled, let self else { return }
+            silentRefreshTask = nil
+            guard let parfait, !state.isClosedCanvas, state.calendar.selectedDate == requestedDate else { return }
+            applySilently(parfait)
+        }
+    }
+
+    func apply(_ parfait: Parfait) {
+        state.lastClosedDate = unseenClosedDate(parfait.lastClosedDate.map(CalendarDate.init))
+        applyContent(parfait)
+        state.awaitedToppingImageIDs = Set(state.canvasContent?.images.map(\.id) ?? [])
+    }
+
+    /// 주기 갱신 전용 반영. `lastClosedDate` 는 건드리지 않는다 — `unseenClosedDate` 가
+    /// UserDefaults 를 소비해, 틱마다 부르면 SY-001-New 안내가 뜨자마자 사라진다.
+    func applySilently(_ parfait: Parfait) {
+        applyContent(parfait)
+        // 새로 들어온 토핑까지 로딩 딤이 기다리지 않게 집합은 넓히지 않고, 사라진 토핑만 걷어낸다.
+        state.awaitedToppingImageIDs.formIntersection(Set(state.canvasContent?.images.map(\.id) ?? []))
+    }
+
+    func applyContent(_ parfait: Parfait) {
+        state.parfaitID = parfait.id
+        // 그룹명은 응답 값을 우선 사용한다. 없으면(과거 스키마) 진입점이 들고 온 값을 유지한다.
+        if let groupName = parfait.groupName {
+            state.groupName = groupName
+        }
+        state.members = parfait.members.map(Member.init)
+        parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id
+
+        guard !parfait.isEmpty else {
+            state.contentState = .empty
+            state.canvasContent = nil
+            toppingAuthorsByID = [:]
+            return
+        }
+        state.contentState = .filled
+        state.canvasContent = CanvasContent(parfait)
+        toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
+    }
+
     func cancelTasks() {
         // 미리보기(`savePreview`)는 건드리지 않는다. 덮인 화면이 `onDisappear` 를 받는지는
         // SwiftUI 버전을 타는데, 여기서 지우면 미리보기가 뜨자마자 닫혀 버린다.
         if state.contentState == .loading { didLoadInitialData = false }
         canvasLoadTask?.cancel()
+        silentRefreshTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
         canvasLoadTask = nil
+        silentRefreshTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
     }
