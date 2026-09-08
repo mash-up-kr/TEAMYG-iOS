@@ -43,7 +43,10 @@ struct RootView: View {
         NavigationStack(path: $router.path) {
             destination(for: router.rootRoute)
                 .navigationDestination(for: AppRoute.self) { route in
+                    // 라우트 값마다 새 identity — 같은 깊이에서 값만 바뀌면(캔버스 A → 푸시로 캔버스 B)
+                    // SwiftUI 가 목적지 뷰를 재사용해 화면의 @State(스토어)가 이전 그룹 걸 물고 있다.
                     destination(for: route)
+                        .id(route)
                 }
         }
         .environment(\.ygImageLoader, diContainer.ygImageLoader)
@@ -58,7 +61,8 @@ struct RootView: View {
             for await route in notificationRoutes {
                 // 로그인 전이면 무시 — 로그인 후 목적지 복원까지는 하지 않는다.
                 guard router.rootRoute == .group else { continue }
-                router.push(route)
+                // 열려 있던 화면 위에 쌓지 않는다 — 캔버스에서 같은 그룹 푸시를 타면 중첩된다.
+                router.resetPath(to: route)
             }
         }
         .task(id: router.rootRoute) {
