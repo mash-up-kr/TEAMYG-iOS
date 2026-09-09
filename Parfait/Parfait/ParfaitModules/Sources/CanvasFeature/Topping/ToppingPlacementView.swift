@@ -40,13 +40,6 @@ struct ToppingPlacementView: View {
             }
             .padding(.horizontal, .padding7)
             .padding(.top, Self.canvasTopSpacing)
-
-            if isSaving {
-                Color.black25
-                    .ignoresSafeArea()
-                ProgressView()
-                    .tint(.whiteFixed)
-            }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGFloatingBar(
@@ -55,6 +48,8 @@ struct ToppingPlacementView: View {
                 onConfirm: onConfirmTap
             )
         }
+        // safeAreaInset 뒤에 걸어야 딤이 하단 플로팅 바까지 덮는다.
+        .ygLoading(isSaving)
         .disabled(isSaving)
     }
 

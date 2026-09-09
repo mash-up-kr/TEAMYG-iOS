@@ -5,7 +5,6 @@
 //  Created by 박서연 on 8/26/26.
 //
 
-import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -25,44 +24,36 @@ struct BackgroundImagePickerView: View {
     }
 
     var body: some View {
-        ZStack {
-            content
-
-            if store.state.isPreparingImage {
-                Color.black25
-                    .ignoresSafeArea()
-                ProgressView()
-                    .tint(.whiteFixed)
-            }
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .ygToastOverlay($toasts)
-        .task {
-            store.send(.screenAppeared)
-            for await event in store.eventStream() {
-                switch event {
-                case .imagePreparationFailed:
-                    toasts.append(
-                        YGToastItem(kind: .error, message: "사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
-                    )
+        content
+            .ygLoading(store.state.isPreparingImage)
+            .toolbar(.hidden, for: .navigationBar)
+            .ygToastOverlay($toasts)
+            .task {
+                store.send(.screenAppeared)
+                for await event in store.eventStream() {
+                    switch event {
+                    case .imagePreparationFailed:
+                        toasts.append(
+                            YGToastItem(kind: .error, message: "사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        )
+                    }
                 }
             }
-        }
-        .onDisappear {
-            store.send(.screenDisappeared)
-        }
-        .onChange(of: scenePhase) { _, newScenePhase in
-            switch newScenePhase {
-            case .active:
-                store.send(.sceneBecameActive)
-            case .background:
-                store.send(.sceneEnteredBackground)
-            case .inactive:
-                break
-            @unknown default:
-                break
+            .onDisappear {
+                store.send(.screenDisappeared)
             }
-        }
+            .onChange(of: scenePhase) { _, newScenePhase in
+                switch newScenePhase {
+                case .active:
+                    store.send(.sceneBecameActive)
+                case .background:
+                    store.send(.sceneEnteredBackground)
+                case .inactive:
+                    break
+                @unknown default:
+                    break
+                }
+            }
     }
 
     @ViewBuilder
@@ -114,12 +105,13 @@ struct BackgroundImagePickerView: View {
         case .gallery:
             AlbumView(
                 makeAlbumPickerStore: { isLimited in
-                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다.
+                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 — 섹션을 감추고
+                    // 핸들러도 주지 않는다. 핸들러를 남겨두면 섹션을 되살릴 때 검은 배경으로 조용히 돌아온다.
                     makeAlbumPickerStore(
                         isLimited,
                         false,
                         confirmGalleryPhoto,
-                        confirmRecentUpload
+                        nil
                     )
                 },
                 showsSelectionGuide: false
@@ -129,9 +121,5 @@ struct BackgroundImagePickerView: View {
 
     private func confirmGalleryPhoto(_ assetIdentifier: String) {
         store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
-    }
-
-    private func confirmRecentUpload(_ upload: StoredImage) {
-        store.send(.recentUploadConfirmed(upload))
     }
 }

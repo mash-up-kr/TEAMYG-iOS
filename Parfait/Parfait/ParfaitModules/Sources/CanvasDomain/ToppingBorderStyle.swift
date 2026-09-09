@@ -11,5 +11,5 @@ public enum ToppingBorderStyle: Equatable, Sendable {
     case none
     case solid(colorHex: String, width: Double)
 
-    public static let widthRange: ClosedRange<Double> = 2...20
+    public static let widthRange: ClosedRange<Double> = 2...30
 }

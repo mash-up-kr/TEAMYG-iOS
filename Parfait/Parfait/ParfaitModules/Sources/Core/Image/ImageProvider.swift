@@ -5,6 +5,7 @@
 //  Created by 김남수 on 9/7/26.
 //
 
+import Common
 import CoreGraphics
 import Foundation
 
@@ -23,7 +24,7 @@ public actor ImageProvider {
     private let images = NSCache<NSString, CGImage>()
     private var loads: [NSString: Task<CGImage?, Never>] = [:]
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = URLSession(configuration: .imageTraffic)) {
         self.session = session
         images.totalCostLimit = Self.cacheByteLimit
     }
@@ -40,7 +41,7 @@ public actor ImageProvider {
         let load = Task.detached { [session] () -> CGImage? in
             // 실패 원인 구분 없이 nil 로 — 호출부는 플레이스홀더로 처리한다.
             guard let (imageData, _) = try? await session.data(from: url) else { return nil }
-            return ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+            return await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
         }
         loads[key] = load
 
@@ -54,13 +55,5 @@ public actor ImageProvider {
 
     private static func cacheKey(url: URL, maxPixelSize: Int) -> NSString {
         "\(url.absoluteString)#\(maxPixelSize)" as NSString
-    }
-}
-
-private extension CGImage {
-    /// 비트맵이 실제로 차지하는 바이트. 캐시 비용 단위 —
-    /// 장수로 세면 큰 이미지 몇 장에 메모리가 쏠려도 상한에 걸리지 않는다.
-    var byteCount: Int {
-        height * bytesPerRow
     }
 }

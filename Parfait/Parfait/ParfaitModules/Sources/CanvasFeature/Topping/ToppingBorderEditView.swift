@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import Common
 import CoreGraphics
 import SwiftUI
 import UIComponent
@@ -130,8 +131,8 @@ struct ToppingBorderEditView: View {
                     size: fittedToppingSize
                 )
             } else {
-                ProgressView()
-                    .tint(.gray500)
+                YGLottieView(.loadingDark)
+                    .frame(width: 44, height: 44)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

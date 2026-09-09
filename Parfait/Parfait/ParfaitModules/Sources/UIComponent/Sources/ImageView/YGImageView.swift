@@ -5,6 +5,7 @@
 //  Created by 김남수 on 9/7/26.
 //
 
+import Common
 import CoreGraphics
 import SwiftUI
 
@@ -48,7 +49,7 @@ public struct YGImageView<Content: View>: View {
             return
         }
 
-        let maxPixelSize = Int((max(frameSize.width, frameSize.height) * displayScale).rounded(.up))
+        let maxPixelSize = frameSize.longEdgePixelSize(scale: displayScale)
         if let image = await ygImageLoader(url, maxPixelSize) {
             phase = .success(Image(decorative: image, scale: displayScale))
         } else {

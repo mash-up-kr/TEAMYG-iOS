@@ -32,7 +32,7 @@ struct AppDependencies {
     /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
     /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
-    private let imageProvider = ImageProvider(session: URLSession(configuration: .imageTraffic))
+    private let imageProvider = ImageProvider()
     /// `YGImageView` 환경에 얹는 로더 — UIComponent 가 Core 를 모르므로 여기서 클로저로 감싼다.
     let ygImageLoader: YGImageLoader
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
@@ -171,7 +171,7 @@ struct AppDependencies {
         isLimited: Bool,
         showsRecentUploads: Bool,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
-        onRecentUploadConfirmed: @escaping (StoredImage) -> Void
+        onRecentUploadConfirmed: ((StoredImage) -> Void)?
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,

@@ -14,6 +14,7 @@ let designSystemResources: [Resource] = [
     .copy("Resources/Lottie_Loading_Light.lottie"),
     .copy("Resources/Lottie_Loading_Dark.lottie"),
     .copy("Resources/Lottie-Logo.lottie"),
+    .copy("Resources/Lottie_Topping.lottie"),
 ]
 
 // (이름, 의존, 리소스)

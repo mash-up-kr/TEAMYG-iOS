@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/22/26.
 //
 
+import Common
 import Core
 import CoreGraphics
 import CoreImage
@@ -17,6 +18,9 @@ import Vision
 protocol ObjectExtracting: Sendable {
     func analyze(_ source: PhotoAnalysisSource) async throws -> PhotoAnalysis
     func extractTopping(candidateID: Int) async throws -> ExtractedTopping
+    /// 분석 없이 원본 사진으로 전부 제외 상태의 빈 누끼 캔버스를 만든다 — 분석 실패 후 "편집 없이 사용" 경로.
+    /// 사용자가 C-104 에서 영역을 직접 채운다.
+    func makeEmptyCutout(from source: PhotoAnalysisSource, candidateID: Int) async throws -> ExtractedTopping
     /// 분석 세션(원본 이미지·Vision 핸들러·마스크 관측)을 놓아준다. 누끼 흐름을 벗어날 때 호출한다.
     func reset() async
 }
@@ -77,6 +81,33 @@ actor ObjectExtractor: ObjectExtracting {
             photo: canvas.photo,
             mask: canvas.mask
         )
+    }
+
+    func makeEmptyCutout(from source: PhotoAnalysisSource, candidateID: Int) async throws -> ExtractedTopping {
+        let photo = try await normalizedPhoto(from: source)
+        let canvas = photo.image.downscaled(longEdge: ObjectExtractionPolicy.extractionCanvasLongEdge)
+        guard let mask = Self.makeBlankMask(width: canvas.width, height: canvas.height),
+              let image = ToppingCutoutCompositor.composite(photo: canvas, mask: mask, context: renderContext)
+        else { throw ObjectExtractionError.renderingFailed }
+
+        return ExtractedTopping(candidateID: candidateID, image: image, photo: canvas, mask: mask)
+    }
+
+    /// 전부 제외(검정) 상태의 그레이스케일 마스크 — `ToppingMaskRenderer` 가 쓰는 마스크와 같은 포맷.
+    private static func makeBlankMask(width: Int, height: Int) -> CGImage? {
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return nil }
+
+        context.setFillColor(gray: 0, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage()
     }
 
     func reset() {

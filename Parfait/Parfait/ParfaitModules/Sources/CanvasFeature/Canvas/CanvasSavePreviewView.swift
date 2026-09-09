@@ -65,8 +65,8 @@ struct CanvasSavePreviewView: View {
                     .resizable()
                     .scaledToFit()
             } else {
-                ProgressView()
-                    .tint(.gray500)
+                YGLottieView(.loadingDark)
+                    .frame(width: 44, height: 44)
             }
         }
         // 저장본이 곧 16:9 Canvas-Area 라 높이만 정하면 너비는 따라온다.

@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/23/26.
 //
 
+import Common
 import Core
 import CoreGraphics
 import SwiftUI
@@ -23,17 +24,24 @@ struct CanvasContentView: View {
     var spotlightedToppingID: Int?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
     var onDimTap: (() -> Void)?
+    /// 토핑 이미지 다운로드 결과 — 로딩 딤(C-001-Loading)이 전부 모일 때까지 기다린다.
+    var onToppingImageLoaded: ((Int) -> Void)?
+    var onToppingImageLoadFailed: ((Int) -> Void)?
 
     init(
         content: CanvasStore.CanvasContent,
         spotlightedToppingID: Int? = nil,
         onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
-        onDimTap: (() -> Void)? = nil
+        onDimTap: (() -> Void)? = nil,
+        onToppingImageLoaded: ((Int) -> Void)? = nil,
+        onToppingImageLoadFailed: ((Int) -> Void)? = nil
     ) {
         self.content = content
         self.spotlightedToppingID = spotlightedToppingID
         self.onImageTap = onImageTap
         self.onDimTap = onDimTap
+        self.onToppingImageLoaded = onToppingImageLoaded
+        self.onToppingImageLoadFailed = onToppingImageLoadFailed
     }
 
     var body: some View {
@@ -56,7 +64,9 @@ struct CanvasContentView: View {
                     CanvasPlacedImage(
                         canvasImage: canvasImage,
                         canvasSize: proxy.size,
-                        onTap: imageTapAction(for: canvasImage)
+                        onTap: imageTapAction(for: canvasImage),
+                        onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
+                        onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
                     )
                         .zIndex(zIndex(for: canvasImage, order: order))
                 }
@@ -89,8 +99,8 @@ struct CanvasContentView: View {
                         .resizable()
                         .scaledToFill()
                 case .empty:
-                    ProgressView()
-                        .tint(.gray500)
+                    YGLottieView(.loadingDark)
+                        .frame(width: 44, height: 44)
                 case .failure:
                     Color.gray100
                 }
@@ -123,10 +133,10 @@ private struct LocalCanvasBackgroundImage: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
             .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
-                let maxPixelSize = proxy.size.longEdgePixelSize(scale: displayScale)
-                image = await Task.detached(priority: .userInitiated) {
-                    ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
-                }.value
+                image = await ImageDownsampling.decodedImage(
+                    from: imageData,
+                    maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
+                )
             }
         }
     }
@@ -145,6 +155,7 @@ struct CanvasPlacedImage: View {
     var isSelected = false
     var onTap: (() -> Void)?
     var onToppingLoaded: ((CGSize) -> Void)?
+    var onToppingLoadFailed: (() -> Void)?
 
     @Environment(\.canvasToppingRenderer) private var renderer
     @Environment(\.displayScale) private var displayScale
@@ -173,8 +184,8 @@ struct CanvasPlacedImage: View {
                 onTap: onTap
             )
         } else if isLoading {
-            ProgressView()
-                .tint(.gray500)
+            YGLottieView(.loadingDark)
+                .frame(width: 44, height: 44)
                 .position(placement.center(in: canvasSize))
         }
     }
@@ -195,6 +206,8 @@ struct CanvasPlacedImage: View {
         topping = loaded
         if let loaded {
             onToppingLoaded?(CGSize(width: loaded.width, height: loaded.height))
+        } else {
+            onToppingLoadFailed?()
         }
 
         guard let loaded, let border = canvasImage.border, border.width > 0 else {

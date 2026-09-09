@@ -5,7 +5,6 @@
 //  Created by 박서연 on 8/26/26.
 //
 
-import CanvasDomain
 import Foundation
 
 extension BackgroundImagePickerStore {
@@ -76,7 +75,6 @@ extension BackgroundImagePickerStore {
         case retakeTapped
         case photoConfirmed
         case galleryPhotoConfirmed(assetIdentifier: String)
-        case recentUploadConfirmed(StoredImage)
         case cameraRetryTapped
         case settingsTapped
     }

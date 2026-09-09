@@ -55,8 +55,10 @@ public final class CanvasStore: MVIStore {
              .refreshRequested:
             handleLifecycleIntent(intent)
 
-        case .toppingTapped(let toppingID):
-            handleToppingTap(toppingID)
+        case .toppingTapped,
+             .toppingImageLoaded,
+             .toppingImageLoadFailed:
+            handleToppingIntent(intent)
 
         case .spotlightDismissed:
             state.spotlightedToppingID = nil
@@ -268,6 +270,8 @@ public final class CanvasStore: MVIStore {
         state.contentState = .loading
         state.canvasContent = nil
         state.spotlightedToppingID = nil
+        state.loadedToppingImageIDs = []
+        state.failedToppingImageIDs = []
         toppingAuthorsByID = [:]
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
@@ -296,7 +300,7 @@ public final class CanvasStore: MVIStore {
         if let groupName = parfait.groupName {
             state.groupName = groupName
         }
-        state.lastClosedDate = parfait.lastClosedDate.map(CalendarDate.init)
+        state.lastClosedDate = unseenClosedDate(parfait.lastClosedDate.map(CalendarDate.init))
         state.members = parfait.members.map(Member.init)
         parfaitIDsByDate[CalendarDate(parfait.date)] = parfait.id
 
@@ -312,6 +316,17 @@ public final class CanvasStore: MVIStore {
 }
 
 private extension CanvasStore {
+    /// SY-001-New 는 마감 날짜당 한 번만 알린다 — 안내할 날짜를 기기에 남기고, 이미 남긴 날짜는 거른다.
+    /// 첫 조회는 항상 오늘 캔버스라 여기서 기록해도 안내 없이 소모되는 일은 없다.
+    func unseenClosedDate(_ closedDate: CalendarDate?) -> CalendarDate? {
+        guard let closedDate else { return nil }
+        let seenClosedDateKey = "canvas.seenClosedDate.\(dependencies.groupID)"
+        let closedDateText = "\(closedDate.year)-\(closedDate.month)-\(closedDate.day)"
+        guard UserDefaults.standard.string(forKey: seenClosedDateKey) != closedDateText else { return nil }
+        UserDefaults.standard.set(closedDateText, forKey: seenClosedDateKey)
+        return closedDate
+    }
+
     /// 캘린더 인디케이터와 날짜 → `parfaitID` 매핑을 한 해 단위로 갱신한다.
     func refreshRecordedDates(for year: Int) async {
         let summaries = try? await dependencies.canvasUseCase.fetchSummaries(
@@ -341,6 +356,19 @@ private extension CanvasStore {
             cancelTasks()
         case .refreshRequested:
             refreshCanvas()
+        default:
+            break
+        }
+    }
+
+    func handleToppingIntent(_ intent: Intent) {
+        switch intent {
+        case .toppingTapped(let toppingID):
+            handleToppingTap(toppingID)
+        case .toppingImageLoaded(let toppingID):
+            state.loadedToppingImageIDs.insert(toppingID)
+        case .toppingImageLoadFailed(let toppingID):
+            state.failedToppingImageIDs.insert(toppingID)
         default:
             break
         }

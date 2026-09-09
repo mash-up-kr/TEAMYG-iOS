@@ -17,9 +17,8 @@ struct ToppingAnalysisLoadingView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: .gap4) {
-                ProgressView()
-                    .controlSize(.large)
-                    .tint(.gray900)
+                YGLottieView(.loadingDark)
+                    .frame(width: 44, height: 44)
 
                 Text("사진을 편집하고 있어요")
                     .suit(.title03SemiBold)

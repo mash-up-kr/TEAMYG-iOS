@@ -44,6 +44,8 @@ struct ToppingAddFlowView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        // 후보 추출·빈 누끼 생성 같은 짧은 작업은 전용 로딩 화면 대신 현재 화면 위 오버레이로.
+        .ygLoading(store.state.extractionState == .extracting)
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {
@@ -158,9 +160,22 @@ struct ToppingAddFlowView: View {
             )
 
         case .analysisError:
-            ToppingAnalysisErrorView(
-                onCloseTap: { store.send(.analysisErrorClosed) }
-            )
+            ZStack {
+                Color.whiteFixed
+                    .ignoresSafeArea()
+
+                YGErrorView(
+                    title: "사진 편집에 실패했어요",
+                    message: "다시 시도하거나 편집 없이 사용할 수 있어요",
+                    buttonTitle: "다시 시도",
+                    action: { store.send(.analysisRetryTapped) },
+                    secondaryButtonTitle: "편집 없이 사용",
+                    secondaryAction: { store.send(.useWithoutEditTapped) }
+                )
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                YGFloatingBar(.close, onClose: { store.send(.analysisErrorClosed) })
+            }
 
         case .candidateSelection:
             if let analysis = store.state.analysis {
@@ -214,7 +229,7 @@ struct ToppingAddFlowView: View {
                     onColorSelect: { store.send(.borderColorSelected($0)) },
                     onPreviewLongEdgeChange: { store.send(.borderPreviewLongEdgeChanged($0)) },
                     placementScale: nil,
-                    showsAreaTab: store.state.cutoutPath != .recentUpload,
+                    showsAreaTab: store.state.cutoutPath.allowsAreaEdit,
                     onAreaTabTap: { store.send(.borderAreaTabTapped) },
                     onCloseTap: { store.send(.borderEditClosed) },
                     onConfirmTap: { store.send(.borderConfirmed) }

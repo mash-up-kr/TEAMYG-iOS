@@ -16,12 +16,15 @@ public enum YGLottieAnimation {
     case loadingDark
     /// 앱 로고.
     case logo
+    /// 토핑이 하나씩 바뀌는 로딩 애니메이션 — 캔버스 로딩 딤(C-001-Loading) 전용.
+    case topping
 
     fileprivate var fileName: String {
         switch self {
         case .loadingLight: "Lottie_Loading_Light"
         case .loadingDark: "Lottie_Loading_Dark"
         case .logo: "Lottie-Logo"
+        case .topping: "Lottie_Topping"
         }
     }
 }
@@ -71,5 +74,10 @@ public struct YGLottieView: View {
 
 #Preview("로고") {
     YGLottieView(.logo, loops: false)
+        .frame(width: 202, height: 230)
+}
+
+#Preview("토핑") {
+    YGLottieView(.topping, loops: false)
         .frame(width: 202, height: 230)
 }

@@ -24,8 +24,11 @@ extension ToppingAddStore {
         var maskEditor = ToppingMaskEditor()
         var placementEditor = ToppingPlacementEditor()
         var cutoutPath: CutoutPath = .automatic
+        /// 지금 누끼에 포함된 영역이 있는지. 비어 있으면 C-104 확인(→C-105)을 막는다.
+        var cutoutHasArea = true
         var showsToast = true
         var saveState: SaveState = .idle
+        var extractionState: ExtractionState = .idle
 
         init(
             canvasDate: CalendarDate,
@@ -75,6 +78,8 @@ extension ToppingAddStore {
         case candidateTapped(normalizedPoint: CGPoint)
         case candidateSelectionBackTapped
         case analysisErrorClosed
+        case analysisRetryTapped
+        case useWithoutEditTapped
         case cutoutResultClosed
         case photoEditTapped
         case cutoutConfirmed
@@ -111,6 +116,14 @@ extension ToppingAddStore {
         case manual
         /// 최근 업로드에서 바로 C-105 로 온 경로. 원본 사진이 없어 영역 편집(C-104)으로 갈 수 없다.
         case recentUpload
+        /// 분석 실패 후 "편집 없이 사용" — 원본 사진을 전부 제외된 빈 마스크로 C-104 부터 시작한다.
+        /// C-104 닫기가 실패 화면(C-103-Error)으로 돌아가는 점이 `manual` 과 다르다.
+        case withoutEdit
+
+        /// 영역(C-104) 탭 제공 여부 — 최근 업로드만 원본 사진이 없어 불가.
+        var allowsAreaEdit: Bool {
+            self != .recentUpload
+        }
     }
 
     enum PhotoSource: Equatable, Sendable {
@@ -171,5 +184,13 @@ extension ToppingAddStore {
     enum SaveState: Equatable, Sendable {
         case idle
         case saving
+    }
+
+    /// 후보 추출·빈 누끼 생성처럼 짧은 로컬 작업의 진행 상태.
+    /// 전용 로딩 화면(C-103-Loading)이 아니라 현재 화면 위 `.ygLoading` 오버레이로 보여준다 —
+    /// 수백 ms 작업에 화면 전체가 갈리는 flash 를 막는다.
+    enum ExtractionState: Equatable, Sendable {
+        case idle
+        case extracting
     }
 }
