@@ -68,7 +68,7 @@ struct CanvasContentView: View {
                         onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
                         onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
                     )
-                        .zIndex(zIndex(for: canvasImage, order: order))
+                    .zIndex(zIndex(for: canvasImage, order: order))
                 }
             }
         }
@@ -161,13 +161,16 @@ struct CanvasPlacedImage: View {
     @Environment(\.displayScale) private var displayScale
     @State private var topping: CGImage?
     @State private var silhouette: CGImage?
-    @State private var isLoading = true
 
     var body: some View {
-        content
-            .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge, borderRedrawKey: borderRedrawKey)) {
-                await load()
-            }
+        // 토핑이 오기 전엔 `content` 가 빈 옵셔널 뷰라 `.task` 가 돌지 않는다(`EmptyView` 와 같다).
+        // 항상 존재하는 컨테이너에 걸어야 첫 다운로드가 시작된다.
+        ZStack {
+            content
+        }
+        .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge, borderRedrawKey: borderRedrawKey)) {
+            await load()
+        }
     }
 
     @ViewBuilder
@@ -183,16 +186,10 @@ struct CanvasPlacedImage: View {
                 isSelected: isSelected,
                 onTap: onTap
             )
-        } else if isLoading {
-            YGLottieView(.loadingDark)
-                .frame(width: 44, height: 44)
-                .position(placement.center(in: canvasSize))
         }
     }
 
     private func load() async {
-        isLoading = true
-        defer { isLoading = false }
         // 렌더러는 캔버스 화면이 주입한다. 주입이 없으면 그릴 수단이 없다.
         // 레이아웃 전(캔버스 크기 0)에는 필요 해상도를 모른다 — 크기가 정해지면 `task` 가 다시 돈다.
         guard let renderer, neededLongEdgePixels > 0 else { return }
