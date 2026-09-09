@@ -17,7 +17,7 @@ import Foundation
 public actor ImageProvider {
     /// 디코딩한 비트맵 총량 상한. 한 장의 비용이 다운샘플링 크기에 따라 달라지므로
     /// 장수가 아니라 바이트로 잡는다.
-    private static let cacheByteLimit = 48 * 1024 * 1024
+    private static let cacheByteLimit = 512 * 1024 * 1024
 
     private let session: URLSession
     /// 앱이 끝까지 들고 있는 캐시라 메모리 경고에 스스로 반응해야 한다 — `NSCache` 가 그 일을 한다.
