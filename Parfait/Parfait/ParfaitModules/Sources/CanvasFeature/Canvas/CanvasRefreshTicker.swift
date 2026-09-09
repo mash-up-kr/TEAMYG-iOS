@@ -12,7 +12,7 @@ import Foundation
 @MainActor
 final class CanvasRefreshTicker {
     /// 캔버스 자동 최신화 주기. 세 화면이 같은 값을 쓴다.
-    static let interval: Duration = .seconds(5)
+    static let interval: Duration = .seconds(10)
 
     private var task: Task<Void, Never>?
 
