@@ -14,6 +14,7 @@ struct CanvasEditView: View {
 
     @State private var store: CanvasEditStore
     @State private var toasts: [YGToastItem] = []
+    @Environment(\.scenePhase) private var scenePhase
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
     private let toppingRenderer: CanvasToppingRenderer
 
@@ -69,6 +70,23 @@ struct CanvasEditView: View {
             primaryAction: { store.send(.continueEditingTapped) }
         )
         .ygToastOverlay($toasts)
+        // 배경 이미지 피커로 push 했다 돌아와도 주기 갱신이 다시 붙도록 `onAppear` 로 짝을 맞춘다.
+        .onAppear {
+            store.send(.screenAppeared)
+        }
+        .onDisappear {
+            store.send(.screenDisappeared)
+        }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            switch newScenePhase {
+            case .active:
+                store.send(.sceneBecameActive)
+            case .background:
+                store.send(.sceneEnteredBackground)
+            default:
+                break
+            }
+        }
         .task {
             for await event in store.eventStream() {
                 switch event {

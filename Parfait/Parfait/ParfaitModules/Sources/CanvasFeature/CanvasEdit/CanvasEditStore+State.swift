@@ -160,6 +160,11 @@ extension CanvasEditStore {
     }
 
     enum Intent {
+        case screenAppeared
+        case screenDisappeared
+        case sceneBecameActive
+        case sceneEnteredBackground
+        case canvasRefreshTicked
         case colorSelected(String)
         case backgroundImageSourceTapped(BackgroundImagePickerStore.PhotoSource)
         case backgroundImageFlowDismissed

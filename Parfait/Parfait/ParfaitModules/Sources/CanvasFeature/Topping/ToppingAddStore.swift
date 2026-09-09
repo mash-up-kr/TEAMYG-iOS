@@ -38,6 +38,8 @@ final class ToppingAddStore: MVIStore {
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
+    private var canvasRefreshTask: Task<Void, Never>?
 
     init(
         canvasDate: CalendarDate,
@@ -62,8 +64,14 @@ final class ToppingAddStore: MVIStore {
         case .toastDismissed:
             state.showsToast = false
 
-        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground,
-             .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
+        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground:
+            handleCanvasRefreshLifecycleIntent(intent)
+            handleCameraIntent(intent)
+
+        case .canvasRefreshTicked:
+            refreshCanvasContent()
+
+        case .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
             handleCameraIntent(intent)
 
         case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
@@ -118,14 +126,11 @@ final class ToppingAddStore: MVIStore {
             closeBorderEdit()
         case .borderAreaTabTapped:
             guard state.extractedTopping != nil, state.cutoutPath.allowsAreaEdit else { break }
-            // 편집 없이 사용 경로는 유지한다 — C-104 닫기 목적지가 다르다.
-            if state.cutoutPath == .automatic {
-                state.cutoutPath = .manual
-            }
             state.screen = .manualCutout
         case .borderConfirmed:
             guard let extractedTopping = state.extractedTopping else { break }
             state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.placementReturnScreen = .borderEdit
             state.screen = .placement
             renderBorderSilhouette()
         default:
@@ -136,18 +141,17 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func closeBorderEdit() {
+        resetBorderDraft()
         switch state.cutoutPath {
-        case .manual:
-            state.screen = .manualCutout
+        case .automatic:
+            state.screen = .cutoutResult
         case .recentUpload:
             // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
             releaseExtractedTopping()
             state.screen = .gallery
         case .withoutEdit:
-            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 닫으면 영역 편집으로 돌아간다.
+            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 돌아갈 C-103 결과 화면이 없어 영역 편집으로 간다.
             state.screen = .manualCutout
-        case .automatic:
-            state.screen = .candidateSelection
         }
     }
 
@@ -168,14 +172,20 @@ final class ToppingAddStore: MVIStore {
     }
 
     private func closeManualCutout() {
+        resetBorderDraft()
         switch state.cutoutPath {
         case .withoutEdit:
             // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 다시 시도를 고를 수 있다.
             releaseExtractedTopping()
             state.screen = .analysisError
-        case .automatic, .manual, .recentUpload:
-            state.screen = .candidateSelection
+        case .automatic, .recentUpload:
+            state.screen = .cutoutResult
         }
+    }
+
+    private func resetBorderDraft() {
+        state.borderEditor = ToppingBorderEditor()
+        renderBorderSilhouette()
     }
 
     private func releaseExtractedTopping() {
@@ -187,14 +197,15 @@ final class ToppingAddStore: MVIStore {
         state.extractedTopping = nil
         state.cutoutHasArea = true
         state.borderSilhouette = nil
+        state.borderEditor = ToppingBorderEditor()
         state.maskEditor.reset()
         state.placementEditor.reset()
+        state.placementReturnScreen = .cutoutResult
         state.cutoutPath = .automatic
     }
 
     private func resetToppingDraft() {
         releaseExtractedTopping()
-        state.borderEditor = ToppingBorderEditor()
         Task { [borderRenderer] in await borderRenderer.reset() }
     }
 
@@ -290,6 +301,8 @@ extension ToppingAddStore {
         let groupID: Int
         /// 오늘 캔버스 조회에 실패했으면 nil — 저장할 대상이 없다.
         let parfaitID: Int?
+        /// 배치 화면(C-106) 뒤에 깔리는 캔버스를 주기적으로 다시 받아오는 데 쓴다.
+        let canvasUseCase: any CanvasUseCase
         let toppingUseCase: any ToppingUseCase
         let recentUploadsRepository: any RecentUploadsRepository
         /// 저장이 끝나 캔버스로 돌아가야 할 때 호출한다.
@@ -298,12 +311,14 @@ extension ToppingAddStore {
         init(
             groupID: Int,
             parfaitID: Int?,
+            canvasUseCase: any CanvasUseCase,
             toppingUseCase: any ToppingUseCase,
             recentUploadsRepository: any RecentUploadsRepository,
             onSaved: @escaping @MainActor () -> Void
         ) {
             self.groupID = groupID
             self.parfaitID = parfaitID
+            self.canvasUseCase = canvasUseCase
             self.toppingUseCase = toppingUseCase
             self.recentUploadsRepository = recentUploadsRepository
             self.onSaved = onSaved
@@ -402,7 +417,7 @@ private extension ToppingAddStore {
     }
 }
 
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·테두리·수동 편집.
+/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·배치·수동 편집.
 private extension ToppingAddStore {
     func handleCutoutResultIntent(_ intent: Intent) {
         switch intent {
@@ -411,12 +426,13 @@ private extension ToppingAddStore {
             // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
             state.screen = .candidateSelection
         case .cutoutConfirmed:
-            guard state.extractedTopping != nil else { break }
-            state.screen = .borderEdit
+            guard let extractedTopping = state.extractedTopping else { break }
+            state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.placementReturnScreen = .cutoutResult
+            state.screen = .placement
             renderBorderSilhouette()
         case .photoEditTapped:
             guard state.extractedTopping != nil else { break }
-            state.cutoutPath = .manual
             state.screen = .manualCutout
         default:
             break
@@ -579,7 +595,7 @@ private extension ToppingAddStore {
         switch intent {
         case .placementClosed:
             guard state.saveState != .saving else { break }
-            state.screen = .borderEdit
+            state.screen = state.placementReturnScreen
             renderBorderSilhouette()
         case .placementConfirmed:
             saveTopping()
@@ -657,5 +673,44 @@ private extension ToppingAddStore {
     var nextZOrder: Int {
         let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
         return Int(highest.rounded()) + 1
+    }
+}
+
+/// 배치 화면(C-106) 뒤 캔버스를 5초마다 서버 값으로 맞춘다. 사용자의 배치 초안
+/// (`placementEditor`)과는 분리된 배경이라 통째로 갈아 끼워도 안전하다.
+private extension ToppingAddStore {
+    func handleCanvasRefreshLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            canvasRefreshTicker.start { [weak self] in
+                self?.send(.canvasRefreshTicked)
+            }
+        case .screenDisappeared, .sceneEnteredBackground:
+            canvasRefreshTicker.stop()
+            canvasRefreshTask?.cancel()
+            canvasRefreshTask = nil
+        default:
+            break
+        }
+    }
+
+    func refreshCanvasContent() {
+        guard state.screen == .placement,
+              let parfaitID = dependencies.parfaitID,
+              canvasRefreshTask == nil
+        else { return }
+
+        canvasRefreshTask = Task { [weak self, dependencies] in
+            let parfait = try? await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+            guard !Task.isCancelled, let self else { return }
+            canvasRefreshTask = nil
+            guard let parfait else { return }
+            // 새벽 3시 경계를 넘겨 오늘 캔버스가 바뀌었다면 남의 캔버스를 배경에 깔면 안 된다.
+            guard parfait.id == parfaitID else {
+                canvasRefreshTicker.stop()
+                return
+            }
+            state.canvasContent = CanvasStore.CanvasContent(parfait)
+        }
     }
 }

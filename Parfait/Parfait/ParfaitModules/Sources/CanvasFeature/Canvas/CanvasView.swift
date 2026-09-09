@@ -113,9 +113,10 @@ public struct CanvasView: View {
                 }
             }
         }
+        // `.inactive` 는 알림 배너·앱 스위처에서도 흔히 발생한다 — 주기 갱신을 껐다 켜지 않도록 `.background` 만 본다.
         .onChange(of: scenePhase) { _, newScenePhase in
-            guard newScenePhase == .active else { return }
-            store.send(.sceneBecameActive)
+            guard newScenePhase != .inactive else { return }
+            store.send(newScenePhase == .active ? .sceneBecameActive : .sceneEnteredBackground)
         }
         .onDisappear {
             store.send(.screenDisappeared)
@@ -212,6 +213,7 @@ public struct CanvasView: View {
                 dependencies: .init(
                     groupID: store.groupID,
                     parfaitID: store.state.parfaitID,
+                    canvasUseCase: store.canvasUseCase,
                     toppingUseCase: toppingUseCase,
                     recentUploadsRepository: recentUploadsRepository,
                     onSaved: { store.send(.toppingSaved) }

@@ -5,6 +5,8 @@
 //  Created by 박서연 on 8/26/26.
 //
 
+// swiftlint:disable file_length
+
 import CanvasDomain
 import CoreGraphics
 import Foundation
@@ -22,6 +24,8 @@ final class CanvasEditStore: MVIStore {
 
     @ObservationIgnored private var borderToppingLoadTask: Task<Void, Never>?
     @ObservationIgnored private var borderSilhouetteRenderTask: Task<Void, Never>?
+    @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
+    @ObservationIgnored private var canvasRefreshTask: Task<Void, Never>?
 
     init(state: State, dependencies: Dependencies) {
         self.state = state
@@ -35,6 +39,9 @@ final class CanvasEditStore: MVIStore {
 
     func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground,
+             .canvasRefreshTicked:
+            handleLifecycleIntent(intent)
         case .colorSelected, .backgroundTabTapped, .toppingTabTapped, .closeTapped,
              .continueEditingTapped, .discardTapped:
             handleEditorIntent(intent)
@@ -49,6 +56,23 @@ final class CanvasEditStore: MVIStore {
             handleBorderIntent(intent)
         case .confirmTapped:
             saveChanges()
+        }
+    }
+
+    private func handleLifecycleIntent(_ intent: Intent) {
+        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            canvasRefreshTicker.start { [weak self] in
+                self?.send(.canvasRefreshTicked)
+            }
+        case .screenDisappeared, .sceneEnteredBackground:
+            canvasRefreshTicker.stop()
+            canvasRefreshTask?.cancel()
+            canvasRefreshTask = nil
+        case .canvasRefreshTicked:
+            refreshCanvas()
+        default:
+            break
         }
     }
 
@@ -380,4 +404,50 @@ extension CanvasEditStore {
         }
     }
 
+}
+
+/// 편집 중에도 5초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
+/// 내 토핑 초안과 내가 손댄 배경은 어떤 경우에도 덮지 않는다.
+extension CanvasEditStore {
+    fileprivate func refreshCanvas() {
+        guard state.saveState != .saving, canvasRefreshTask == nil else { return }
+        // C-306 이 화면을 덮고 있는 동안엔 편집 중인 토핑이 목록에서 갈아끼워지면 안 된다.
+        if case .border = state.screen { return }
+
+        canvasRefreshTask = Task { [self] in
+            let parfait = try? await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
+            guard !Task.isCancelled else { return }
+            canvasRefreshTask = nil
+            guard let parfait else { return }
+            // 새벽 3시 경계를 넘겼다면 편집 중인 캔버스와 다른 캔버스다 — 섞지 않고 갱신을 멈춘다.
+            guard parfait.id == dependencies.parfaitID else {
+                canvasRefreshTicker.stop()
+                return
+            }
+            merge(CanvasStore.CanvasContent(parfait))
+        }
+    }
+
+    private func merge(_ content: CanvasStore.CanvasContent) {
+        // 저장 diff 기준은 늘 서버 값으로 맞추되, 내가 고른 배경 초안은 그대로 둔다.
+        let isBackgroundUntouched = state.background == state.savedBackground
+        state.savedBackground = content.background
+        if isBackgroundUntouched {
+            state.background = content.background
+        }
+
+        let editingToppings = state.toppings
+        state.toppings = content.images.map { image in
+            // 내 토핑은 이 기기에서만 바뀐다 — 위치·테두리·삭제 예정 초안을 그대로 지킨다.
+            if let mine = editingToppings.first(where: { $0.id == image.id && $0.isMine }) {
+                return mine
+            }
+            return EditableTopping(image)
+        }
+
+        if let selectedToppingID = state.selectedToppingID,
+           !state.toppings.contains(where: { $0.id == selectedToppingID && !$0.isDeleted }) {
+            state.selectedToppingID = nil
+        }
+    }
 }
