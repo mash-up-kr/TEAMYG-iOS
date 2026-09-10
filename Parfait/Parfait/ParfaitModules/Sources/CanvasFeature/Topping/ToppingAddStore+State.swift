@@ -81,8 +81,8 @@ extension ToppingAddStore {
         case candidateTapped(normalizedPoint: CGPoint)
         case candidateSelectionBackTapped
         case analysisErrorClosed
-        case analysisRetryTapped
         case useWithoutEditTapped
+        case manualEditTapped
         case cutoutResultClosed
         case photoEditTapped
         case cutoutConfirmed
@@ -118,9 +118,10 @@ extension ToppingAddStore {
         case automatic
         /// 최근 업로드에서 바로 C-105 로 온 경로. 원본 사진이 없어 영역 편집(C-104)으로 갈 수 없다.
         case recentUpload
-        /// 분석 실패 후 "편집 없이 사용" — 원본 사진을 전부 제외된 빈 마스크로 C-104 부터 시작한다.
+        /// 분석 실패 후 원본 사진으로 곧장 시작한 경로 — "직접 편집"은 전부 제외된 빈 마스크로 C-104 부터,
+        /// "편집 없이 사용"은 사진 전체를 토핑으로 삼아 C-106 배치부터 시작한다.
         /// 돌아갈 C-103 결과 화면이 없어 X 가 실패 화면(C-103-Error)으로 가는 점이 `automatic` 과 다르다.
-        case withoutEdit
+        case withoutAnalysis
 
         /// 영역(C-104) 탭 제공 여부 — 최근 업로드만 원본 사진이 없어 불가.
         var allowsAreaEdit: Bool {
