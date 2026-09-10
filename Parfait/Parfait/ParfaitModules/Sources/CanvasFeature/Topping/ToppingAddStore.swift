@@ -31,7 +31,7 @@ final class ToppingAddStore: MVIStore {
     @ObservationIgnored private lazy var maskRenderer = ToppingMaskRenderer()
     /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
     private var baseMask: CGImage?
-    /// 분석 실패 화면(C-103-Error)의 "다시 시도"·"편집 없이 사용"이 되짚어 갈 마지막 분석 소스.
+    /// 분석 실패 화면(C-103-Error)의 "편집 없이 사용"·"직접 편집"이 되짚어 갈 마지막 분석 소스.
     private var lastAnalysisSource: PhotoAnalysisSource?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
@@ -75,7 +75,7 @@ final class ToppingAddStore: MVIStore {
             handleCameraIntent(intent)
 
         case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
-             .candidateSelectionBackTapped, .analysisErrorClosed, .analysisRetryTapped, .useWithoutEditTapped,
+             .candidateSelectionBackTapped, .analysisErrorClosed, .useWithoutEditTapped, .manualEditTapped,
              .cutoutResultClosed, .photoEditTapped, .cutoutConfirmed:
             handleAnalysisIntent(intent)
 
@@ -107,10 +107,10 @@ final class ToppingAddStore: MVIStore {
             extractCandidate(at: normalizedPoint)
         case .candidateSelectionBackTapped, .analysisErrorClosed:
             returnToPhotoConfirm()
-        case .analysisRetryTapped:
-            retryAnalysis()
         case .useWithoutEditTapped:
-            usePhotoWithoutEdit()
+            usePhotoWithoutAnalysis(includesWholePhoto: true)
+        case .manualEditTapped:
+            usePhotoWithoutAnalysis(includesWholePhoto: false)
         default:
             handleCutoutResultIntent(intent)
         }
@@ -149,8 +149,8 @@ final class ToppingAddStore: MVIStore {
             // 최근 업로드 경로는 갤러리로 돌아가며 다른 사진을 고를 수 있으므로 초안을 버린다.
             releaseExtractedTopping()
             state.screen = .gallery
-        case .withoutEdit:
-            // 편집 없이 사용 경로는 C-104 에서 올라왔다 — 돌아갈 C-103 결과 화면이 없어 영역 편집으로 간다.
+        case .withoutAnalysis:
+            // 직접 편집 경로는 C-104 에서 올라왔다 — 돌아갈 C-103 결과 화면이 없어 영역 편집으로 간다.
             state.screen = .manualCutout
         }
     }
@@ -174,8 +174,8 @@ final class ToppingAddStore: MVIStore {
     private func closeManualCutout() {
         resetBorderDraft()
         switch state.cutoutPath {
-        case .withoutEdit:
-            // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 다시 시도를 고를 수 있다.
+        case .withoutAnalysis:
+            // 분석 실패 화면에서 들어온 경로 — 닫으면 실패 화면으로 돌아가 편집 없이 사용을 고를 수 있다.
             releaseExtractedTopping()
             state.screen = .analysisError
         case .automatic, .recentUpload:
@@ -255,7 +255,7 @@ final class ToppingAddStore: MVIStore {
     /// 최근 업로드 누끼는 이미 잘라낸 결과물이라 분석·후보 선택을 건너뛰고 곧장 테두리 편집으로 간다
     /// (`canvas-policy.md` §5.3). 원본 사진이 없으므로 영역 편집은 이 경로에서 제공하지 않는다.
     private func openRecentUpload(_ upload: StoredImage) {
-        // 이 경로는 분석 소스가 없다 — 실패 화면의 다시 시도·편집 없이 사용이 옛 소스를 되짚지 않게 비운다.
+        // 이 경로는 분석 소스가 없다 — 실패 화면의 편집 없이 사용·직접 편집이 옛 소스를 되짚지 않게 비운다.
         lastAnalysisSource = nil
         analysisTask?.cancel()
         state.analysis = nil
@@ -276,7 +276,7 @@ final class ToppingAddStore: MVIStore {
         renderBorderSilhouette()
     }
 
-    /// 후보 번호가 없는 경로(최근 업로드·편집 없이 사용)의 자리표시자.
+    /// 후보 번호가 없는 경로(최근 업로드·분석 없이 시작한 경로)의 자리표시자.
     /// 실루엣 캐시 키로만 쓰이며 `resetToppingDraft` 가 매번 캐시를 비운다.
     private static let noCandidateID = -1
 
@@ -374,37 +374,42 @@ private extension ToppingAddStore {
     }
 }
 
-/// C-103-Error 분석 실패 화면의 복구 동작 — 다시 시도·편집 없이 사용.
+/// C-103-Error 분석 실패 화면의 복구 동작 — 편집 없이 사용·직접 편집.
 private extension ToppingAddStore {
-    func retryAnalysis() {
-        guard let lastAnalysisSource else { return }
-        startAnalysis(of: lastAnalysisSource)
-    }
-
-    /// 분석 없이 원본 사진으로 C-104 영역 편집을 시작한다 (C-103-Error "편집 없이 사용").
-    /// 전부 제외 상태의 빈 마스크에서 출발하므로 브러시도 "영역 채우기"로 맞춰 준다.
-    func usePhotoWithoutEdit() {
+    /// 분석 없이 원본 사진으로 누끼 캔버스를 만들어 다음 화면으로 간다.
+    /// - "편집 없이 사용"(`includesWholePhoto == true`): 사진 전체를 토핑으로 삼아 곧장 C-106 배치로.
+    /// - "직접 편집"(`false`): 전부 제외된 빈 마스크로 C-104 영역 편집부터 — 브러시도 "영역 채우기"로 맞춰 준다.
+    func usePhotoWithoutAnalysis(includesWholePhoto: Bool) {
         guard let lastAnalysisSource else { return }
         analysisTask?.cancel()
         state.analysis = nil
         resetToppingDraft()
-        // 빈 누끼 생성은 짧은 로컬 작업 — 실패 화면 위 오버레이로 보여준다.
+        // 누끼 캔버스 생성은 짧은 로컬 작업 — 실패 화면 위 오버레이로 보여준다.
         state.extractionState = .extracting
 
         analysisTask = Task { [weak self, objectExtractor] in
             do {
-                let topping = try await objectExtractor.makeEmptyCutout(
+                let topping = try await objectExtractor.makeCutoutWithoutAnalysis(
                     from: lastAnalysisSource,
-                    candidateID: Self.noCandidateID
+                    candidateID: Self.noCandidateID,
+                    includesWholePhoto: includesWholePhoto
                 )
                 guard let self, !Task.isCancelled else { return }
                 baseMask = topping.mask
                 state.extractedTopping = topping
-                state.cutoutHasArea = false
-                state.cutoutPath = .withoutEdit
-                _ = state.maskEditor.apply(.brushModeSelected(.fill))
+                state.cutoutPath = .withoutAnalysis
                 state.extractionState = .idle
-                state.screen = .manualCutout
+                if includesWholePhoto {
+                    state.placementEditor.prepare(toppingPixelSize: topping.pixelSize)
+                    // 돌아갈 C-103 결과 화면이 없다 — 배치를 닫으면 실패 화면으로.
+                    state.placementReturnScreen = .analysisError
+                    state.screen = .placement
+                    renderBorderSilhouette()
+                } else {
+                    state.cutoutHasArea = false
+                    _ = state.maskEditor.apply(.brushModeSelected(.fill))
+                    state.screen = .manualCutout
+                }
                 camera.releaseFreezeFrame()
             } catch is CancellationError {
                 return

@@ -166,11 +166,11 @@ struct ToppingAddFlowView: View {
 
                 YGErrorView(
                     title: "사진 편집에 실패했어요",
-                    message: "다시 시도하거나 편집 없이 사용할 수 있어요",
-                    buttonTitle: "다시 시도",
-                    action: { store.send(.analysisRetryTapped) },
-                    secondaryButtonTitle: "편집 없이 사용",
-                    secondaryAction: { store.send(.useWithoutEditTapped) }
+                    message: "편집 없이 사용하거나 직접 편집할 수 있어요",
+                    buttonTitle: "편집 없이 사용",
+                    action: { store.send(.useWithoutEditTapped) },
+                    secondaryButtonTitle: "직접 편집",
+                    secondaryAction: { store.send(.manualEditTapped) }
                 )
             }
             .safeAreaInset(edge: .top, spacing: 0) {
