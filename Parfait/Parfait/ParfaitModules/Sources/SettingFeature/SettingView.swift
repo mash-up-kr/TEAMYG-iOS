@@ -150,7 +150,7 @@ public struct SettingView: View {
                 state: .init(
                     nickname: "아니야나그런데기니야",
                     loginProvider: "Kakao",
-                    appVersion: "1.0v"
+                    appVersion: "1.0.1v"
                 )
             ),
             makeAccountInfoStore: { nickname in

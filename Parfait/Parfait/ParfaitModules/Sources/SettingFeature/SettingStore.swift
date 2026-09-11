@@ -90,7 +90,7 @@ public final class SettingStore: MVIStore {
     public struct State: Equatable {
         public var nickname: String
         public var loginProvider: String
-        /// 표시용 문자열 그대로 (예: "1.0v")
+        /// 표시용 문자열 그대로 (예: "1.0.1v")
         public var appVersion: String
         public var isWithdrawPopupPresented: Bool
         /// 서버가 내려준 약관 목록 — 설정 목록의 약관 행이 그대로 쓴다.
