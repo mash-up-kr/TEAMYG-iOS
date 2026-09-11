@@ -168,9 +168,18 @@ struct CanvasPlacedImage: View {
         ZStack {
             content
         }
-        .task(id: LoadKey(canvasImage, decodeLongEdge: decodeLongEdge, borderRedrawKey: borderRedrawKey)) {
+        .task(id: loadKey) {
             await load()
         }
+    }
+
+    private var loadKey: LoadKey {
+        LoadKey(
+            canvasImage,
+            hasRenderSize: neededLongEdgePixels > 0,
+            decodeLongEdge: decodeLongEdge,
+            borderRedrawKey: borderRedrawKey
+        )
     }
 
     @ViewBuilder
@@ -249,12 +258,19 @@ struct CanvasPlacedImage: View {
     private struct LoadKey: Equatable {
         let imageURL: URL
         let border: CanvasStore.CanvasImageBorder?
+        let hasRenderSize: Bool
         let decodeLongEdge: CGFloat
         let borderRedrawKey: Int
 
-        init(_ canvasImage: CanvasStore.CanvasImage, decodeLongEdge: CGFloat, borderRedrawKey: Int) {
+        init(
+            _ canvasImage: CanvasStore.CanvasImage,
+            hasRenderSize: Bool,
+            decodeLongEdge: CGFloat,
+            borderRedrawKey: Int
+        ) {
             imageURL = canvasImage.imageURL
             border = canvasImage.border
+            self.hasRenderSize = hasRenderSize
             self.decodeLongEdge = decodeLongEdge
             self.borderRedrawKey = borderRedrawKey
         }
