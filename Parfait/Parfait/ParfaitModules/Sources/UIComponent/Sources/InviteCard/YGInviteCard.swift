@@ -42,13 +42,13 @@ public struct YGInviteCard: View {
                 Text(code)
                     .suit(.body01SemiBold)
                     .foregroundStyle(isActive ? .gray900 : .gray500)
-                    .frame(width: 218, height: 42)
+                    .frame(height: 42)
+                    .frame(maxWidth: .infinity)
                     .background(isActive ? Color.cherry100 : .gray200)
                 copyButton
             }
         }
         .padding(.padding6)
-        .frame(width: 335)
         .background(.whiteFixed)
         .overlay(
             Rectangle()
@@ -101,7 +101,7 @@ private struct CopyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundStyle(isEnabled ? .whiteFixed : .gray500)
-            .frame(width: 73, height: 42)
+            .padding(.init(top: 10, leading: 12, bottom: 8, trailing: 10))
             .background(
                 backgroundColor(isPressed: configuration.isPressed)
             )
