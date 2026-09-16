@@ -234,6 +234,7 @@ private extension [ParfaitGroup] {
                 id: "group-\(index)",
                 name: names[index],
                 thumbnailURL: nil,
+                thumbnailBorderColorHex: nil,
                 lastActivityAt: .now.addingTimeInterval(-180 * Double(index + 1)),
                 lastActorNametagType: nametagTypes[index]
             )
