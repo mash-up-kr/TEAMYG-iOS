@@ -97,7 +97,11 @@ private struct ToppingImage: View {
                 case .success(let image):
                     // 누끼는 오브젝트 자체가 내용이라 잘라내면 뭔지 알 수 없게 된다.
                     // 비율이 제각각이므로(펜 같은 3:1 도 있다) 전체를 담는 fit 으로 그린다.
-                    fitted(image)
+                    if let borderColorHex = group.thumbnailBorderColorHex {
+                        outlined(image, color: Color(hex: borderColorHex))
+                    } else {
+                        fitted(image)
+                    }
                 case .failure:
                     // 조회 실패 — 칩은 그대로 두고 이미지 자리만 물음표 그래픽으로.
                     fitted(.templateError)
@@ -119,9 +123,25 @@ private struct ToppingImage: View {
         .template01, .template02, .template03, .template04, .template05, .template06
     ]
 
+    private static let borderWidth: CGFloat = 2
+    private static let outlineDirectionCount = 16
+
     private func fitted(_ image: Image) -> some View {
         image
             .resizable()
             .scaledToFit()
+    }
+
+    private func outlined(_ image: Image, color: Color) -> some View {
+        ZStack {
+            ForEach(0..<Self.outlineDirectionCount, id: \.self) { direction in
+                let angle = Double(direction) / Double(Self.outlineDirectionCount) * 2 * .pi
+                fitted(image.renderingMode(.template))
+                    .foregroundStyle(color)
+                    .offset(x: cos(angle) * Self.borderWidth, y: sin(angle) * Self.borderWidth)
+            }
+            fitted(image)
+        }
+        .padding(Self.borderWidth)
     }
 }

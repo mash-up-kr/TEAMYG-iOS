@@ -151,7 +151,8 @@ public struct GroupSideMenuView: View {
         }
         .disabled(!store.state.isNicknameConfirmEnabled)
         .padding(.horizontal, Self.horizontalInset)
-        .padding(.bottom, .padding3)
+        .padding(.vertical, .padding7)
+        .background(.whiteFixed)
     }
 
     // MARK: - 그룹원
