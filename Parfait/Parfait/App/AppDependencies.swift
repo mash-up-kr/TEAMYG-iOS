@@ -114,8 +114,15 @@ struct AppDependencies {
         SettingStore(
             memberUseCase: makeMemberUseCase(),
             authUseCase: makeAuthUseCase(),
-            state: .init(appVersion: "1.0v")
+            state: .init(appVersion: installedAppVersion())
         )
+    }
+
+    private func installedAppVersion() -> String {
+        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+            return ""
+        }
+        return "\(version)v"
     }
 
     func makeAccountInfoStore(nickname: String) -> AccountInfoStore {

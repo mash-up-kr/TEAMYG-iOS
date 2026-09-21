@@ -32,6 +32,7 @@ struct ToppingManualCutoutView: View {
     @State private var scale: CGFloat = ToppingMaskEditor.minimumScale
     @State private var translation: CGSize = .zero
     @State private var strokePoints: [CGPoint] = []
+    @State private var strokeMode: ToppingBrushMode = .fill
     @State private var brushLocation: CGPoint?
     @State private var isAdjustingBrush = false
 
@@ -82,14 +83,19 @@ struct ToppingManualCutoutView: View {
                 .resizable()
                 .opacity(Self.backgroundGuideOpacity)
 
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
+            ZStack {
+                Image(decorative: topping.image, scale: 1, orientation: .up)
+                    .resizable()
 
-            // 지금 누끼에 포함된 영역을 붉게 덮어 선택 상태를 보여 준다.
-            Image(decorative: topping.image, scale: 1, orientation: .up)
-                .resizable()
-                .renderingMode(.template)
-                .foregroundStyle(Color.cherry500.opacity(Self.selectionTintOpacity))
+                // 지금 누끼에 포함된 영역을 붉게 덮어 선택 상태를 보여 준다.
+                Image(decorative: topping.image, scale: 1, orientation: .up)
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(Color.cherry500.opacity(Self.selectionTintOpacity))
+            }
+            .mask {
+                selectionMask
+            }
         }
         .frame(width: displaySize.width, height: displaySize.height)
         .position(imageCenter)
@@ -116,9 +122,22 @@ struct ToppingManualCutoutView: View {
         }
     }
 
+    private var selectionMask: some View {
+        Rectangle()
+            .overlay {
+                if strokeMode == .erase, let strokePath {
+                    strokePath
+                        .offsetBy(dx: -imageOrigin.x, dy: -imageOrigin.y)
+                        .stroke(style: StrokeStyle(lineWidth: brushScreenDiameter, lineCap: .round, lineJoin: .round))
+                        .blendMode(.destinationOut)
+                }
+            }
+            .compositingGroup()
+    }
+
     @ViewBuilder
     private var strokeGuide: some View {
-        if let strokePath {
+        if strokeMode == .fill, let strokePath {
             strokePath
                 .stroke(
                     Color.cherry500.opacity(Self.selectionTintOpacity),
@@ -241,7 +260,7 @@ private extension ToppingManualCutoutView {
 
     /// 브러시 크기를 조절하는 동안에는 손가락이 없어도 이미지 영역 한가운데에 크기를 보여 준다.
     var brushPreviewLocation: CGPoint? {
-        if let brushLocation { return brushLocation }
+        if let brushLocation { return strokeMode == .fill ? brushLocation : nil }
         guard isAdjustingBrush, viewportSize.width > 0 else { return nil }
         return CGPoint(x: viewportSize.width / 2, y: viewportSize.height / 2)
     }
@@ -279,6 +298,7 @@ private extension ToppingManualCutoutView {
 
     func beginStroke(at point: CGPoint) {
         strokePoints = [point]
+        strokeMode = brush.mode
         brushLocation = point
     }
 
@@ -299,7 +319,7 @@ private extension ToppingManualCutoutView {
 
         onStrokeEnd(
             ToppingBrushStroke(
-                mode: brush.mode,
+                mode: strokeMode,
                 diameter: brushMaskDiameter,
                 points: strokePoints.map(maskPoint(from:))
             )

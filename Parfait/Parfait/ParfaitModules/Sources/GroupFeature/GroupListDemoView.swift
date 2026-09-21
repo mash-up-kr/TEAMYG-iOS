@@ -257,6 +257,7 @@ private struct DemoGroupRepository: GroupRepository {
             id: "demo-created-\(draft.name)-\(Date().timeIntervalSince1970)",
             name: draft.name,
             thumbnailURL: nil,
+            thumbnailBorderColorHex: nil,
             lastActivityAt: nil,
             lastActorNametagType: nil
         )
@@ -274,6 +275,7 @@ private struct DemoGroupRepository: GroupRepository {
                 id: "demo-group-\(seed.index)",
                 name: Self.names[seed.index % Self.names.count],
                 thumbnailURL: knobs.isToppingImageFailing ? Self.failingThumbnailURL : nil,
+                thumbnailBorderColorHex: nil,
                 lastActivityAt: knobs.matchesServerResponse ? nil : seed.lastActivityAt,
                 lastActorNametagType: knobs.matchesServerResponse
                     ? nil
