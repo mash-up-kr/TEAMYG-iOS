@@ -45,7 +45,6 @@ public struct GroupSideMenuView: View {
     public var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(.gray50)
             // 입력 영역 밖 아무 데나 누르면 키보드를 내린다.
             .contentShape(.rect)
             .onTapGesture { dismissKeyboard() }
@@ -55,6 +54,7 @@ public struct GroupSideMenuView: View {
                 }
             }
             .ygTopBar(.detail(title: store.state.groupName), onLeadingTap: handleBackTap)
+            .background(.whiteFixed)
             .ygLoading(store.state.phase == .idle || store.state.phase == .loading)
             .ygPopup(
                 isPresented: store.binding(\.isLeavePopupPresented) { .exitPopupVisibilityChanged(.leave, $0) },
