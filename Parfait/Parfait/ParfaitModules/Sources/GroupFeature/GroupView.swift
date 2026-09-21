@@ -30,8 +30,8 @@ public struct GroupView: View {
         addGroupChipTopInset + addGroupChipHeight + addGroupMenuGap
     }
     private static let horizontalInset: CGFloat = 20
-    /// 조회 실패 안내 문구의 y (디자인 프레임 244 − 상단 바 아래 108).
-    private static let loadFailureMessageY: CGFloat = 136
+    /// 조회 실패 안내 문구의 y (디자인 프레임 220 − 상단 바 아래 108).
+    private static let loadFailureMessageY: CGFloat = 112
     private static let overlayAnimation = Animation.snappy(duration: 0.24)
 
     public init(

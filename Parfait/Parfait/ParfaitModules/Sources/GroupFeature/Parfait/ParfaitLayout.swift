@@ -13,6 +13,10 @@ import CoreGraphics
 /// "콘텐츠 좌표계"에서 계산한다. 실제 렌더링은 화면 폭에 맞춘 `scale` 을 곱해 확대한다.
 ///
 /// 규칙 원본은 디자인 스펙(G-001 배치 정책)이고, 여기서는 그 수치를 그대로 옮긴다.
+///
+/// 단 **y 절대값만은 스펙 본문이 아니라 시안 프레임 실측을 따른다.** 스펙 본문의 y(첫 Left 268 …)는
+/// 파르페를 위로 24 올리기 전 값이라 시안(G-001-1·2·3·4·5·Empty·Error 전부 체리 상단 = 프레임 148)보다
+/// 24 아래다. 요소 사이 간격(체리↔첫 토핑 -65, 마지막 토핑↔접시 -48, 한 칸 148)은 스펙 그대로다.
 struct ParfaitLayout {
     /// 정렬이 끝난 그룹 수. 토핑 개수이자 크림 장수의 기준.
     let groupCount: Int
@@ -30,22 +34,22 @@ struct ParfaitLayout {
     static let rightColumnX: CGFloat = 185
     /// 같은 side 세로 갭 -12 → 프레임 160 기준 한 칸 148.
     static let columnStep: CGFloat = 148
-    static let leftColumnFirstY: CGFloat = 160
+    static let leftColumnFirstY: CGFloat = 136
     /// Right 열은 인접한 두 Left 사이 높이.
-    static let rightColumnFirstY: CGFloat = 246
+    static let rightColumnFirstY: CGFloat = 222
     /// N ≤ 2 는 여백을 고려해 모든 토핑을 아래로 내린다.
     static let lowCountDrop: CGFloat = 12
     static let lowCountThreshold = 2
 
     static let cherrySize = CGSize(width: 82.8, height: 160.5)
-    static let cherryOrigin = CGPoint(x: 146.9, y: 64)
+    static let cherryOrigin = CGPoint(x: 146.9, y: 40)
 
     static let creamTopSize = CGSize(width: 209.9, height: 114.5)
-    static let creamTopOrigin = CGPoint(x: 79, y: 185)
+    static let creamTopOrigin = CGPoint(x: 79, y: 161)
 
     static let creamBodySize = CGSize(width: 240.8, height: 131.4)
     static let creamBodyX: CGFloat = 71
-    static let creamBodyFirstY: CGFloat = 255
+    static let creamBodyFirstY: CGFloat = 231
     /// 크림 한 장이 아래로 자라는 양(장끼리 겹침).
     static let creamBodyStep: CGFloat = 66
     /// 여기까지는 파르페가 자라지 않는다 — 크림은 최소 장수 고정.
