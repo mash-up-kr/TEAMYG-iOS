@@ -32,6 +32,8 @@ final class CanvasSavePreviewStore: MVIStore {
             composeCanvasImage()
         case .saveTapped:
             saveToGallery()
+        case .saveVideoTapped:
+            saveVideoToGallery()
         case .closeTapped:
             // 앨범에 쓰는 중에는 닫지 않는다 — 취소해도 사진은 이미 들어가는데 결과를 못 알린다.
             guard !state.isSaving else { return }
@@ -62,6 +64,23 @@ final class CanvasSavePreviewStore: MVIStore {
         state.isSaving = true
         saveTask = Task { [weak self] in
             let isSaved = await CanvasGallerySaver.save(canvasImage)
+            guard !Task.isCancelled, let self else { return }
+            close(.saved(isSaved))
+        }
+    }
+
+    /// 영상은 미리보기와 같은 스냅샷으로 새로 그린다 — 토핑은 합성기 캐시에서 다시 받는다.
+    private func saveVideoToGallery() {
+        guard state.image != nil, !state.isSaving else { return }
+
+        state.isSaving = true
+        saveTask = Task { [weak self, dependencies] in
+            let videoURL = await dependencies.canvasImageExporter.video(of: dependencies.canvasContent)
+            let isSaved = if let videoURL {
+                await CanvasGallerySaver.saveVideo(at: videoURL)
+            } else {
+                false
+            }
             guard !Task.isCancelled, let self else { return }
             close(.saved(isSaved))
         }
@@ -104,6 +123,7 @@ extension CanvasSavePreviewStore {
     enum Intent {
         case screenAppeared
         case saveTapped
+        case saveVideoTapped
         case closeTapped
     }
 }

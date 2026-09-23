@@ -38,8 +38,13 @@ struct CanvasSavePreviewView: View {
 
                 Spacer(minLength: 0)
 
-                YGButton("갤러리에 저장", variant: .mediumPrimary) {
-                    store.send(.saveTapped)
+                HStack(spacing: .gap4) {
+                    YGButton("영상으로 저장", variant: .mediumSecondary, fillsWidth: true) {
+                        store.send(.saveVideoTapped)
+                    }
+                    YGButton("갤러리에 저장", variant: .mediumPrimary, fillsWidth: true) {
+                        store.send(.saveTapped)
+                    }
                 }
                 .disabled(store.state.image == nil || store.state.isSaving)
                 .padding(.top, .padding6)

@@ -14,12 +14,24 @@ import UIKit
 /// 권한 거부 전용 화면은 정책 범위 밖이므로(`canvas-policy.md` §8) 거부도 저장 실패로 수렴한다.
 enum CanvasGallerySaver {
     static func save(_ image: UIImage) async -> Bool {
+        await addToLibrary {
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
+        }
+    }
+
+    /// 저장 결과와 상관없이 임시 영상 파일은 지운다.
+    static func saveVideo(at fileURL: URL) async -> Bool {
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+        return await addToLibrary {
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: fileURL)
+        }
+    }
+
+    private static func addToLibrary(_ changes: @escaping @Sendable () -> Void) async -> Bool {
         guard await hasAddPermission() else { return false }
 
         do {
-            try await PHPhotoLibrary.shared().performChanges {
-                PHAssetChangeRequest.creationRequestForAsset(from: image)
-            }
+            try await PHPhotoLibrary.shared().performChanges(changes)
             return true
         } catch {
             return false
