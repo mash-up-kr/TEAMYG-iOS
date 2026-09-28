@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Core
 import Foundation
 
 enum ParfaitMappingError: Error {
@@ -160,9 +161,7 @@ private extension ParfaitStatus {
 
 private extension NametagChip {
     init(serverValue: String?) {
-        guard let serverValue, serverValue.hasPrefix("TYPE"),
-              let number = Int(serverValue.dropFirst(4))
-        else {
+        guard let number = serverValue.flatMap({ NametagChipCode.number(from: $0) }) else {
             self = .unassigned
             return
         }
