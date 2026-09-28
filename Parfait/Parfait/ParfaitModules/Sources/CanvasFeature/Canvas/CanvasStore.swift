@@ -20,7 +20,7 @@ public final class CanvasStore: MVIStore {
     private let dependencies: Dependencies
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasLoadTask: Task<Void, Never>?
-    /// 5초 주기 갱신 전용 핸들. 명시적 조회(`canvasLoadTask`)와 섞으면 서로를 취소한다.
+    /// 10초 주기 갱신 전용 핸들. 명시적 조회(`canvasLoadTask`)와 섞으면 서로를 취소한다.
     private var silentRefreshTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
@@ -274,6 +274,8 @@ public final class CanvasStore: MVIStore {
 
     private func loadCanvas(for date: CalendarDate) {
         canvasLoadTask?.cancel()
+        silentRefreshTask?.cancel()
+        silentRefreshTask = nil
 
         state.contentState = .loading
         state.canvasContent = nil
@@ -417,7 +419,7 @@ private extension CanvasStore {
         }
     }
 
-    /// 5초 주기 자동 최신화 — 로딩 딤도 토스트도 없이 조용히 반영한다. 실패한 틱은 그냥 건너뛴다.
+    /// 10초 주기 자동 최신화 — 로딩 딤도 토스트도 없이 조용히 반영한다. 실패한 틱은 그냥 건너뛴다.
     /// 덮개(토핑 추가·편집·저장 미리보기)가 올라와 있으면 그 화면이 각자 갱신한다.
     func refreshCanvasSilently() {
         guard !state.isClosedCanvas,
@@ -435,6 +437,10 @@ private extension CanvasStore {
             guard !Task.isCancelled, let self else { return }
             silentRefreshTask = nil
             guard let parfait, !state.isClosedCanvas, state.calendar.selectedDate == requestedDate else { return }
+            guard CalendarDate(parfait.date) == requestedDate else {
+                reloadIfDayChanged()
+                return
+            }
             applySilently(parfait)
         }
     }

@@ -406,7 +406,7 @@ extension CanvasEditStore {
 
 }
 
-/// 편집 중에도 5초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
+/// 편집 중에도 10초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
 /// 내 토핑 초안과 내가 손댄 배경은 어떤 경우에도 덮지 않는다.
 extension CanvasEditStore {
     fileprivate func refreshCanvas() {

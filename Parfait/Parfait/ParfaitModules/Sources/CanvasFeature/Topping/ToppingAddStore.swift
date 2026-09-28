@@ -681,7 +681,7 @@ private extension ToppingAddStore {
     }
 }
 
-/// 배치 화면(C-106) 뒤 캔버스를 5초마다 서버 값으로 맞춘다. 사용자의 배치 초안
+/// 배치 화면(C-106) 뒤 캔버스를 10초마다 서버 값으로 맞춘다. 사용자의 배치 초안
 /// (`placementEditor`)과는 분리된 배경이라 통째로 갈아 끼워도 안전하다.
 private extension ToppingAddStore {
     func handleCanvasRefreshLifecycleIntent(_ intent: Intent) {

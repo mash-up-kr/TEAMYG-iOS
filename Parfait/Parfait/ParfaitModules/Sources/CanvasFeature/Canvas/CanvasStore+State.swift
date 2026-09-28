@@ -70,7 +70,7 @@ public extension CanvasStore {
         var loadedToppingImageIDs: Set<Int> = []
         /// 다운로드에 실패한 토핑 이미지 — 하나라도 있으면 에러 딤(C-001-Error)으로 바꾼다.
         var failedToppingImageIDs: Set<Int> = []
-        /// 로딩 딤이 기다리는 토핑 — 명시적 조회가 가져온 것만 담는다. 5초 주기 갱신으로 들어온
+        /// 로딩 딤이 기다리는 토핑 — 명시적 조회가 가져온 것만 담는다. 10초 주기 갱신으로 들어온
         /// 남의 토핑까지 기다리면 화면이 멀쩡한데도 딤이 다시 덮인다.
         var awaitedToppingImageIDs: Set<Int> = []
 
