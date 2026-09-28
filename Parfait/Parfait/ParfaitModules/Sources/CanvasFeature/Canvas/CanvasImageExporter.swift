@@ -114,12 +114,16 @@ public struct CanvasImageExporter: Sendable {
 
         var silhouette: CGImage?
         if let border = canvasImage.border, border.width > 0 {
-            silhouette = await toppingRenderer.silhouette(
-                of: image,
-                at: canvasImage.imageURL,
-                width: border.width,
-                renderedLongEdge: longSide
-            )
+            do {
+                silhouette = try await toppingRenderer.silhouette(
+                    of: image,
+                    at: canvasImage.imageURL,
+                    width: border.width,
+                    renderedLongEdge: longSide
+                )
+            } catch {
+                return nil
+            }
         }
 
         return PreparedTopping(canvasImage: canvasImage, image: image, silhouette: silhouette)

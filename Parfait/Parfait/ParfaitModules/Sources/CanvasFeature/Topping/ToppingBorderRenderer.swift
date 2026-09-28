@@ -44,8 +44,8 @@ actor ToppingBorderRenderer {
         of topping: ExtractedTopping,
         width: Double,
         renderedLongEdge: CGFloat
-    ) -> CGImage? {
-        silhouette(
+    ) throws -> CGImage? {
+        try silhouette(
             of: topping.image,
             source: "candidate-\(topping.candidateID)",
             width: width,
@@ -60,7 +60,8 @@ actor ToppingBorderRenderer {
         source sourceName: String,
         width: Double,
         renderedLongEdge: CGFloat
-    ) -> CGImage? {
+    ) throws -> CGImage? {
+        try Task.checkCancellation()
         guard renderedLongEdge > 0 else { return nil }
 
         let source = CIImage(cgImage: image)

@@ -514,7 +514,7 @@ private extension ToppingAddStore {
         let width = state.borderEditor.border.width
         let renderedLongEdge = state.borderRenderLongEdge
         borderRenderTask = Task { [weak self, borderRenderer] in
-            let image = await borderRenderer.silhouette(
+            let image = try? await borderRenderer.silhouette(
                 of: topping,
                 width: width,
                 renderedLongEdge: renderedLongEdge

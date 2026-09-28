@@ -259,7 +259,7 @@ extension CanvasEditStore {
             }
             guard !Task.isCancelled, let toppingImage else { return }
 
-            let silhouette = await dependencies.toppingRenderer.silhouette(
+            let silhouette = try? await dependencies.toppingRenderer.silhouette(
                 of: toppingImage,
                 at: imageURL,
                 width: width,

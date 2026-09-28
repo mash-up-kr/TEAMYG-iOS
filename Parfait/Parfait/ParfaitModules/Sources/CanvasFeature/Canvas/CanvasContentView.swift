@@ -220,7 +220,7 @@ struct CanvasPlacedImage: View {
             silhouette = nil
             return
         }
-        let rendered = await renderer.silhouette(
+        let rendered = try? await renderer.silhouette(
             of: loaded,
             at: canvasImage.imageURL,
             width: border.width,

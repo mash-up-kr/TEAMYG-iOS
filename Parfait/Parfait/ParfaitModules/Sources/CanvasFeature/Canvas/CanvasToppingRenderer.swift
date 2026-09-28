@@ -37,8 +37,8 @@ public actor CanvasToppingRenderer {
         at url: URL,
         width: Double,
         renderedLongEdge: CGFloat
-    ) async -> CGImage? {
-        await borderRenderer.silhouette(
+    ) async throws -> CGImage? {
+        try await borderRenderer.silhouette(
             of: topping,
             source: "\(url.absoluteString)#\(topping.width)x\(topping.height)",
             width: width,
