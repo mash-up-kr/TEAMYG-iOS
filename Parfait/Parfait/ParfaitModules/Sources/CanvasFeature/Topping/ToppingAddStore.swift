@@ -16,6 +16,7 @@ import UIKit
 import UIComponent
 
 @Observable @MainActor
+// swiftlint:disable:next type_body_length
 final class ToppingAddStore: MVIStore {
     private(set) var state: State
 
@@ -56,51 +57,45 @@ final class ToppingAddStore: MVIStore {
         eventChannel.stream()
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func send(_ intent: Intent) {
         switch intent {
-        case .settingsTapped:
-            openSystemSettings()
-
-        case .toastDismissed:
-            state.showsToast = false
-
-        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground:
-            handleCanvasRefreshLifecycleIntent(intent)
-            handleCameraIntent(intent)
-
+        case .screenAppeared, .sceneBecameActive:
+            canvasRefreshTicker.start { [weak self] in
+                self?.send(.canvasRefreshTicked)
+            }
+            guard state.screen.needsRunningCamera else { return }
+            camera.prepare()
+        case .screenDisappeared:
+            stopCanvasRefresh()
+            cancelAnalysis()
+            camera.suspend()
+        case .sceneEnteredBackground:
+            stopCanvasRefresh()
+            camera.suspend()
         case .canvasRefreshTicked:
             refreshCanvasContent()
-
-        case .cameraRetryTapped, .flashTapped, .cameraPositionTapped, .shutterTapped, .retakeTapped:
-            handleCameraIntent(intent)
-
-        case .photoConfirmed, .galleryPhotoConfirmed, .recentUploadConfirmed, .analysisCancelled, .candidateTapped,
-             .candidateSelectionBackTapped, .analysisErrorClosed, .useWithoutEditTapped, .manualEditTapped,
-             .cutoutResultClosed, .photoEditTapped, .cutoutConfirmed:
-            handleAnalysisIntent(intent)
-
-        case .borderPreviewLongEdgeChanged, .borderWidthChanged, .borderWidthEditingChanged, .borderColorSelected,
-             .borderUndoTapped, .borderRedoTapped, .borderEditClosed, .borderAreaTabTapped,
-             .borderConfirmed:
-            handleBorderIntent(intent)
-
-        case .brushModeSelected, .brushDiameterChanged, .brushStrokeEnded, .maskUndoTapped,
-             .maskRedoTapped, .manualCutoutClosed, .manualCutoutConfirmed:
-            handleManualCutoutIntent(intent)
-
-        case .placementCanvasResized, .placementTransformed, .placementClosed, .placementConfirmed:
-            handlePlacementIntent(intent)
-        }
-    }
-
-    private func handleAnalysisIntent(_ intent: Intent) {
-        switch intent {
+        case .toastDismissed:
+            state.showsToast = false
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { break }
+            state.screen = .camera
         case .photoConfirmed:
             proceedWithCapturedPhoto()
         case .galleryPhotoConfirmed(let assetIdentifier):
             confirmGalleryPhoto(assetIdentifier: assetIdentifier)
         case .recentUploadConfirmed(let upload):
             openRecentUpload(upload)
+        case .cameraRetryTapped:
+            camera.prepare()
+        case .settingsTapped:
+            openSystemSettings()
         case .analysisCancelled:
             cancelAnalysis()
         case .candidateTapped(let normalizedPoint):
@@ -111,16 +106,36 @@ final class ToppingAddStore: MVIStore {
             usePhotoWithoutAnalysis(includesWholePhoto: true)
         case .manualEditTapped:
             usePhotoWithoutAnalysis(includesWholePhoto: false)
-        default:
-            handleCutoutResultIntent(intent)
-        }
-    }
-
-    private func handleBorderIntent(_ intent: Intent) {
-        switch intent {
+        case .cutoutResultClosed:
+            // 초안(누끼·마스크·테두리)은 유지한 채 후보 선택으로만 돌아간다
+            // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
+            state.screen = .candidateSelection
+        case .photoEditTapped:
+            guard state.extractedTopping != nil else { break }
+            state.screen = .manualCutout
+        case .cutoutConfirmed:
+            guard let extractedTopping = state.extractedTopping else { break }
+            state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
+            state.placementReturnScreen = .cutoutResult
+            state.screen = .placement
+            renderBorderSilhouette()
         case .borderPreviewLongEdgeChanged(let longEdge):
             guard state.borderPreviewLongEdge != longEdge else { break }
             state.borderPreviewLongEdge = longEdge
+            renderBorderSilhouette()
+        case .borderWidthChanged(let width):
+            state.borderEditor.changeWidth(width)
+            renderBorderSilhouette()
+        case .borderWidthEditingChanged(let isEditing):
+            state.borderEditor.updateWidthEditing(isEditing)
+        case .borderColorSelected(let color):
+            state.borderEditor.select(color)
+            renderBorderSilhouette()
+        case .borderUndoTapped:
+            state.borderEditor.undo()
+            renderBorderSilhouette()
+        case .borderRedoTapped:
+            state.borderEditor.redo()
             renderBorderSilhouette()
         case .borderEditClosed:
             closeBorderEdit()
@@ -133,10 +148,39 @@ final class ToppingAddStore: MVIStore {
             state.placementReturnScreen = .borderEdit
             state.screen = .placement
             renderBorderSilhouette()
-        default:
-            if state.borderEditor.apply(intent) {
-                renderBorderSilhouette()
+        case .brushModeSelected(let mode):
+            state.maskEditor.selectBrushMode(mode)
+        case .brushDiameterChanged(let diameter):
+            state.maskEditor.changeBrushDiameter(diameter)
+        case .brushStrokeEnded(let stroke):
+            if state.maskEditor.record(stroke) {
+                renderMask()
             }
+        case .maskUndoTapped:
+            if state.maskEditor.undo() {
+                renderMask()
+            }
+        case .maskRedoTapped:
+            if state.maskEditor.redo() {
+                renderMask()
+            }
+        case .manualCutoutClosed:
+            closeManualCutout()
+        case .manualCutoutConfirmed:
+            // 포함 영역이 하나도 없으면 다음 단계로 못 간다 — 빈 토핑이 C-105·저장까지 흘러가는 것을 막는다.
+            guard state.cutoutHasArea else { break }
+            state.screen = .borderEdit
+            tightenCutout()
+        case .placementCanvasResized(let canvasSize):
+            updatePlacement { $0.resize(to: canvasSize) }
+        case .placementTransformed(let transform):
+            updatePlacement { $0.apply(transform) }
+        case .placementClosed:
+            guard state.saveState != .saving else { break }
+            state.screen = state.placementReturnScreen
+            renderBorderSilhouette()
+        case .placementConfirmed:
+            saveTopping()
         }
     }
 
@@ -152,22 +196,6 @@ final class ToppingAddStore: MVIStore {
         case .withoutAnalysis:
             // 직접 편집 경로는 C-104 에서 올라왔다 — 돌아갈 C-103 결과 화면이 없어 영역 편집으로 간다.
             state.screen = .manualCutout
-        }
-    }
-
-    private func handleManualCutoutIntent(_ intent: Intent) {
-        switch intent {
-        case .manualCutoutClosed:
-            closeManualCutout()
-        case .manualCutoutConfirmed:
-            // 포함 영역이 하나도 없으면 다음 단계로 못 간다 — 빈 토핑이 C-105·저장까지 흘러가는 것을 막는다.
-            guard state.cutoutHasArea else { break }
-            state.screen = .borderEdit
-            tightenCutout()
-        default:
-            if state.maskEditor.apply(intent) {
-                renderMask()
-            }
         }
     }
 
@@ -407,7 +435,7 @@ private extension ToppingAddStore {
                     renderBorderSilhouette()
                 } else {
                     state.cutoutHasArea = false
-                    _ = state.maskEditor.apply(.brushModeSelected(.fill))
+                    state.maskEditor.selectBrushMode(.fill)
                     state.screen = .manualCutout
                 }
                 camera.releaseFreezeFrame()
@@ -418,29 +446,6 @@ private extension ToppingAddStore {
                 state.extractionState = .idle
                 state.screen = .analysisError
             }
-        }
-    }
-}
-
-/// C-103 누끼 결과 화면(`cutoutResult`)에서 갈라지는 세 갈래 — 후보 다시 고르기·배치·수동 편집.
-private extension ToppingAddStore {
-    func handleCutoutResultIntent(_ intent: Intent) {
-        switch intent {
-        case .cutoutResultClosed:
-            // 초안(누끼·마스크·테두리)은 유지한 채 후보 선택으로만 돌아간다
-            // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
-            state.screen = .candidateSelection
-        case .cutoutConfirmed:
-            guard let extractedTopping = state.extractedTopping else { break }
-            state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
-            state.placementReturnScreen = .cutoutResult
-            state.screen = .placement
-            renderBorderSilhouette()
-        case .photoEditTapped:
-            guard state.extractedTopping != nil else { break }
-            state.screen = .manualCutout
-        default:
-            break
         }
     }
 }
@@ -528,41 +533,6 @@ private extension ToppingAddStore {
 /// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 배경 편집과 공용 화면 — `canvas-policy.md` §5.1).
 /// 여기서는 이 흐름의 화면 전이만 해석한다.
 private extension ToppingAddStore {
-    func handleCameraIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive, .screenDisappeared, .sceneEnteredBackground:
-            handleCameraLifecycleIntent(intent)
-        case .cameraRetryTapped:
-            camera.prepare()
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            state.screen = .camera
-        default:
-            break
-        }
-    }
-
-    func handleCameraLifecycleIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            guard state.screen.needsRunningCamera else { return }
-            camera.prepare()
-        case .screenDisappeared:
-            cancelAnalysis()
-            camera.suspend()
-        case .sceneEnteredBackground:
-            camera.suspend()
-        default:
-            break
-        }
-    }
-
     func handleCameraEvent(_ event: CameraFlowEvent) {
         switch event {
         case .permissionDenied:
@@ -596,20 +566,11 @@ private extension ToppingAddStore {
 
 /// C-106 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
 private extension ToppingAddStore {
-    func handlePlacementIntent(_ intent: Intent) {
-        switch intent {
-        case .placementClosed:
-            guard state.saveState != .saving else { break }
-            state.screen = state.placementReturnScreen
-            renderBorderSilhouette()
-        case .placementConfirmed:
-            saveTopping()
-        default:
-            let longEdgeBeforeApply = state.borderRenderLongEdge
-            state.placementEditor.apply(intent)
-            guard state.borderRenderLongEdge != longEdgeBeforeApply else { break }
-            renderBorderSilhouette()
-        }
+    func updatePlacement(_ update: (inout ToppingPlacementEditor) -> Void) {
+        let longEdgeBeforeUpdate = state.borderRenderLongEdge
+        update(&state.placementEditor)
+        guard state.borderRenderLongEdge != longEdgeBeforeUpdate else { return }
+        renderBorderSilhouette()
     }
 
     /// 누끼를 PNG 로 굽고 업로드·배치까지 맡긴 뒤, 성공하면 최근 업로드에 남기고 캔버스로 돌아간다.
@@ -684,19 +645,10 @@ private extension ToppingAddStore {
 /// 배치 화면(C-106) 뒤 캔버스를 10초마다 서버 값으로 맞춘다. 사용자의 배치 초안
 /// (`placementEditor`)과는 분리된 배경이라 통째로 갈아 끼워도 안전하다.
 private extension ToppingAddStore {
-    func handleCanvasRefreshLifecycleIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            canvasRefreshTicker.start { [weak self] in
-                self?.send(.canvasRefreshTicked)
-            }
-        case .screenDisappeared, .sceneEnteredBackground:
-            canvasRefreshTicker.stop()
-            canvasRefreshTask?.cancel()
-            canvasRefreshTask = nil
-        default:
-            break
-        }
+    func stopCanvasRefresh() {
+        canvasRefreshTicker.stop()
+        canvasRefreshTask?.cancel()
+        canvasRefreshTask = nil
     }
 
     func refreshCanvasContent() {

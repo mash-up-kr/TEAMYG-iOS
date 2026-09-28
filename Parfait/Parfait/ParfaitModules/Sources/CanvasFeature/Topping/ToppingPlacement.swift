@@ -150,12 +150,8 @@ struct ToppingPlacementEditor: Equatable, Sendable {
         self = Self()
     }
 
-    mutating func apply(_ intent: ToppingAddStore.Intent) {
-        switch intent {
-        case .placementCanvasResized(let canvasSize): resize(to: canvasSize)
-        case .placementTransformed(let transform): placement = transform.applied(to: placement, in: canvasSize)
-        default: break
-        }
+    mutating func apply(_ transform: ToppingTransformDraft) {
+        placement = transform.applied(to: placement, in: canvasSize)
     }
 
     func placementValues(zOrder: Int, scaleFactor: Double) -> ToppingPlacementValues {
@@ -169,7 +165,7 @@ struct ToppingPlacementEditor: Equatable, Sendable {
     }
 
     /// 캔버스 크기가 정해질 때 첫 배치를 잡는다. 이미 잡혀 있으면 `scale` 은 캔버스 대비 비율이라 손댈 게 없다.
-    private mutating func resize(to canvasSize: CGSize) {
+    mutating func resize(to canvasSize: CGSize) {
         guard canvasSize.width > 0, canvasSize.height > 0 else { return }
         self.canvasSize = canvasSize
 

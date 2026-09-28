@@ -66,40 +66,28 @@ struct ToppingMaskEditor: Equatable, Sendable {
         undoneStrokes = undoneStrokes.map { $0.translated(by: offset) }
     }
 
-    /// 마스크를 다시 그려야 하는 변경이면 `true`.
-    mutating func apply(_ intent: ToppingAddStore.Intent) -> Bool {
-        switch intent {
-        case .brushModeSelected(let mode):
-            brush.mode = mode
-            return false
-        case .brushDiameterChanged(let diameter):
-            brush.diameter = diameter
-            return false
-        case .brushStrokeEnded(let stroke):
-            return record(stroke)
-        case .maskUndoTapped:
-            return undo()
-        case .maskRedoTapped:
-            return redo()
-        default:
-            return false
-        }
+    mutating func selectBrushMode(_ mode: ToppingBrushMode) {
+        brush.mode = mode
     }
 
-    private mutating func record(_ stroke: ToppingBrushStroke) -> Bool {
+    mutating func changeBrushDiameter(_ diameter: Double) {
+        brush.diameter = diameter
+    }
+
+    mutating func record(_ stroke: ToppingBrushStroke) -> Bool {
         guard !stroke.points.isEmpty else { return false }
         strokes.append(stroke)
         undoneStrokes.removeAll()
         return true
     }
 
-    private mutating func undo() -> Bool {
+    mutating func undo() -> Bool {
         guard let stroke = strokes.popLast() else { return false }
         undoneStrokes.append(stroke)
         return true
     }
 
-    private mutating func redo() -> Bool {
+    mutating func redo() -> Bool {
         guard let stroke = undoneStrokes.popLast() else { return false }
         strokes.append(stroke)
         return true

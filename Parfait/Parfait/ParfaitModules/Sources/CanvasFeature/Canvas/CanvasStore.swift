@@ -5,6 +5,8 @@
 //  Created by 박서연 on 7/30/26.
 //
 
+// swiftlint:disable file_length
+
 import CanvasDomain
 import Foundation
 import Observation
@@ -50,64 +52,47 @@ public final class CanvasStore: MVIStore {
     /// 저장 미리보기 Store 가 같은 토핑 캐시를 쓰도록 합성기를 그대로 넘긴다.
     var canvasImageExporter: CanvasImageExporter { dependencies.canvasImageExporter }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func send(_ intent: Intent) {
         switch intent {
-        case .screenAppeared,
-             .sceneBecameActive,
-             .sceneEnteredBackground,
-             .screenDisappeared,
-             .refreshRequested,
-             .canvasRefreshTicked:
-            handleLifecycleIntent(intent)
-
-        case .toppingTapped,
-             .toppingImageLoaded,
-             .toppingImageLoadFailed:
-            handleToppingIntent(intent)
-
+        case .screenAppeared:
+            state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
+            loadInitialDataIfNeeded()
+            startCanvasRefreshTicker()
+        case .sceneBecameActive:
+            state.spotlightedToppingID = nil
+            reloadIfDayChanged()
+            startCanvasRefreshTicker()
+        case .sceneEnteredBackground:
+            canvasRefreshTicker.stop()
+        case .screenDisappeared:
+            canvasRefreshTicker.stop()
+            cancelTasks()
+        case .canvasRefreshTicked:
+            refreshCanvasSilently()
+        case .toppingTapped(let toppingID):
+            handleToppingTap(toppingID)
+        case .toppingImageLoaded(let toppingID):
+            state.loadedToppingImageIDs.insert(toppingID)
+        case .toppingImageLoadFailed(let toppingID):
+            state.failedToppingImageIDs.insert(toppingID)
         case .spotlightDismissed:
             state.spotlightedToppingID = nil
-        case .canvasEditTapped,
-             .canvasEditFlowDismissed,
-             .canvasEditSaved:
-            handleCanvasEditIntent(intent)
-
-        case .toppingAddTapped,
-             .menuDimTapped,
-             .cameraOptionTapped,
-             .galleryOptionTapped,
-             .toppingAddFlowDismissed,
-             .toppingSaved:
-            handleToppingAddIntent(intent)
-
-        case .calendarTapped,
-             .calendarDimTapped,
-             .calendarMonthTapped,
-             .calendarYearTapped,
-             .calendarMonthSelected,
-             .calendarYearSelected,
-             .calendarDateSelected:
-            handleCalendarIntent(intent)
-
-        case .savePreviewRequested,
-             .savePreviewClosed:
-            handleGallerySaveIntent(intent)
-
-        case .todayParfaitTapped:
-            openTodayCanvas()
-
-        case .pastParfaitNudgeTapped:
-            openPastParfaitNudgeTarget()
-
-        case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
+        case .canvasEditTapped:
+            guard !state.isClosedCanvas else { return }
             state.calendar.close()
             state.menuState = .collapsed
-        }
-    }
-
-    /// 과거 캔버스에서는 토핑을 올릴 수 없다 (`canvas-policy.md` §7.2).
-    private func handleToppingAddIntent(_ intent: Intent) {
-        switch intent {
+            guard state.parfaitID != nil else {
+                eventChannel.send(.canvasNotReady)
+                return
+            }
+            state.canvasEditDestination = .background
+        case .canvasEditFlowDismissed:
+            state.canvasEditDestination = nil
+            refreshCanvasSilently()
+        case .canvasEditSaved:
+            state.canvasEditDestination = nil
+            loadCanvas(for: state.calendar.selectedDate)
         case .toppingAddTapped:
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
@@ -116,35 +101,19 @@ public final class CanvasStore: MVIStore {
                 return
             }
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
-        case .menuDimTapped:
-            // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
-            state.menuState = .collapsed
         case .cameraOptionTapped:
             openToppingAddFlow { .camera(canvasDate: $0) }
         case .galleryOptionTapped:
             openToppingAddFlow { .gallery(canvasDate: $0) }
+        case .menuDimTapped:
+            // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
+            state.menuState = .collapsed
         case .toppingAddFlowDismissed:
             state.toppingAddSource = nil
             refreshCanvasSilently()
         case .toppingSaved:
             state.toppingAddSource = nil
             loadCanvas(for: state.calendar.selectedDate)
-
-        default:
-            break
-        }
-    }
-
-    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
-    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
-        guard !state.isClosedCanvas, state.parfaitID != nil else { return }
-        state.calendar.close()
-        state.menuState = .collapsed
-        state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
-    }
-
-    private func handleCalendarIntent(_ intent: Intent) {
-        switch intent {
         case .calendarTapped:
             state.menuState = .collapsed
             state.calendar.toggle()
@@ -164,31 +133,39 @@ public final class CanvasStore: MVIStore {
             if state.calendar.selectDate(date) {
                 loadCanvas(for: date)
             }
-        default:
-            break
+        case .refreshRequested:
+            refreshCanvas()
+        case .savePreviewRequested:
+            state.calendar.close()
+            state.menuState = .collapsed
+            guard let canvasContent = state.canvasContent else {
+                eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
+                return
+            }
+            state.savePreview = SavePreview(date: state.calendar.selectedDate, canvasContent: canvasContent)
+        case .savePreviewClosed(let reason):
+            let savedDate = state.savePreview?.date
+            state.savePreview = nil
+            refreshCanvasSilently()
+            guard let event = reason.event(dateText: savedDate?.koreanDateText) else { return }
+            // 미리보기가 닫히는 순간에는 캔버스 화면이 아직 재구독 전일 수 있다.
+            eventChannel.sendOrHold(event)
+        case .todayParfaitTapped:
+            openTodayCanvas()
+        case .pastParfaitNudgeTapped:
+            openPastParfaitNudgeTarget()
+        case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
+            state.calendar.close()
+            state.menuState = .collapsed
         }
     }
 
-    private func handleCanvasEditIntent(_ intent: Intent) {
-        switch intent {
-        case .canvasEditTapped:
-            guard !state.isClosedCanvas else { return }
-            state.calendar.close()
-            state.menuState = .collapsed
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
-            state.canvasEditDestination = .background
-        case .canvasEditFlowDismissed:
-            state.canvasEditDestination = nil
-            refreshCanvasSilently()
-        case .canvasEditSaved:
-            state.canvasEditDestination = nil
-            loadCanvas(for: state.calendar.selectedDate)
-        default:
-            break
-        }
+    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
+    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
+        guard !state.isClosedCanvas, state.parfaitID != nil else { return }
+        state.calendar.close()
+        state.menuState = .collapsed
+        state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
     /// Pull-to-Refresh — Spotlight 를 먼저 해제하고 Default 상태에서 새로고침한다 (`canvas-policy.md` §4.2).
@@ -228,29 +205,6 @@ public final class CanvasStore: MVIStore {
     private func openPastParfait(on date: CalendarDate) {
         guard state.calendar.openKnownPastDate(date) else { return }
         loadCanvas(for: date)
-    }
-
-    /// 날짜 바 `Ic_Save` — 마감 전후와 무관하게 C-001-Save-Preview 를 연다. 합성·저장은 미리보기 Store 몫이다.
-    private func handleGallerySaveIntent(_ intent: Intent) {
-        switch intent {
-        case .savePreviewRequested:
-            state.calendar.close()
-            state.menuState = .collapsed
-            guard let canvasContent = state.canvasContent else {
-                eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
-                return
-            }
-            state.savePreview = SavePreview(date: state.calendar.selectedDate, canvasContent: canvasContent)
-        case .savePreviewClosed(let reason):
-            let savedDate = state.savePreview?.date
-            state.savePreview = nil
-            refreshCanvasSilently()
-            guard let event = reason.event(dateText: savedDate?.koreanDateText) else { return }
-            // 미리보기가 닫히는 순간에는 캔버스 화면이 아직 재구독 전일 수 있다.
-            eventChannel.sendOrHold(event)
-        default:
-            break
-        }
     }
 
     /// SY-001-Closed `오늘의 캔버스로 가기` — 같은 화면에서 오늘 캔버스로 되돌린다.
@@ -335,46 +289,9 @@ private extension CanvasStore {
         )
     }
 
-    func handleLifecycleIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared:
-            state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
-            loadInitialDataIfNeeded()
-            startCanvasRefreshTicker()
-        case .sceneBecameActive:
-            state.spotlightedToppingID = nil
-            reloadIfDayChanged()
-            startCanvasRefreshTicker()
-        case .sceneEnteredBackground:
-            canvasRefreshTicker.stop()
-        case .screenDisappeared:
-            canvasRefreshTicker.stop()
-            cancelTasks()
-        case .refreshRequested:
-            refreshCanvas()
-        case .canvasRefreshTicked:
-            refreshCanvasSilently()
-        default:
-            break
-        }
-    }
-
     private func startCanvasRefreshTicker() {
         canvasRefreshTicker.start { [weak self] in
             self?.send(.canvasRefreshTicked)
-        }
-    }
-
-    func handleToppingIntent(_ intent: Intent) {
-        switch intent {
-        case .toppingTapped(let toppingID):
-            handleToppingTap(toppingID)
-        case .toppingImageLoaded(let toppingID):
-            state.loadedToppingImageIDs.insert(toppingID)
-        case .toppingImageLoadFailed(let toppingID):
-            state.failedToppingImageIDs.insert(toppingID)
-        default:
-            break
         }
     }
 

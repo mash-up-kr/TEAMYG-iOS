@@ -42,27 +42,37 @@ final class BackgroundImagePickerStore: MVIStore {
         camera.state
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func send(_ intent: Intent) {
         switch intent {
-        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground,
-             .cameraGuideDismissed, .flashTapped, .cameraPositionTapped, .shutterTapped,
-             .retakeTapped, .cameraRetryTapped:
-            handleCameraIntent(intent)
-        case .photoConfirmed, .galleryPhotoConfirmed:
-            handleImageSelectionIntent(intent)
-        case .settingsTapped:
-            openSystemSettings()
-        }
-    }
-
-    private func handleImageSelectionIntent(_ intent: Intent) {
-        switch intent {
+        case .screenAppeared, .sceneBecameActive:
+            guard state.photoSource == .camera, state.screen.needsRunningCamera else { return }
+            camera.prepare()
+        case .screenDisappeared:
+            cancelImagePreparation()
+            camera.suspend()
+        case .sceneEnteredBackground:
+            camera.suspend()
+        case .cameraGuideDismissed:
+            state.showsCameraGuide = false
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { break }
+            cancelImagePreparation()
+            state.screen = .camera
         case .photoConfirmed:
             prepareCapturedPhoto()
         case .galleryPhotoConfirmed(let assetIdentifier):
             prepareGalleryPhoto(assetIdentifier: assetIdentifier)
-        default:
-            break
+        case .cameraRetryTapped:
+            camera.prepare()
+        case .settingsTapped:
+            openSystemSettings()
         }
     }
 
@@ -121,44 +131,6 @@ final class BackgroundImagePickerStore: MVIStore {
 /// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 토핑 추가와 공용 화면 — `canvas-policy.md` §5.1).
 /// 여기서는 배경 편집 흐름의 화면 전이만 해석한다.
 private extension BackgroundImagePickerStore {
-    func handleCameraIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive, .screenDisappeared, .sceneEnteredBackground:
-            handleCameraLifecycleIntent(intent)
-        case .cameraGuideDismissed:
-            state.showsCameraGuide = false
-        case .cameraRetryTapped:
-            camera.prepare()
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            cancelImagePreparation()
-            state.screen = .camera
-        default:
-            break
-        }
-    }
-
-    func handleCameraLifecycleIntent(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .sceneBecameActive:
-            guard state.photoSource == .camera, state.screen.needsRunningCamera else { return }
-            camera.prepare()
-        case .screenDisappeared:
-            cancelImagePreparation()
-            camera.suspend()
-        case .sceneEnteredBackground:
-            camera.suspend()
-        default:
-            break
-        }
-    }
-
     func cancelImagePreparation() {
         imagePreparationTask?.cancel()
         imagePreparationTask = nil
