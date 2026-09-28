@@ -24,7 +24,7 @@ public struct ToppingRepositoryImpl: ToppingRepository {
         parfaitID: Int
     ) async throws -> PlacedTopping {
         let dto: PlacedToppingDTO = try await networkClient.request(
-            ToppingEndpoint.place(
+            PlaceToppingEndpoint(
                 groupID: groupID,
                 parfaitID: parfaitID,
                 imageID: imageID,
@@ -42,7 +42,7 @@ public struct ToppingRepositoryImpl: ToppingRepository {
         parfaitID: Int
     ) async throws -> ToppingPlacementValues {
         let dto: UpdatedPlacementDTO = try await networkClient.request(
-            ToppingEndpoint.updatePlacement(
+            UpdateToppingPlacementEndpoint(
                 groupID: groupID,
                 parfaitID: parfaitID,
                 toppingID: toppingID,
@@ -59,7 +59,7 @@ public struct ToppingRepositoryImpl: ToppingRepository {
         parfaitID: Int
     ) async throws -> ToppingBorderStyle {
         let dto: UpdatedBorderDTO = try await networkClient.request(
-            ToppingEndpoint.updateBorder(
+            UpdateToppingBorderEndpoint(
                 groupID: groupID,
                 parfaitID: parfaitID,
                 toppingID: toppingID,
@@ -71,7 +71,7 @@ public struct ToppingRepositoryImpl: ToppingRepository {
 
     public func delete(toppingID: Int, groupID: Int, parfaitID: Int) async throws {
         let _: EmptyDTO = try await networkClient.request(
-            ToppingEndpoint.delete(groupID: groupID, parfaitID: parfaitID, toppingID: toppingID)
+            DeleteToppingEndpoint(groupID: groupID, parfaitID: parfaitID, toppingID: toppingID)
         )
     }
 }
