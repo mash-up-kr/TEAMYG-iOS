@@ -203,9 +203,15 @@ private struct RecentUploadCell: View {
         }
         .task(id: cellSize) {
             guard cellSize != .zero else { return }
-            image = await upload.downsampledImage(
-                maxPixelSize: cellSize.longEdgePixelSize(scale: displayScale)
-            )
+            do {
+                let downsampledImage = try await upload.downsampledImage(
+                    maxPixelSize: cellSize.longEdgePixelSize(scale: displayScale)
+                )
+                guard !Task.isCancelled else { return }
+                image = downsampledImage
+            } catch {
+                return
+            }
         }
     }
 }
@@ -261,8 +267,8 @@ private struct PhotoAssetCell: View {
 }
 
 extension StoredImage {
-    func downsampledImage(maxPixelSize: Int) async -> UIImage? {
-        await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+    func downsampledImage(maxPixelSize: Int) async throws -> UIImage? {
+        try await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
             .map { UIImage(cgImage: $0) }
     }
 }

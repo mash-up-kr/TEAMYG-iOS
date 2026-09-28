@@ -91,25 +91,30 @@ final class BackgroundImagePickerStore: MVIStore {
 
     private func prepareCameraPhoto(_ photoData: Data, viewFinderRegion: ViewFinderRegion?) {
         prepareImage(source: .camera) {
-            await BackgroundImageLoader.normalizedJPEG(photoData, croppedTo: viewFinderRegion)
+            try await BackgroundImageLoader.normalizedJPEG(photoData, croppedTo: viewFinderRegion)
         }
     }
 
     private func prepareGalleryPhoto(assetIdentifier: String) {
         prepareImage(source: .gallery) {
-            await BackgroundImageLoader.galleryJPEG(assetIdentifier: assetIdentifier)
+            try await BackgroundImageLoader.galleryJPEG(assetIdentifier: assetIdentifier)
         }
     }
 
     private func prepareImage(
         source: PhotoSource,
         // 무거운 이미지 변환이 들어오는 자리다 — `@MainActor` 를 붙이지 않는다.
-        operation: @escaping @Sendable () async -> Data?
+        operation: @escaping @Sendable () async throws -> Data?
     ) {
         imagePreparationTask?.cancel()
         state.isPreparingImage = true
         imagePreparationTask = Task { [weak self, dependencies] in
-            let jpegData = await operation()
+            let jpegData: Data?
+            do {
+                jpegData = try await operation()
+            } catch {
+                return
+            }
             guard let self, !Task.isCancelled else { return }
             state.isPreparingImage = false
             guard let jpegData else {

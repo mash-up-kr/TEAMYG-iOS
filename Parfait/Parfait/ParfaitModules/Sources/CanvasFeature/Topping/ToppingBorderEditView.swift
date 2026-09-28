@@ -138,7 +138,13 @@ struct ToppingBorderEditView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { previewAreaSize = $0 }
         .task(id: topping.map(ObjectIdentifier.init)) {
-            toppingMargin = await Self.opaqueMargin(of: topping)
+            do {
+                let margin = try await Self.opaqueMargin(of: topping)
+                guard !Task.isCancelled else { return }
+                toppingMargin = margin
+            } catch {
+                return
+            }
         }
         .onChange(of: placedLongSide, initial: true) { _, longSide in
             onPreviewLongEdgeChange(longSide)
@@ -205,16 +211,17 @@ struct ToppingBorderEditView: View {
         )
     }
 
-    private static func opaqueMargin(of image: CGImage?) async -> CGSize {
-        guard let image else { return .zero }
+    @concurrent
+    private static func opaqueMargin(of image: CGImage?) async throws -> CGSize {
+        try Task.checkCancellation()
+        let bounds = image?.opaqueBounds()
+        try Task.checkCancellation()
+        guard let image, let bounds else { return .zero }
 
-        return await Task.detached(priority: .userInitiated) {
-            guard let bounds = image.opaqueBounds() else { return .zero }
-            return CGSize(
-                width: min(bounds.minX, CGFloat(image.width) - bounds.maxX),
-                height: min(bounds.minY, CGFloat(image.height) - bounds.maxY)
-            )
-        }.value
+        return CGSize(
+            width: min(bounds.minX, CGFloat(image.width) - bounds.maxX),
+            height: min(bounds.minY, CGFloat(image.height) - bounds.maxY)
+        )
     }
 
     private var editArea: some View {

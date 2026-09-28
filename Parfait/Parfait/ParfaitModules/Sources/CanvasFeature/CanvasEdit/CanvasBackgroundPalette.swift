@@ -149,10 +149,16 @@ private struct LocalBackgroundThumbnail: View {
                 }
             }
             .task(id: DecodeRequest(imageData: imageData, size: proxy.size, displayScale: displayScale)) {
-                image = await ImageDownsampling.decodedImage(
-                    from: imageData,
-                    maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
-                )
+                do {
+                    let decodedImage = try await ImageDownsampling.decodedImage(
+                        from: imageData,
+                        maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
+                    )
+                    guard !Task.isCancelled else { return }
+                    image = decodedImage
+                } catch {
+                    return
+                }
             }
         }
     }

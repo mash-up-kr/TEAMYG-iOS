@@ -624,15 +624,14 @@ private extension ToppingAddStore {
         }
     }
 
+    @concurrent
     static func encodedUpload(from image: CGImage) async -> (pngData: Data, scaleFactor: Double)? {
-        await Task.detached(priority: .userInitiated) {
-            let cropped = image.croppedRemovingSymmetricMargin()
-            guard let pngData = ToppingImageEncoder.encodePNG(cropped) else { return nil }
+        let cropped = image.croppedRemovingSymmetricMargin()
+        guard let pngData = ToppingImageEncoder.encodePNG(cropped) else { return nil }
 
-            let scaleFactor = Double(max(cropped.width, cropped.height))
-                / Double(max(image.width, image.height))
-            return (pngData, scaleFactor)
-        }.value
+        let scaleFactor = Double(max(cropped.width, cropped.height))
+            / Double(max(image.width, image.height))
+        return (pngData, scaleFactor)
     }
 
     /// 새 토핑은 항상 맨 위에 얹는다.
