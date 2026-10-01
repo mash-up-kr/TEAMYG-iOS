@@ -46,11 +46,16 @@ struct ToppingCandidateSelectionView: View {
         // 분석용 원본은 화면보다 훨씬 커서 그대로 그리면 그 크기의 백킹 스토어를 잡는다.
         .task(id: displayLongEdge) {
             guard displayLongEdge > 0 else { return }
-            let sourceImage = photo.image
-            let longEdge = displayLongEdge
-            displayImage = await Task.detached(priority: .userInitiated) {
-                sourceImage.downscaled(longEdge: longEdge)
-            }.value
+            do {
+                let downscaledImage = try await Self.downscaledDisplayImage(
+                    from: photo.image,
+                    longEdge: displayLongEdge
+                )
+                guard !Task.isCancelled else { return }
+                displayImage = downscaledImage
+            } catch {
+                return
+            }
         }
     }
 
@@ -59,6 +64,14 @@ struct ToppingCandidateSelectionView: View {
         let targetLongEdge = max(imageAreaSize.width, imageAreaSize.height) * displayScale
         guard targetLongEdge > 0 else { return 0 }
         return (targetLongEdge / 64).rounded(.up) * 64
+    }
+
+    @concurrent
+    private static func downscaledDisplayImage(from image: CGImage, longEdge: CGFloat) async throws -> CGImage {
+        try Task.checkCancellation()
+        let downscaledImage = image.downscaled(longEdge: longEdge)
+        try Task.checkCancellation()
+        return downscaledImage
     }
 
     private var backBar: some View {

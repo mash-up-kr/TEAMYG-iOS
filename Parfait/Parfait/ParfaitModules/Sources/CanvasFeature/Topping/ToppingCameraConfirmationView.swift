@@ -61,12 +61,18 @@ struct ToppingCameraConfirmationView: View {
             displayScale: displayScale,
             viewFinderRegion: viewFinderRegion
         )) {
-            capturedImage = await Self.decodeImage(
-                from: photoData,
-                areaSize: imageAreaSize,
-                displayScale: displayScale,
-                viewFinderRegion: viewFinderRegion
-            )
+            do {
+                let decodedImage = try await Self.decodeImage(
+                    from: photoData,
+                    areaSize: imageAreaSize,
+                    displayScale: displayScale,
+                    viewFinderRegion: viewFinderRegion
+                )
+                guard !Task.isCancelled else { return }
+                capturedImage = decodedImage
+            } catch {
+                return
+            }
         }
     }
 
@@ -99,11 +105,11 @@ struct ToppingCameraConfirmationView: View {
         areaSize: CGSize,
         displayScale: CGFloat,
         viewFinderRegion: ViewFinderRegion?
-    ) async -> UIImage? {
+    ) async throws -> UIImage? {
         guard let photoData, areaSize != .zero else { return nil }
 
         let coverageRatio = viewFinderRegion?.previewCoverageRatio ?? 1
-        guard let downsampledImage = await ImageDownsampling.decodedImage(
+        guard let downsampledImage = try await ImageDownsampling.decodedImage(
             from: photoData,
             maxPixelSize: areaSize.longEdgePixelSize(scale: displayScale / coverageRatio)
         ) else { return nil }

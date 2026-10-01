@@ -147,20 +147,3 @@ struct ToppingBorderEditor: Equatable, Sendable {
         border = next
     }
 }
-
-extension ToppingBorderEditor {
-    mutating func apply(_ intent: ToppingAddStore.Intent) -> Bool {
-        switch intent {
-        case .borderWidthChanged(let width): changeWidth(width)
-        case .borderColorSelected(let color): select(color)
-        case .borderUndoTapped: undo()
-        case .borderRedoTapped: redo()
-        case .borderWidthEditingChanged(let isEditing):
-            updateWidthEditing(isEditing)
-            return false
-        default:
-            return false
-        }
-        return true
-    }
-}

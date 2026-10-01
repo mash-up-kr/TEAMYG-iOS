@@ -133,10 +133,16 @@ private struct LocalCanvasBackgroundImage: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
             .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
-                image = await ImageDownsampling.decodedImage(
-                    from: imageData,
-                    maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
-                )
+                do {
+                    let decodedImage = try await ImageDownsampling.decodedImage(
+                        from: imageData,
+                        maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
+                    )
+                    guard !Task.isCancelled else { return }
+                    image = decodedImage
+                } catch {
+                    return
+                }
             }
         }
     }
@@ -220,7 +226,7 @@ struct CanvasPlacedImage: View {
             silhouette = nil
             return
         }
-        let rendered = await renderer.silhouette(
+        let rendered = try? await renderer.silhouette(
             of: loaded,
             at: canvasImage.imageURL,
             width: border.width,

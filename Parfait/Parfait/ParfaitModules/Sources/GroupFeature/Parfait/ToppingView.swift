@@ -52,10 +52,10 @@ struct ToppingView: View {
                 width: ParfaitLayout.toppingImageSize * scale,
                 height: ParfaitLayout.toppingImageSize * scale
             )
-            // 96 밖으로는 무슨 일이 있어도 새어 나가지 않게 잘라 둔다.
+            // 96 밖으로는 테두리 외곽선 폭만큼만 새어 나가게 잘라 둔다 — 이미지 자체는 96 을 그대로 쓴다.
             // 클립은 프레임이 확정된 여기서 걸어야 한다 — AsyncImage 안쪽에 걸면
             // AsyncImage 가 이미지 원본 크기를 자기 크기로 잡아 아무것도 안 잘린다.
-            .clipped()
+            .clipShape(Rectangle().inset(by: -ToppingImage.borderWidth))
             .rotationEffect(.degrees(variant.rotation))
             .offset(x: imageOffset.width * scale, y: imageOffset.height * scale)
     }
@@ -123,7 +123,7 @@ private struct ToppingImage: View {
         .template01, .template02, .template03, .template04, .template05, .template06
     ]
 
-    private static let borderWidth: CGFloat = 2
+    static let borderWidth: CGFloat = 2
     private static let outlineDirectionCount = 16
 
     private func fitted(_ image: Image) -> some View {
@@ -142,6 +142,9 @@ private struct ToppingImage: View {
             }
             fitted(image)
         }
+        // drawingGroup 은 프레임 밖을 잘라 그리므로, 버퍼만 외곽선 폭만큼 키우고 레이아웃 크기는 되돌린다.
         .padding(Self.borderWidth)
+        .drawingGroup()
+        .padding(-Self.borderWidth)
     }
 }

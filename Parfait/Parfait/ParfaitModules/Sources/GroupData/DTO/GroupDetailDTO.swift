@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/20/26.
 //
 
+import Core
 import GroupDomain
 
 /// `MyParfaitGroupDetailResponse` 스키마 대응 — 그룹 상세(`GET /api/parfait-groups/{groupId}`).
@@ -34,7 +35,9 @@ extension GroupDetailDTO {
             return GroupMember(
                 id: String(member.memberId),
                 nickname: member.groupNickname,
-                nametagType: member.nameTagChip.flatMap { NametagChipCode.nametagType(from: $0) },
+                nametagType: member.nameTagChip
+                    .flatMap { NametagChipCode.number(from: $0) }
+                    .flatMap { NametagType(rawValue: $0) },
                 isMe: isMe
             )
         }
@@ -53,6 +56,5 @@ extension GroupDetailDTO {
 struct GroupMemberDTO: Decodable, Sendable {
     let memberId: Int
     let groupNickname: String
-    /// Nametag 계열 코드. 값은 `NametagChipCode` 참고.
     let nameTagChip: String?
 }

@@ -22,7 +22,7 @@ public struct ImageUploadRepositoryImpl: ImageUploadRepository {
 
     public func upload(_ image: ImageUpload) async throws -> UploadedImage {
         let issued: IssuedUploadURLDTO = try await networkClient.request(
-            ImageUploadEndpoint.issueUploadURL(image)
+            IssueImageUploadURLEndpoint(image: image)
         )
         guard let uploadURL = URL(string: issued.uploadUrl) else {
             throw ParfaitMappingError.malformedURL(issued.uploadUrl)
@@ -31,7 +31,7 @@ public struct ImageUploadRepositoryImpl: ImageUploadRepository {
         try await uploader.upload(image.imageData, to: uploadURL, contentType: image.contentType)
 
         let confirmed: ConfirmedUploadDTO = try await networkClient.request(
-            ImageUploadEndpoint.confirm(imageID: issued.imageId)
+            ConfirmImageUploadEndpoint(imageID: issued.imageId)
         )
         guard let imageURL = URL(string: confirmed.imageUrl) else {
             throw ParfaitMappingError.malformedURL(confirmed.imageUrl)

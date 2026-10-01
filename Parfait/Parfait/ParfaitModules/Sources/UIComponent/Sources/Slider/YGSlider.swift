@@ -65,9 +65,6 @@ public struct YGSlider: View {
             )
         }
         .frame(height: Self.touchHeight)
-        .accessibilityRepresentation {
-            Slider(value: $value, in: range)
-        }
     }
 
     private var normalizedValue: CGFloat {

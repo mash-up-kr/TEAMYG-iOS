@@ -1,30 +1,11 @@
 //
-//  ParfaitDate+ISO.swift
+//  ServerDateTime.swift
 //  CanvasData
 //
-//  Created by 박서연 on 8/23/26.
+//  Created by 박서연 on 9/28/26.
 //
 
-import CanvasDomain
 import Foundation
-
-extension ParfaitDate {
-    var isoText: String {
-        String(format: "%04d-%02d-%02d", year, month, day)
-    }
-
-    init?(isoText: String) {
-        let parts = isoText.prefix(10).split(separator: "-")
-        guard parts.count == 3,
-              let year = Int(parts[0]),
-              let month = Int(parts[1]),
-              let day = Int(parts[2])
-        else {
-            return nil
-        }
-        self.init(year: year, month: month, day: day)
-    }
-}
 
 enum ServerDateTime {
     /// 서버의 `date-time` 은 ISO 8601 UTC 형식이다 (`2026-08-25T17:51:56.260Z`).

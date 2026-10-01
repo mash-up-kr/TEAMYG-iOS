@@ -45,7 +45,13 @@ struct PhotoConfirmView: View {
                 }
                 .task(id: imageAreaSize) {
                     guard imageAreaSize != .zero else { return }
-                    fullImage = await loadFullImage()
+                    do {
+                        let loadedImage = try await loadFullImage()
+                        guard !Task.isCancelled else { return }
+                        fullImage = loadedImage
+                    } catch {
+                        return
+                    }
                 }
 
             HStack(spacing: .gap4) {
@@ -71,7 +77,7 @@ struct PhotoConfirmView: View {
         }
     }
 
-    private func loadFullImage() async -> UIImage? {
+    private func loadFullImage() async throws -> UIImage? {
         if let asset = photo.asset {
             let targetSize = CGSize(
                 width: imageAreaSize.width * displayScale,
@@ -80,7 +86,7 @@ struct PhotoConfirmView: View {
             return await asset.requestImage(targetSize: targetSize)
         }
         guard let upload = photo.upload else { return nil }
-        return await upload.downsampledImage(
+        return try await upload.downsampledImage(
             maxPixelSize: imageAreaSize.longEdgePixelSize(scale: displayScale)
         )
     }

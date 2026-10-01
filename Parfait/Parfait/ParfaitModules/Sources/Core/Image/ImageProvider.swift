@@ -38,10 +38,10 @@ public actor ImageProvider {
         if let load = loads[key] { return await load.value }
 
         // 디코딩이 CPU 작업이라 actor 위에서 돌리면 다른 요청까지 직렬화된다 — 격리를 끊어 밖에서 처리한다.
-        let load = Task.detached { [session] () -> CGImage? in
+        let load = Task.detached(priority: .userInitiated) { [session] () -> CGImage? in
             // 실패 원인 구분 없이 nil 로 — 호출부는 플레이스홀더로 처리한다.
             guard let (imageData, _) = try? await session.data(from: url) else { return nil }
-            return await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
+            return try? await ImageDownsampling.decodedImage(from: imageData, maxPixelSize: maxPixelSize)
         }
         loads[key] = load
 

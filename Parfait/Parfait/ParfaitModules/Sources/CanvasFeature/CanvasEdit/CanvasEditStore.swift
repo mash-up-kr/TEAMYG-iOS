@@ -37,29 +37,8 @@ final class CanvasEditStore: MVIStore {
         eventChannel.stream()
     }
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     func send(_ intent: Intent) {
-        switch intent {
-        case .screenAppeared, .screenDisappeared, .sceneBecameActive, .sceneEnteredBackground,
-             .canvasRefreshTicked:
-            handleLifecycleIntent(intent)
-        case .colorSelected, .backgroundTabTapped, .toppingTabTapped, .closeTapped,
-             .continueEditingTapped, .discardTapped:
-            handleEditorIntent(intent)
-        case .backgroundImageSourceTapped, .backgroundImageFlowDismissed, .backgroundImageSelected:
-            handleBackgroundImageIntent(intent)
-        case .toppingTapped, .toppingPlacementChanged, .toppingDeleteTapped,
-             .toppingBorderEditTapped:
-            handleToppingIntent(intent)
-        case .borderPreviewLongEdgeChanged, .borderWidthChanged, .borderWidthEditingChanged,
-             .borderColorSelected, .borderUndoTapped, .borderRedoTapped, .borderEditClosed,
-             .borderEditConfirmed:
-            handleBorderIntent(intent)
-        case .confirmTapped:
-            saveChanges()
-        }
-    }
-
-    private func handleLifecycleIntent(_ intent: Intent) {
         switch intent {
         case .screenAppeared, .sceneBecameActive:
             canvasRefreshTicker.start { [weak self] in
@@ -71,39 +50,11 @@ final class CanvasEditStore: MVIStore {
             canvasRefreshTask = nil
         case .canvasRefreshTicked:
             refreshCanvas()
-        default:
-            break
-        }
-    }
-
-    private func handleEditorIntent(_ intent: Intent) {
-        switch intent {
         case .colorSelected(let hex):
             guard state.saveState != .saving else { return }
             state.background = .color(hex: hex)
             state.selectedBackgroundImageSource = nil
             state.pendingUploadedBackground = nil
-        case .backgroundTabTapped:
-            guard state.saveState != .saving else { return }
-            state.screen = .background
-            state.selectedToppingID = nil
-        case .toppingTabTapped:
-            guard state.saveState != .saving else { return }
-            state.screen = .toppings
-        case .closeTapped:
-            closeEditor()
-        case .continueEditingTapped:
-            state.showsExitPopup = false
-        case .discardTapped:
-            state.showsExitPopup = false
-            dependencies.onDismiss()
-        default:
-            break
-        }
-    }
-
-    private func handleBackgroundImageIntent(_ intent: Intent) {
-        switch intent {
         case .backgroundImageSourceTapped(let source):
             guard state.saveState != .saving else { return }
             state.backgroundImageSource = source
@@ -114,13 +65,13 @@ final class CanvasEditStore: MVIStore {
             state.selectedBackgroundImageSource = source
             state.pendingUploadedBackground = nil
             state.backgroundImageSource = nil
-        default:
-            break
-        }
-    }
-
-    private func handleToppingIntent(_ intent: Intent) {
-        switch intent {
+        case .backgroundTabTapped:
+            guard state.saveState != .saving else { return }
+            state.screen = .background
+            state.selectedToppingID = nil
+        case .toppingTabTapped:
+            guard state.saveState != .saving else { return }
+            state.screen = .toppings
         case .toppingTapped(let toppingID):
             selectTopping(toppingID)
         case .toppingPlacementChanged(let toppingID, let placement):
@@ -132,13 +83,6 @@ final class CanvasEditStore: MVIStore {
             }
         case .toppingBorderEditTapped(let toppingID):
             openBorderEditor(toppingID)
-        default:
-            break
-        }
-    }
-
-    private func handleBorderIntent(_ intent: Intent) {
-        switch intent {
         case .borderPreviewLongEdgeChanged(let longEdge):
             guard state.borderPreviewLongEdge != longEdge else { break }
             state.borderPreviewLongEdge = longEdge
@@ -163,8 +107,15 @@ final class CanvasEditStore: MVIStore {
         case .borderEditConfirmed:
             applyBorderDraft()
             stopBorderRendering()
-        default:
-            break
+        case .closeTapped:
+            closeEditor()
+        case .continueEditingTapped:
+            state.showsExitPopup = false
+        case .discardTapped:
+            state.showsExitPopup = false
+            dependencies.onDismiss()
+        case .confirmTapped:
+            saveChanges()
         }
     }
 
@@ -259,7 +210,7 @@ extension CanvasEditStore {
             }
             guard !Task.isCancelled, let toppingImage else { return }
 
-            let silhouette = await dependencies.toppingRenderer.silhouette(
+            let silhouette = try? await dependencies.toppingRenderer.silhouette(
                 of: toppingImage,
                 at: imageURL,
                 width: width,
@@ -406,7 +357,7 @@ extension CanvasEditStore {
 
 }
 
-/// 편집 중에도 5초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
+/// 편집 중에도 10초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
 /// 내 토핑 초안과 내가 손댄 배경은 어떤 경우에도 덮지 않는다.
 extension CanvasEditStore {
     fileprivate func refreshCanvas() {
