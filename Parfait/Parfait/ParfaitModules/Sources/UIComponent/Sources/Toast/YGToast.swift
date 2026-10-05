@@ -78,7 +78,7 @@ public struct YGToast: View {
         YGToast(.alert(username: "WWWWWWWWWW", nametagType: .type11), message: "님이 59분 전에 쌓았어요")
         YGToast(.normal, message: "알 수 없음 님이 오래 전에 쌓았어요")
         YGToast(.warning, message: "내 토핑만 편집할 수 있어요")
-        YGToast(.error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
+        YGToast(.error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요")
         YGToast(.success, message: "초대 코드를 복사했어요")
     }
     .background(.whiteFixed)
