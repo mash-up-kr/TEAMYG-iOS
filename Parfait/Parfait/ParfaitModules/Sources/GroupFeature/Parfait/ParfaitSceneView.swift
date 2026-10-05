@@ -19,8 +19,6 @@ struct ParfaitSceneView: View {
     let scale: CGFloat
     let onToppingTap: (ParfaitGroup) -> Void
 
-    @Environment(\.isParfaitLayoutAnimationEnabled) private var isLayoutAnimationEnabled
-
     private var layout: ParfaitLayout { ParfaitLayout(groupCount: groups.count) }
 
     var body: some View {
@@ -34,7 +32,7 @@ struct ParfaitSceneView: View {
             alignment: .topLeading
         )
         // 그룹이 늘거나 빠지면 뒤 토핑이 한 칸씩 당겨지고 크림도 함께 자란다 — 그 이동을 이어서 보여준다.
-        .animation(isLayoutAnimationEnabled ? .snappy : nil, value: groups)
+        .animation(.snappy, value: groups)
     }
 
     /// 그리는 순서 = 아래에서 위로 쌓는 순서. 맨 아래 크림부터 깔아야 위 크림이 앞에 온다.
