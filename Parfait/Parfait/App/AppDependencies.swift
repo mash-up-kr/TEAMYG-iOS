@@ -84,7 +84,7 @@ struct AppDependencies {
     }
 
     func makeCreateGroupStore() -> CreateGroupStore {
-        CreateGroupStore(groupUseCase: makeGroupUseCase())
+        CreateGroupStore(groupUseCase: makeGroupUseCase(), memberUseCase: makeMemberUseCase())
     }
 
     private func makeGroupUseCase() -> GroupUseCaseImpl {

@@ -7,6 +7,7 @@
 
 import Common
 import GroupDomain
+import MemberDomain
 import SwiftUI
 import UIComponent
 
@@ -15,46 +16,67 @@ public final class CreateGroupStore: MVIStore {
     public private(set) var state = State()
 
     private let groupUseCase: any GroupUseCase
+    private let memberUseCase: any MemberUseCase
     @ObservationIgnored private var createTask: Task<Void, Never>?
+    @ObservationIgnored private var appNicknameTask: Task<Void, Never>?
+    @ObservationIgnored private var isNicknameEdited = false
 
-    public init(groupUseCase: any GroupUseCase) {
+    public init(groupUseCase: any GroupUseCase, memberUseCase: any MemberUseCase) {
         self.groupUseCase = groupUseCase
+        self.memberUseCase = memberUseCase
     }
 
     public func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared:
+            beginAppNicknameLoad()
+        case .appNicknameLoaded(let appNickname):
+            applyAppNickname(appNickname)
         case .nameChanged(let name):
             state.name = GroupNamePolicy.truncated(name)
         case .nicknameChanged(let nickname):
+            isNicknameEdited = true
             state.nickname = String(nickname.prefix(NicknameValidator.maxLength))
         case .memberCountTapped(let memberCount):
             toggleMemberCount(memberCount)
-        case .confirmTapped:
-            presentCreateConfirmPopup()
         case .createConfirmPopupVisibilityChanged(let isPresented):
-            state.isCreateConfirmPopupPresented = isPresented
+            state.isCreateConfirmPopupPresented = isPresented && state.isConfirmEnabled
         case .createConfirmed:
             state.isCreateConfirmPopupPresented = false
             beginCreateRequest()
-        case .createSucceeded:
-            state.phase = .created
-        case .createFailed(let createError):
-            state.phase = .failed(createError)
+        case .createFinished(let createError):
+            state.phase = createError.map(Phase.failed) ?? .created
         case .failureAcknowledged:
             clearFailure()
         case .screenDisappeared:
+            cancelAppNicknameLoad()
             cancelCreateRequest()
         }
+    }
+
+    private func beginAppNicknameLoad() {
+        guard appNicknameTask == nil, !isNicknameEdited, state.nickname.isEmpty else { return }
+        appNicknameTask = Task {
+            if let account = try? await memberUseCase.fetchMyAccount(), !Task.isCancelled {
+                send(.appNicknameLoaded(account.nickname))
+            }
+            appNicknameTask = nil
+        }
+    }
+
+    private func applyAppNickname(_ appNickname: String) {
+        guard !isNicknameEdited, state.nickname.isEmpty else { return }
+        state.nickname = String(appNickname.prefix(NicknameValidator.maxLength))
+    }
+
+    private func cancelAppNicknameLoad() {
+        appNicknameTask?.cancel()
+        appNicknameTask = nil
     }
 
     /// 같은 칸을 다시 누르면 해제 — 잘못 고른 뒤 선택을 비울 방법이 이것뿐이다.
     private func toggleMemberCount(_ memberCount: Int) {
         state.memberCount = state.memberCount == memberCount ? nil : memberCount
-    }
-
-    private func presentCreateConfirmPopup() {
-        guard state.isConfirmEnabled else { return }
-        state.isCreateConfirmPopupPresented = true
     }
 
     private func clearFailure() {
@@ -85,11 +107,11 @@ public final class CreateGroupStore: MVIStore {
     private func requestCreate(_ draft: GroupDraft) async {
         do {
             try await groupUseCase.create(draft)
-            send(.createSucceeded)
+            send(.createFinished(nil))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
-            send(.createFailed(error as? CreateGroupError ?? .unknown))
+            send(.createFinished(error as? CreateGroupError ?? .unknown))
         }
     }
 
@@ -151,16 +173,16 @@ public final class CreateGroupStore: MVIStore {
     }
 
     public enum Intent {
+        case screenAppeared
+        case appNicknameLoaded(String)
         case nameChanged(String)
         case nicknameChanged(String)
         case memberCountTapped(Int)
-        case confirmTapped
-        /// 팝업 자체의 표시 여부 — 취소·바깥 탭으로 닫히는 경로가 여기로 온다.
+        /// 팝업 자체의 표시 여부 — 확인 버튼 탭(true)과 취소·바깥 탭으로 닫히는 경로(false)가 모두 여기로 온다.
         case createConfirmPopupVisibilityChanged(Bool)
         case createConfirmed
-        /// `requestCreate(_:)` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.
-        case createSucceeded
-        case createFailed(CreateGroupError)
+        /// `requestCreate(_:)` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다. `nil` 이면 생성 성공.
+        case createFinished(CreateGroupError?)
         case failureAcknowledged
         case screenDisappeared
     }
