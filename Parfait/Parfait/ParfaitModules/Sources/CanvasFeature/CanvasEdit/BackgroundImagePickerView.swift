@@ -34,7 +34,7 @@ struct BackgroundImagePickerView: View {
                     switch event {
                     case .imagePreparationFailed:
                         toasts.append(
-                            YGToastItem(kind: .error, message: "사진을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                            YGToastItem(kind: .error, message: "사진을 불러오지 못했어요, 잠시 후 다시 시도해 주세요")
                         )
                     }
                 }

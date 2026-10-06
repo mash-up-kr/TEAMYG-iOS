@@ -52,7 +52,7 @@ struct ToppingAddFlowView: View {
                 switch event {
                 case .saveFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 }
             }
