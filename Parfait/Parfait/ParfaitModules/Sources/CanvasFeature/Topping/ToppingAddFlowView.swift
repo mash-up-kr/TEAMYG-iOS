@@ -198,9 +198,9 @@ struct ToppingAddFlowView: View {
             }
 
         case .manualCutout:
-            if let extractedTopping = store.state.extractedTopping {
+            if let cutoutEditCanvas = store.state.cutoutEditCanvas {
                 ToppingManualCutoutView(
-                    topping: extractedTopping,
+                    canvas: cutoutEditCanvas,
                     brush: store.state.maskEditor.brush,
                     canUndo: store.state.maskEditor.canUndo,
                     canRedo: store.state.maskEditor.canRedo,

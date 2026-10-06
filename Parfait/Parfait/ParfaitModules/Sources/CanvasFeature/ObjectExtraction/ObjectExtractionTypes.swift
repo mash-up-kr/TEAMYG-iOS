@@ -51,29 +51,36 @@ struct PhotoAnalysis: Equatable, Sendable {
     }
 }
 
-/// 추출 캔버스 한 벌. `photo`·`mask`·`image` 는 모두 같은 크기이며,
-/// `image` 는 `photo` 를 `mask` 로 오려낸 결과다. C-104 는 `photo` 를 배경 가이드로 깔고 `mask` 를 고쳐 쓴다.
 struct ExtractedTopping: Equatable, Sendable {
     let candidateID: Int
     let image: CGImage
-    let photo: CGImage
-    let mask: CGImage
 
     var pixelSize: CGSize {
         CGSize(width: image.width, height: image.height)
     }
 
-    func replacingCutout(image: CGImage, mask: CGImage) -> Self {
-        Self(candidateID: candidateID, image: image, photo: photo, mask: mask)
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.candidateID == rhs.candidateID && lhs.image === rhs.image
+    }
+}
+
+/// 사진 전체 크기의 편집 캔버스 한 벌. `photo`·`mask`·`image` 는 모두 같은 크기이며,
+/// `image` 는 `photo` 를 `mask` 로 오려낸 결과다. C-104 는 `photo` 를 배경 가이드로 깔고 `mask` 를 고쳐 쓴다.
+struct CutoutEditCanvas: Equatable, Sendable {
+    let photo: CGImage
+    let mask: CGImage
+    let image: CGImage
+
+    var pixelSize: CGSize {
+        CGSize(width: photo.width, height: photo.height)
     }
 
-    /// 추출 캔버스를 더 좁은 영역으로 다시 잘라낸 결과. 세 장을 같은 영역으로 함께 갈아 끼운다.
-    func replacingCanvas(image: CGImage, photo: CGImage, mask: CGImage) -> Self {
-        Self(candidateID: candidateID, image: image, photo: photo, mask: mask)
+    func replacingCutout(image: CGImage, mask: CGImage) -> Self {
+        Self(photo: photo, mask: mask, image: image)
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.candidateID == rhs.candidateID && lhs.image === rhs.image
+        lhs.image === rhs.image
     }
 }
 
