@@ -16,6 +16,7 @@ public struct GroupView: View {
     /// 캔버스(C-001)·설정(S-001)으로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
     private let router: any Router
     private let makeInviteCodeStore: () -> InviteCodeStore
+    private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
@@ -38,11 +39,13 @@ public struct GroupView: View {
         store: GroupStore,
         router: any Router,
         makeInviteCodeStore: @escaping () -> InviteCodeStore,
+        makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore,
         makeCreateGroupStore: @escaping () -> CreateGroupStore
     ) {
         _store = State(initialValue: store)
         self.router = router
         self.makeInviteCodeStore = makeInviteCodeStore
+        self.makeJoinGroupNicknameStore = makeJoinGroupNicknameStore
         self.makeCreateGroupStore = makeCreateGroupStore
     }
 
@@ -64,7 +67,10 @@ public struct GroupView: View {
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
             case .inviteCode:
-                InviteCodeView(store: makeInviteCodeStore())
+                InviteCodeView(
+                    store: makeInviteCodeStore(),
+                    makeJoinGroupNicknameStore: makeJoinGroupNicknameStore
+                )
             case .createGroup:
                 CreateGroupView(store: makeCreateGroupStore()) {
                     // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.

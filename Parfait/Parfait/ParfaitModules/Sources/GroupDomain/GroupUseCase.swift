@@ -17,8 +17,8 @@ public protocol GroupUseCase: Sendable {
     /// 만들어진 그룹은 돌려주지 않는다 — 생성 직후 화면이 목록으로 돌아가고 목록이 서버에서 다시 받아온다.
     func create(_ draft: GroupDraft) async throws
 
-    /// 초대코드로 그룹에 참여한다.
-    func join(inviteCode: String) async throws
+    /// 초대코드로 그룹에 참여하고, 참여한 그룹을 돌려준다.
+    func join(inviteCode: String) async throws -> JoinedGroup
 
     /// 사이드메뉴(S-101)가 그릴 그룹 상세를 가져온다.
     func fetchDetail(groupID: String) async throws -> GroupDetail
@@ -82,7 +82,7 @@ public struct GroupUseCaseImpl: GroupUseCase {
         try await groupRepository.create(draft)
     }
 
-    public func join(inviteCode: String) async throws {
+    public func join(inviteCode: String) async throws -> JoinedGroup {
         try await groupRepository.join(inviteCode: inviteCode)
     }
 

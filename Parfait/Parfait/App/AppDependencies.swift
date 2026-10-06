@@ -83,6 +83,10 @@ struct AppDependencies {
         InviteCodeStore(groupUseCase: makeGroupUseCase())
     }
 
+    func makeJoinGroupNicknameStore(group: JoinedGroup) -> JoinGroupNicknameStore {
+        JoinGroupNicknameStore(group: group, groupUseCase: makeGroupUseCase())
+    }
+
     func makeCreateGroupStore() -> CreateGroupStore {
         CreateGroupStore(groupUseCase: makeGroupUseCase(), memberUseCase: makeMemberUseCase())
     }

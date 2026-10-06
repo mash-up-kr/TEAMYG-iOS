@@ -18,10 +18,11 @@ struct PreviewGroupUseCase: GroupUseCase {
 
     func create(_ draft: GroupDraft) async throws {}
 
-    func join(inviteCode: String) async throws {
+    func join(inviteCode: String) async throws -> JoinedGroup {
         if let joinError {
             throw joinError
         }
+        return JoinedGroup(id: "preview-group", name: "그룹이름")
     }
 
     func fetchDetail(groupID: String) async throws -> GroupDetail {

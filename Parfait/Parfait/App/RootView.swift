@@ -91,6 +91,7 @@ struct RootView: View {
                 store: diContainer.makeGroupStore(),
                 router: router,
                 makeInviteCodeStore: diContainer.makeInviteCodeStore,
+                makeJoinGroupNicknameStore: diContainer.makeJoinGroupNicknameStore,
                 makeCreateGroupStore: diContainer.makeCreateGroupStore
             )
         case .setting:

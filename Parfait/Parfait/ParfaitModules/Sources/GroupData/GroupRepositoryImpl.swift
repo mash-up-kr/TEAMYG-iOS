@@ -17,11 +17,11 @@ public struct GroupRepositoryImpl: GroupRepository {
 
     /// 초대코드로 그룹 참여 (`POST /api/parfait-groups/join`).
     ///
-    /// 응답 본문(`groupId`·`groupName`)은 버린다 — 참여 직후 화면은 목록으로 돌아가고
-    /// 목록을 서버에서 다시 받아오므로 쓸 자리가 없다.
-    public func join(inviteCode: String) async throws {
+    /// 응답(`groupId`·`groupName`)은 참여 직후 그룹 속 닉네임을 정하는 화면이 쓴다.
+    public func join(inviteCode: String) async throws -> JoinedGroup {
         do {
-            let _: EmptyDTO = try await request(JoinGroupEndpoint(inviteCode: inviteCode))
+            let joinedGroup: JoinedGroupDTO = try await request(JoinGroupEndpoint(inviteCode: inviteCode))
+            return joinedGroup.toEntity()
         } catch is CancellationError {
             // 화면 이탈로 취소된 요청은 실패가 아니다 — Store 의 `catch is CancellationError` 로 보낸다.
             throw CancellationError()
