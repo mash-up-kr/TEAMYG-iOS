@@ -30,14 +30,16 @@ final class ToppingAddStore: MVIStore {
     @ObservationIgnored private lazy var objectExtractor: any ObjectExtracting = ObjectExtractor()
     @ObservationIgnored private lazy var borderRenderer = ToppingBorderRenderer()
     @ObservationIgnored private lazy var maskRenderer = ToppingMaskRenderer()
-    /// 브러시 스트로크를 얹기 전의 Vision 원본 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
+    /// 브러시 스트로크를 얹기 전의 편집 캔버스 마스크. 스트로크는 매번 여기서부터 다시 재생한다.
     private var baseMask: CGImage?
+    private var appliedStrokes: [ToppingBrushStroke] = []
     /// 분석 실패 화면(C-103-Error)의 "편집 없이 사용"·"직접 편집"이 되짚어 갈 마지막 분석 소스.
     private var lastAnalysisSource: PhotoAnalysisSource?
     private var analysisTask: Task<Void, Never>?
     private var extractorResetTask: Task<Void, Never>?
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
+    private var cutoutApplyTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasRefreshTask: Task<Void, Never>?
@@ -110,9 +112,8 @@ final class ToppingAddStore: MVIStore {
             // 초안(누끼·마스크·테두리)은 유지한 채 후보 선택으로만 돌아간다
             // (`canvas-policy.md` §5.4 "자동 누끼 초안을 유지한다").
             state.screen = .candidateSelection
-        case .photoEditTapped:
-            guard state.extractedTopping != nil else { break }
-            state.screen = .manualCutout
+        case .photoEditTapped, .borderAreaTabTapped:
+            openManualCutout()
         case .cutoutConfirmed:
             guard let extractedTopping = state.extractedTopping else { break }
             state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
@@ -139,9 +140,6 @@ final class ToppingAddStore: MVIStore {
             renderBorderSilhouette()
         case .borderEditClosed:
             closeBorderEdit()
-        case .borderAreaTabTapped:
-            guard state.extractedTopping != nil, state.cutoutPath.allowsAreaEdit else { break }
-            state.screen = .manualCutout
         case .borderConfirmed:
             guard let extractedTopping = state.extractedTopping else { break }
             state.placementEditor.prepare(toppingPixelSize: extractedTopping.pixelSize)
@@ -170,7 +168,7 @@ final class ToppingAddStore: MVIStore {
             // 포함 영역이 하나도 없으면 다음 단계로 못 간다 — 빈 토핑이 C-105·저장까지 흘러가는 것을 막는다.
             guard state.cutoutHasArea else { break }
             state.screen = .borderEdit
-            tightenCutout()
+            applyMaskEdits()
         case .placementCanvasResized(let canvasSize):
             updatePlacement { $0.resize(to: canvasSize) }
         case .placementTransformed(let transform):
@@ -208,6 +206,7 @@ final class ToppingAddStore: MVIStore {
             state.screen = .analysisError
         case .automatic, .recentUpload:
             state.screen = .cutoutResult
+            applyMaskEdits()
         }
     }
 
@@ -219,10 +218,13 @@ final class ToppingAddStore: MVIStore {
     private func releaseExtractedTopping() {
         borderRenderTask?.cancel()
         maskRenderTask?.cancel()
+        cutoutApplyTask?.cancel()
         baseMask = nil
+        appliedStrokes = []
         // 추출 태스크를 취소하고 새 흐름을 시작하는 모든 경로가 여길 지난다 — 오버레이가 남지 않게 정리.
         state.extractionState = .idle
         state.extractedTopping = nil
+        state.cutoutEditCanvas = nil
         state.cutoutHasArea = true
         state.borderSilhouette = nil
         state.borderEditor = ToppingBorderEditor()
@@ -293,12 +295,7 @@ final class ToppingAddStore: MVIStore {
             state.screen = .analysisError
             return
         }
-        state.extractedTopping = ExtractedTopping(
-            candidateID: Self.noCandidateID,
-            image: image,
-            photo: image,
-            mask: image
-        )
+        state.extractedTopping = ExtractedTopping(candidateID: Self.noCandidateID, image: image)
         state.cutoutPath = .recentUpload
         state.screen = .borderEdit
         renderBorderSilhouette()
@@ -387,10 +384,41 @@ private extension ToppingAddStore {
             do {
                 let topping = try await objectExtractor.extractTopping(candidateID: candidate.id)
                 guard let self, !Task.isCancelled else { return }
-                baseMask = topping.mask
                 state.extractedTopping = topping
                 state.extractionState = .idle
                 state.screen = .cutoutResult
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, !Task.isCancelled else { return }
+                state.extractionState = .idle
+                state.screen = .analysisError
+            }
+        }
+    }
+
+    func openManualCutout() {
+        guard let topping = state.extractedTopping,
+              state.cutoutPath.allowsAreaEdit,
+              state.extractionState == .idle
+        else { return }
+
+        guard state.cutoutEditCanvas == nil else {
+            state.screen = .manualCutout
+            return
+        }
+
+        analysisTask?.cancel()
+        state.extractionState = .extracting
+
+        analysisTask = Task { [weak self, objectExtractor] in
+            do {
+                let canvas = try await objectExtractor.makeEditCanvas(candidateID: topping.candidateID)
+                guard let self, !Task.isCancelled else { return }
+                baseMask = canvas.mask
+                state.cutoutEditCanvas = canvas
+                state.extractionState = .idle
+                state.screen = .manualCutout
             } catch is CancellationError {
                 return
             } catch {
@@ -404,7 +432,7 @@ private extension ToppingAddStore {
 
 /// C-103-Error 분석 실패 화면의 복구 동작 — 편집 없이 사용·직접 편집.
 private extension ToppingAddStore {
-    /// 분석 없이 원본 사진으로 누끼 캔버스를 만들어 다음 화면으로 간다.
+    /// 분석 없이 원본 사진으로 편집 캔버스를 만들어 다음 화면으로 간다.
     /// - "편집 없이 사용"(`includesWholePhoto == true`): 사진 전체를 토핑으로 삼아 곧장 C-106 배치로.
     /// - "직접 편집"(`false`): 전부 제외된 빈 마스크로 C-104 영역 편집부터 — 브러시도 "영역 채우기"로 맞춰 준다.
     func usePhotoWithoutAnalysis(includesWholePhoto: Bool) {
@@ -412,18 +440,19 @@ private extension ToppingAddStore {
         analysisTask?.cancel()
         state.analysis = nil
         resetToppingDraft()
-        // 누끼 캔버스 생성은 짧은 로컬 작업 — 실패 화면 위 오버레이로 보여준다.
+        // 편집 캔버스 생성은 짧은 로컬 작업 — 실패 화면 위 오버레이로 보여준다.
         state.extractionState = .extracting
 
         analysisTask = Task { [weak self, objectExtractor] in
             do {
-                let topping = try await objectExtractor.makeCutoutWithoutAnalysis(
+                let canvas = try await objectExtractor.makeCutoutWithoutAnalysis(
                     from: lastAnalysisSource,
-                    candidateID: Self.noCandidateID,
                     includesWholePhoto: includesWholePhoto
                 )
                 guard let self, !Task.isCancelled else { return }
-                baseMask = topping.mask
+                let topping = ExtractedTopping(candidateID: Self.noCandidateID, image: canvas.image)
+                baseMask = canvas.mask
+                state.cutoutEditCanvas = canvas
                 state.extractedTopping = topping
                 state.cutoutPath = .withoutAnalysis
                 state.extractionState = .idle
@@ -454,54 +483,47 @@ private extension ToppingAddStore {
 private extension ToppingAddStore {
     func renderMask() {
         maskRenderTask?.cancel()
-        guard let topping = state.extractedTopping, let baseMask else { return }
+        guard let canvas = state.cutoutEditCanvas, let baseMask else { return }
 
         let strokes = state.maskEditor.strokes
-        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
+        maskRenderTask = Task { [weak self, maskRenderer] in
             let cutout = await maskRenderer.cutout(
-                photo: topping.photo,
+                photo: canvas.photo,
                 baseMask: baseMask,
                 strokes: strokes
             )
             guard !Task.isCancelled, let self, let cutout else { return }
 
-            state.extractedTopping = topping.replacingCutout(image: cutout.image, mask: cutout.mask)
+            state.cutoutEditCanvas = canvas.replacingCutout(image: cutout.image, mask: cutout.mask)
             state.cutoutHasArea = cutout.hasArea
-            // 실루엣 캐시는 후보 ID 로만 구분한다 — 마스크가 바뀌면 통째로 버려야 한다.
-            await borderRenderer.reset()
         }
     }
 
-    /// C-104 를 빠져나갈 때 편집된 마스크에 맞춰 추출 캔버스를 다시 잘라낸다.
-    /// 진행 중인 마스크 렌더는 버리고 스트로크 목록에서 최종 결과를 한 번에 만든다.
-    func tightenCutout() {
-        maskRenderTask?.cancel()
-        guard state.maskEditor.hasEdits,
+    /// C-104 를 빠져나갈 때 편집된 마스크에 맞춰 편집 캔버스에서 토핑을 다시 잘라낸다.
+    func applyMaskEdits() {
+        cutoutApplyTask?.cancel()
+        let strokes = state.maskEditor.strokes
+        guard strokes != appliedStrokes,
               let topping = state.extractedTopping,
-              let editedBaseMask = baseMask
+              let canvas = state.cutoutEditCanvas,
+              let baseMask
         else {
             renderBorderSilhouette()
             return
         }
 
-        let strokes = state.maskEditor.strokes
-        maskRenderTask = Task { [weak self, maskRenderer, borderRenderer] in
-            let tightened = await maskRenderer.tightenedCutout(
-                photo: topping.photo,
-                baseMask: editedBaseMask,
+        cutoutApplyTask = Task { [weak self, maskRenderer, borderRenderer] in
+            let image = await maskRenderer.tightenedCutout(
+                photo: canvas.photo,
+                baseMask: baseMask,
                 strokes: strokes
             )
             guard !Task.isCancelled, let self else { return }
 
-            if let tightened {
-                baseMask = tightened.baseMask
-                state.maskEditor.translateStrokes(by: tightened.strokeOffset)
-                state.extractedTopping = topping.replacingCanvas(
-                    image: tightened.image,
-                    photo: tightened.photo,
-                    mask: tightened.mask
-                )
-                // 실루엣 캐시는 후보 ID 로만 구분한다 — 캔버스가 바뀌면 통째로 버려야 한다.
+            if let image {
+                appliedStrokes = strokes
+                state.extractedTopping = ExtractedTopping(candidateID: topping.candidateID, image: image)
+                // 실루엣 캐시는 후보 ID 로만 구분한다 — 토핑이 바뀌면 통째로 버려야 한다.
                 await borderRenderer.reset()
             }
             renderBorderSilhouette()

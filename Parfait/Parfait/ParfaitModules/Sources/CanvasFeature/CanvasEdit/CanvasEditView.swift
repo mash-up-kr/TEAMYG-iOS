@@ -94,7 +94,7 @@ struct CanvasEditView: View {
                     toasts.append(YGToastItem(kind: .warning, message: "내 토핑만 편집할 수 있어요"))
                 case .saveFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "편집 내용을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        YGToastItem(kind: .error, message: "편집 내용을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 }
             }

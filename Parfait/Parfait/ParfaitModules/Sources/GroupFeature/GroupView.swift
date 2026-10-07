@@ -16,6 +16,7 @@ public struct GroupView: View {
     /// 캔버스(C-001)·설정(S-001)으로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
     private let router: any Router
     private let makeInviteCodeStore: () -> InviteCodeStore
+    private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
@@ -38,11 +39,13 @@ public struct GroupView: View {
         store: GroupStore,
         router: any Router,
         makeInviteCodeStore: @escaping () -> InviteCodeStore,
+        makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore,
         makeCreateGroupStore: @escaping () -> CreateGroupStore
     ) {
         _store = State(initialValue: store)
         self.router = router
         self.makeInviteCodeStore = makeInviteCodeStore
+        self.makeJoinGroupNicknameStore = makeJoinGroupNicknameStore
         self.makeCreateGroupStore = makeCreateGroupStore
     }
 
@@ -64,7 +67,10 @@ public struct GroupView: View {
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
             case .inviteCode:
-                InviteCodeView(store: makeInviteCodeStore())
+                InviteCodeView(
+                    store: makeInviteCodeStore(),
+                    makeJoinGroupNicknameStore: makeJoinGroupNicknameStore
+                )
             case .createGroup:
                 CreateGroupView(store: makeCreateGroupStore()) {
                     // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.
@@ -201,43 +207,6 @@ public struct GroupView: View {
                 .padding(.trailing, Self.horizontalInset)
                 // 누른 칩에서 아래로 펼쳐지도록 위쪽을 붙잡는다.
                 .transition(.scale(scale: 0.9, anchor: .top).combined(with: .opacity))
-        }
-    }
-}
-
-// MARK: - Preview
-
-@MainActor
-private func previewGroupView(_ groups: [ParfaitGroup]?) -> some View {
-    let groupUseCase = PreviewGroupUseCase(groups: groups)
-    return NavigationStack {
-        GroupView(
-            store: GroupStore(groupUseCase: groupUseCase),
-            router: .preview,
-            makeInviteCodeStore: { InviteCodeStore(groupUseCase: groupUseCase) },
-            makeCreateGroupStore: { CreateGroupStore(groupUseCase: groupUseCase) }
-        )
-    }
-}
-
-#Preview("목록 5건") { previewGroupView(.previewSample) }
-#Preview("3건") { previewGroupView(Array([ParfaitGroup].previewSample.prefix(3))) }
-#Preview("0건 — 툴팁") { previewGroupView([]) }
-#Preview("조회 실패") { previewGroupView(nil) }
-
-private extension [ParfaitGroup] {
-    static var previewSample: [ParfaitGroup] {
-        let names = ["매시업", "잠탈감금", "팀와지", "helloworld", "산책애호가"]
-        let nametagTypes: [NametagType] = [.type9, .type3, .type1, .type11, .type5]
-        return names.indices.map { index in
-            ParfaitGroup(
-                id: "group-\(index)",
-                name: names[index],
-                thumbnailURL: nil,
-                thumbnailBorderColorHex: nil,
-                lastActivityAt: .now.addingTimeInterval(-180 * Double(index + 1)),
-                lastActorNametagType: nametagTypes[index]
-            )
         }
     }
 }

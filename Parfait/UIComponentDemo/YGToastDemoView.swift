@@ -26,7 +26,7 @@ struct YGToastDemoView: View {
                     fire(.warning, message: "내 토핑만 편집할 수 있어요")
                 }
                 Button("Error — 실패") {
-                    fire(.error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
+                    fire(.error, message: "갤러리 저장에 실패했어요, 나중에 다시 시도해 주세요")
                 }
                 Button("Success — 성공") {
                     fire(.success, message: "초대 코드를 복사했어요")

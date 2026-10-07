@@ -53,7 +53,7 @@ public struct CreateGroupView: View {
             Spacer(minLength: Self.sectionGap)
 
             YGButton("확인", variant: .large) {
-                store.send(.confirmTapped)
+                store.send(.createConfirmPopupVisibilityChanged(true))
             }
             .disabled(!store.state.isConfirmEnabled)
         }
@@ -95,6 +95,7 @@ public struct CreateGroupView: View {
             //           그때까지는 목록으로 되돌려 새 그룹이 늘어난 걸 보여준다.
             dismiss()
         }
+        .task { store.send(.screenAppeared) }
         .onDisappear { store.send(.screenDisappeared) }
     }
 
@@ -125,6 +126,10 @@ public struct CreateGroupView: View {
         )
         .onChange(of: nicknameInput) { _, _ in
             store.send(.nicknameChanged(nicknameInput))
+        }
+        .onChange(of: store.state.nickname) { _, nickname in
+            guard nicknameInput.prefix(NicknameValidator.maxLength) != nickname else { return }
+            nicknameInput = nickname
         }
     }
 
@@ -188,38 +193,5 @@ private extension String {
               (0xAC00...0xD7A3).contains(lastScalar) else { return "를" }
         // 한글 음절 = ((초성 × 21) + 중성) × 28 + 종성. 나머지가 0이면 받침 없음.
         return (lastScalar - 0xAC00) % 28 == 0 ? "를" : "을"
-    }
-}
-
-// MARK: - Preview
-
-#Preview("빈 입력") {
-    NavigationStack {
-        CreateGroupView(store: CreateGroupStore(groupUseCase: PreviewGroupUseCase()))
-    }
-}
-
-#Preview("입력 완료") {
-    NavigationStack {
-        CreateGroupView(store: {
-            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
-            store.send(.nameChanged("우와그룹명"))
-            store.send(.nicknameChanged("아니야나그런데기니야"))
-            store.send(.memberCountTapped(9))
-            return store
-        }())
-    }
-}
-
-#Preview("생성 확인 팝업") {
-    NavigationStack {
-        CreateGroupView(store: {
-            let store = CreateGroupStore(groupUseCase: PreviewGroupUseCase())
-            store.send(.nameChanged("그룹이름최대열글자"))
-            store.send(.nicknameChanged("아니야나그런데기니야"))
-            store.send(.memberCountTapped(9))
-            store.send(.confirmTapped)
-            return store
-        }())
     }
 }

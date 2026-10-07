@@ -12,14 +12,43 @@ import UIKit
 
 public struct InviteCodeView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.dismiss) private var dismiss
     @State private var store: InviteCodeStore
+    private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
 
-    public init(store: InviteCodeStore) {
+    public init(
+        store: InviteCodeStore,
+        makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore
+    ) {
         _store = State(initialValue: store)
+        self.makeJoinGroupNicknameStore = makeJoinGroupNicknameStore
     }
 
     public var body: some View {
+        Group {
+            if let joinedGroup = store.state.joinedGroup {
+                JoinGroupNicknameView(store: makeJoinGroupNicknameStore(joinedGroup))
+            } else {
+                inviteCodeEntry
+            }
+        }
+        // 진입 시(initial) + 코드 복사를 위해 앱을 나갔다 돌아왔을 때 클립보드를 읽어
+        // 입력창에 자동으로 채운다. 다른 앱에서 복사한 내용이면 시스템 붙여넣기
+        // 허용 알럿이 뜨고, 거부 시 nil 이라 아무 일도 없다. 검증은 Store 가 한다.
+        .onChange(of: scenePhase, initial: true) { _, newPhase in
+            guard newPhase == .active,
+                  store.state.inviteCode.isEmpty, // 입력 중인 내용을 덮어쓰지 않는다
+                  UIPasteboard.general.hasStrings,
+                  let pastedString = UIPasteboard.general.string
+            else { return }
+            store.send(.pasted(pastedString))
+        }
+        .onDisappear {
+            store.send(.screenDisappeared)
+        }
+        .ygTopBar(.detail(title: "그룹 참여하기"))
+    }
+
+    private var inviteCodeEntry: some View {
         VStack(spacing: 0) {
             Spacer().frame(height: 40)
             VStack(alignment: .leading, spacing: 0) {
@@ -55,40 +84,6 @@ public struct InviteCodeView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 20)
-        // 진입 시(initial) + 코드 복사를 위해 앱을 나갔다 돌아왔을 때 클립보드를 읽어
-        // 입력창에 자동으로 채운다. 다른 앱에서 복사한 내용이면 시스템 붙여넣기
-        // 허용 알럿이 뜨고, 거부 시 nil 이라 아무 일도 없다. 검증은 Store 가 한다.
-        .onChange(of: scenePhase, initial: true) { _, newPhase in
-            guard newPhase == .active,
-                  store.state.inviteCode.isEmpty, // 입력 중인 내용을 덮어쓰지 않는다
-                  UIPasteboard.general.hasStrings,
-                  let pastedString = UIPasteboard.general.string
-            else { return }
-            store.send(.pasted(pastedString))
-        }
-        .onDisappear {
-            store.send(.screenDisappeared)
-        }
-        .alert(
-            "그룹 참여 완료", // ponytail: 공용 알림 컴포넌트 확정 시 교체
-            isPresented: store.binding(
-                \.isSuccessAlertPresented,
-                InviteCodeStore.Intent.successAlertVisibilityChanged
-            )
-        ) {
-            // 기본 확인 버튼만 사용
-        } message: {
-            Text("초대코드로 그룹에 참여했어요")
-        }
-        // 성공 알럿의 확인을 눌러 알럿이 닫히면 참여 플로우가 끝난다.
-        // ponytail: 캔버스(C-001) 가 붙으면 목록 대신 참여한 그룹으로 이어져야 한다.
-        //           그때까지는 목록으로 되돌려 그룹이 늘어난 걸 보여준다 (그룹 만들기와 같은 처리).
-        .onChange(of: store.state.isSuccessAlertPresented) { wasPresented, isPresented in
-            if wasPresented, !isPresented {
-                dismiss()
-            }
-        }
-        .ygTopBar(.detail(title: "그룹 참여하기"))
     }
 
     // MARK: - 상단 안내
@@ -128,12 +123,18 @@ public struct InviteCodeView: View {
 
 #Preview("성공") {
     InviteCodeView(
-        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase())
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase()),
+        makeJoinGroupNicknameStore: {
+            JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
+        }
     )
 }
 
 #Preview("실패 - 최대 인원") {
     InviteCodeView(
-        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull))
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull)),
+        makeJoinGroupNicknameStore: {
+            JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
+        }
     )
 }

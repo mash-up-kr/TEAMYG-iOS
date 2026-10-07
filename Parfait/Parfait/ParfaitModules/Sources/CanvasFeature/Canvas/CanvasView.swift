@@ -89,23 +89,23 @@ public struct CanvasView: View {
                     )
                 case .gallerySaveFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요. 나중에 다시 시도해 주세요.")
+                        YGToastItem(kind: .error, message: "갤러리 저장에 실패했어요, 나중에 다시 시도해 주세요")
                     )
                 case .savePreviewRenderFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "저장할 이미지를 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        YGToastItem(kind: .error, message: "저장할 이미지를 만들지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 case .canvasNotReady:
                     toasts.append(
-                        YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        YGToastItem(kind: .warning, message: "캔버스를 아직 불러오지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 case .canvasEmpty:
                     toasts.append(
-                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요. 토핑을 올려 채워보세요.")
+                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요, 토핑을 올려 채워보세요")
                     )
                 case .canvasLoadFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "캔버스를 불러오지 못했어요. 아래로 당겨 새로고침해 주세요.")
+                        YGToastItem(kind: .error, message: "캔버스를 불러오지 못했어요, 아래로 당겨 새로고침해 주세요")
                     )
                 case .toppingSpotlighted(let spotlightToast):
                     // Spotlight 를 옮길 때마다 앞선 작성자 Toast 는 즉시 걷어낸다.

@@ -295,13 +295,13 @@ private extension CanvasStore {
         }
     }
 
-    /// 내 토핑은 C-305 로, 타인의 토핑은 Spotlight 로 간다 (`canvas-policy.md` §4.2).
+    /// 오늘 캔버스의 내 토핑은 C-305 로, 그 밖의 토핑은 Spotlight 로 간다 (`canvas-policy.md` §4.2).
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
         state.calendar.close()
         state.menuState = .collapsed
 
-        if topping.isMine {
+        if topping.isMine, !state.isClosedCanvas {
             guard state.parfaitID != nil else {
                 eventChannel.send(.canvasNotReady)
                 return

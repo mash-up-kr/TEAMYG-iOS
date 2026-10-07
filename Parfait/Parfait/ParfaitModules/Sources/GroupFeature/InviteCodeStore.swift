@@ -36,13 +36,11 @@ public final class InviteCodeStore: MVIStore {
             applyPastedString(pastedString)
         case .confirmTapped:
             beginJoinRequest()
-        case .joinSucceeded:
+        case .joinSucceeded(let joinedGroup):
             state.phase = .idle
-            state.isSuccessAlertPresented = true
+            state.joinedGroup = joinedGroup
         case .joinFailed(let joinError):
             state.phase = .failed(joinError)
-        case .successAlertVisibilityChanged(let isPresented):
-            state.isSuccessAlertPresented = isPresented
         case .screenDisappeared:
             joinTask?.cancel()
             joinTask = nil
@@ -90,8 +88,8 @@ public final class InviteCodeStore: MVIStore {
     /// 제출 시점의 코드를 파라미터로 받아, 통신 중 사용자가 입력을 바꿔도 실제로 보낸 코드와 어긋나지 않게 한다.
     private func requestJoin(inviteCode: String) async {
         do {
-            try await groupUseCase.join(inviteCode: inviteCode)
-            send(.joinSucceeded)
+            let joinedGroup = try await groupUseCase.join(inviteCode: inviteCode)
+            send(.joinSucceeded(joinedGroup))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
@@ -102,7 +100,7 @@ public final class InviteCodeStore: MVIStore {
     public struct State: Equatable {
         public var inviteCode = ""
         public var phase = Phase.idle
-        public var isSuccessAlertPresented = false
+        public var joinedGroup: JoinedGroup?
 
         public var isConfirmEnabled: Bool {
             phase != .loading && inviteCode.count == InviteCodeStore.inviteCodeLength
@@ -130,9 +128,8 @@ public final class InviteCodeStore: MVIStore {
         case pasted(String)
         case confirmTapped
         /// `requestJoin()` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.
-        case joinSucceeded
+        case joinSucceeded(JoinedGroup)
         case joinFailed(JoinGroupError)
-        case successAlertVisibilityChanged(Bool)
         case screenDisappeared
     }
 }

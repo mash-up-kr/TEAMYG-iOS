@@ -64,7 +64,7 @@ public extension CanvasStore {
         /// 아직 안내하지 않은 최근 마감 캔버스 날짜 — SY-001-New 안내 판단용.
         /// 안내한 날짜는 기기에 남겨 두고 응답을 받을 때 걸러서 채운다.
         public var lastClosedDate: CalendarDate?
-        /// C-202 Spotlight 로 강조된 타인의 토핑 (`canvas-policy.md` §4.2).
+        /// C-202 Spotlight 로 강조된 토핑 (`canvas-policy.md` §4.2).
         var spotlightedToppingID: Int?
         /// 다운로드가 끝난 토핑 이미지 — 캔버스의 토핑이 전부 모여야 로딩 딤(C-001-Loading)을 걷는다.
         var loadedToppingImageIDs: Set<Int> = []

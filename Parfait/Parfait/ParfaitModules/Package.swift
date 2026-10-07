@@ -38,7 +38,7 @@ let modules: [(name: String, dependencies: [String], resources: [Resource])] = [
 
     // 화면 단위(MVI). 피처끼리 import 금지.
     ("LoginFeature", ["AuthDomain", "Core", "UIComponent", "Routing", "Common"], []),
-    ("GroupFeature", ["GroupDomain", "Core", "UIComponent", "Routing", "Common"], []),
+    ("GroupFeature", ["GroupDomain", "MemberDomain", "Core", "UIComponent", "Routing", "Common"], []),
     ("CanvasFeature", ["CanvasDomain", "Core", "UIComponent", "Routing", "Common"], []),
     ("SettingFeature", ["MemberDomain", "AuthDomain", "Core", "UIComponent", "Routing", "Common"], []),
 ]

@@ -16,7 +16,7 @@ struct ToppingManualCutoutView: View {
     static let backgroundGuideOpacity: Double = 0.5
     static let selectionTintOpacity: Double = 0.5
 
-    let topping: ExtractedTopping
+    let canvas: CutoutEditCanvas
     let brush: ToppingBrush
     let canUndo: Bool
     let canRedo: Bool
@@ -79,16 +79,16 @@ struct ToppingManualCutoutView: View {
 
     private var viewport: some View {
         ZStack {
-            Image(decorative: topping.photo, scale: 1, orientation: .up)
+            Image(decorative: canvas.photo, scale: 1, orientation: .up)
                 .resizable()
                 .opacity(Self.backgroundGuideOpacity)
 
             ZStack {
-                Image(decorative: topping.image, scale: 1, orientation: .up)
+                Image(decorative: canvas.image, scale: 1, orientation: .up)
                     .resizable()
 
                 // 지금 누끼에 포함된 영역을 붉게 덮어 선택 상태를 보여 준다.
-                Image(decorative: topping.image, scale: 1, orientation: .up)
+                Image(decorative: canvas.image, scale: 1, orientation: .up)
                     .resizable()
                     .renderingMode(.template)
                     .foregroundStyle(Color.cherry500.opacity(Self.selectionTintOpacity))
@@ -117,7 +117,7 @@ struct ToppingManualCutoutView: View {
             )
         }
         .onGeometryChange(for: CGSize.self, of: { $0.size }, action: resizeViewport)
-        .onChange(of: ObjectIdentifier(topping.image)) { _, _ in
+        .onChange(of: ObjectIdentifier(canvas.image)) { _, _ in
             strokePoints = []
         }
     }
@@ -219,7 +219,7 @@ private extension ToppingManualCutoutView {
             width: max(viewportSize.width - ToppingMaskEditor.viewportMargin * 2, 0),
             height: max(viewportSize.height - ToppingMaskEditor.viewportMargin * 2, 0)
         )
-        let pixelSize = topping.pixelSize
+        let pixelSize = canvas.pixelSize
         guard available.width > 0, available.height > 0, pixelSize.width > 0, pixelSize.height > 0 else {
             return .zero
         }
@@ -245,13 +245,13 @@ private extension ToppingManualCutoutView {
 
     var pixelsPerPoint: CGFloat {
         guard displaySize.width > 0 else { return 1 }
-        return topping.pixelSize.width / displaySize.width
+        return canvas.pixelSize.width / displaySize.width
     }
 
     /// 브러시 굵기는 `scale 1.0` 화면 기준이라, 마스크에 닿는 크기는 확대해도 변하지 않는다.
     var brushMaskDiameter: Double {
         guard baseSize.width > 0 else { return brush.diameter }
-        return brush.diameter * Double(topping.pixelSize.width / baseSize.width)
+        return brush.diameter * Double(canvas.pixelSize.width / baseSize.width)
     }
 
     var brushScreenDiameter: CGFloat {

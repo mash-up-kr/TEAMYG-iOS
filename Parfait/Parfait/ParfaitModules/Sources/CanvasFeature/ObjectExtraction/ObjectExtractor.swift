@@ -18,14 +18,14 @@ import Vision
 protocol ObjectExtracting: Sendable {
     func analyze(_ source: PhotoAnalysisSource) async throws -> PhotoAnalysis
     func extractTopping(candidateID: Int) async throws -> ExtractedTopping
-    /// 분석 없이 원본 사진으로 누끼 캔버스를 만든다 — 분석 실패 화면(C-103-Error)의 두 경로.
+    func makeEditCanvas(candidateID: Int) async throws -> CutoutEditCanvas
+    /// 분석 없이 원본 사진으로 편집 캔버스를 만든다 — 분석 실패 화면(C-103-Error)의 두 경로.
     /// `includesWholePhoto` 가 true 면 사진 전체를 포함한 마스크("편집 없이 사용" → 곧장 배치),
     /// false 면 전부 제외된 빈 마스크("직접 편집" → 사용자가 C-104 에서 영역을 직접 채운다).
     func makeCutoutWithoutAnalysis(
         from source: PhotoAnalysisSource,
-        candidateID: Int,
         includesWholePhoto: Bool
-    ) async throws -> ExtractedTopping
+    ) async throws -> CutoutEditCanvas
     /// 분석 세션(원본 이미지·Vision 핸들러·마스크 관측)을 놓아준다. 누끼 흐름을 벗어날 때 호출한다.
     func reset() async
 }
@@ -56,19 +56,9 @@ actor ObjectExtractor: ObjectExtracting {
               cutoutRect.width >= 1, cutoutRect.height >= 1
         else { throw ObjectExtractionError.renderingFailed }
 
-        let maskBuffer: CVPixelBuffer
-        do {
-            maskBuffer = try session.observation.generateScaledMask(
-                for: IndexSet(integer: candidateID),
-                scaledToImageFrom: session.requestHandler
-            )
-        } catch {
-            throw ObjectExtractionError.renderingFailed
-        }
-
         let canvas = try renderExtractionCanvas(
             photo: session.photo.image,
-            maskBuffer: maskBuffer,
+            maskBuffer: scaledMaskBuffer(candidateID: candidateID, in: session),
             cutoutRect: cutoutRect,
             canvasRect: canvasRect
         )
@@ -80,19 +70,59 @@ actor ObjectExtractor: ObjectExtracting {
             throw ObjectExtractionError.renderingFailed
         }
 
-        return ExtractedTopping(
-            candidateID: candidateID,
-            image: cutout,
-            photo: canvas.photo,
-            mask: canvas.mask
+        return ExtractedTopping(candidateID: candidateID, image: cutout)
+    }
+
+    func makeEditCanvas(candidateID: Int) throws -> CutoutEditCanvas {
+        guard let session else { throw ObjectExtractionError.analysisFailed }
+        let photo = session.photo.image
+        let source = CIImage(cgImage: photo)
+        let scaledMask = try Self.scaledMask(
+            from: scaledMaskBuffer(candidateID: candidateID, in: session),
+            toMatch: source
+        )
+        guard let maskImage = renderContext.createCGImage(scaledMask, from: source.extent),
+              let mask = ToppingCutoutCompositor.drawCanvas(
+                  maskImage,
+                  in: CGRect(origin: .zero, size: session.photo.pixelSize),
+                  canvasSize: session.photo.pixelSize,
+                  isMask: true
+              ),
+              let image = ToppingCutoutCompositor.composite(photo: photo, mask: mask, context: renderContext)
+        else { throw ObjectExtractionError.renderingFailed }
+
+        return CutoutEditCanvas(photo: photo, mask: mask, image: image)
+    }
+
+    private func scaledMaskBuffer(candidateID: Int, in session: AnalysisSession) throws -> CVPixelBuffer {
+        do {
+            return try session.observation.generateScaledMask(
+                for: IndexSet(integer: candidateID),
+                scaledToImageFrom: session.requestHandler
+            )
+        } catch {
+            throw ObjectExtractionError.renderingFailed
+        }
+    }
+
+    private static func scaledMask(from maskBuffer: CVPixelBuffer, toMatch source: CIImage) throws -> CIImage {
+        let mask = CIImage(cvPixelBuffer: maskBuffer)
+        guard mask.extent.width > 0, mask.extent.height > 0 else {
+            throw ObjectExtractionError.renderingFailed
+        }
+
+        return mask.transformed(
+            by: CGAffineTransform(
+                scaleX: source.extent.width / mask.extent.width,
+                y: source.extent.height / mask.extent.height
+            )
         )
     }
 
     func makeCutoutWithoutAnalysis(
         from source: PhotoAnalysisSource,
-        candidateID: Int,
         includesWholePhoto: Bool
-    ) async throws -> ExtractedTopping {
+    ) async throws -> CutoutEditCanvas {
         let photo = try await normalizedPhoto(from: source)
         let canvas = photo.image.downscaled(longEdge: ObjectExtractionPolicy.extractionCanvasLongEdge)
         let maskGray: CGFloat = includesWholePhoto ? 1 : 0
@@ -100,7 +130,7 @@ actor ObjectExtractor: ObjectExtracting {
               let image = ToppingCutoutCompositor.composite(photo: canvas, mask: mask, context: renderContext)
         else { throw ObjectExtractionError.renderingFailed }
 
-        return ExtractedTopping(candidateID: candidateID, image: image, photo: canvas, mask: mask)
+        return CutoutEditCanvas(photo: canvas, mask: mask, image: image)
     }
 
     /// 한 값으로 채운 그레이스케일 마스크 — `ToppingMaskRenderer` 가 쓰는 마스크와 같은 포맷.
@@ -193,17 +223,7 @@ actor ObjectExtractor: ObjectExtracting {
         canvasRect: CGRect
     ) throws -> (photo: CGImage, mask: CGImage) {
         let source = CIImage(cgImage: photo)
-        let mask = CIImage(cvPixelBuffer: maskBuffer)
-        guard mask.extent.width > 0, mask.extent.height > 0 else {
-            throw ObjectExtractionError.renderingFailed
-        }
-
-        let scaledMask = mask.transformed(
-            by: CGAffineTransform(
-                scaleX: source.extent.width / mask.extent.width,
-                y: source.extent.height / mask.extent.height
-            )
-        )
+        let scaledMask = try Self.scaledMask(from: maskBuffer, toMatch: source)
 
         // Core Image 는 요청한 영역만 렌더한다 — 원본 전체 크기 비트맵을 만들지 않도록 잘라낼 영역만 넘긴다.
         // `cutoutRect` 는 좌상단 원점, CIImage 는 좌하단 원점이라 y 를 뒤집어 맞춘다.

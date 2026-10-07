@@ -19,6 +19,7 @@ extension ToppingAddStore {
         var galleryAssetIdentifier: String?
         var analysis: PhotoAnalysis?
         var extractedTopping: ExtractedTopping?
+        var cutoutEditCanvas: CutoutEditCanvas?
         var borderEditor = ToppingBorderEditor()
         var borderSilhouette: BorderSilhouette?
         var borderPreviewLongEdge: CGFloat = 0

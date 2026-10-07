@@ -52,7 +52,7 @@ struct ToppingAddFlowView: View {
                 switch event {
                 case .saveFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.")
+                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 }
             }
@@ -198,9 +198,9 @@ struct ToppingAddFlowView: View {
             }
 
         case .manualCutout:
-            if let extractedTopping = store.state.extractedTopping {
+            if let cutoutEditCanvas = store.state.cutoutEditCanvas {
                 ToppingManualCutoutView(
-                    topping: extractedTopping,
+                    canvas: cutoutEditCanvas,
                     brush: store.state.maskEditor.brush,
                     canUndo: store.state.maskEditor.canUndo,
                     canRedo: store.state.maskEditor.canRedo,
