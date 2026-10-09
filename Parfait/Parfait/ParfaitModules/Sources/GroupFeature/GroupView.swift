@@ -18,6 +18,7 @@ public struct GroupView: View {
     private let makeInviteCodeStore: () -> InviteCodeStore
     private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
+    @Environment(\.scenePhase) private var scenePhase
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
     private static let topBarHeight: CGFloat = 60
@@ -34,6 +35,8 @@ public struct GroupView: View {
     /// 조회 실패 안내 문구의 y (디자인 프레임 220 − 상단 바 아래 108).
     private static let loadFailureMessageY: CGFloat = 112
     private static let overlayAnimation = Animation.snappy(duration: 0.24)
+    private static let emptyGuideDismissAnimation = Animation.easeOut(duration: 0.3)
+    private static let tooltipRevealAnimation = Animation.interpolatingSpring(mass: 1, stiffness: 80, damping: 20)
 
     public init(
         store: GroupStore,
@@ -53,14 +56,17 @@ public struct GroupView: View {
         // 레이어 순서는 G-002 시안 그대로: 콘텐츠 → 상단 바 → 딤 → 칩 사본 → 드롭다운.
         // 딤이 바까지 덮어야 바 배경이 시안처럼 어두워지고, 바 영역 탭으로도 메뉴가 닫힌다.
         // 상단 바는 `ygTopBar`(VStack 쌓기) 대신 오버레이로 띄운다 — 그래야 파르페가 반투명 바 밑으로 지나간다.
-        // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타날 때 애니메이션이 걸린다.
+        // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타나고 사라질 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
             topBar
             tooltip
             addGroupMenu
         }
-        .animation(Self.overlayAnimation, value: store.state.isTooltipVisible)
+        .animation(
+            store.state.emptyGuide == .dismissed ? Self.emptyGuideDismissAnimation : nil,
+            value: store.state.isEmptyGuidePresented
+        )
         .animation(Self.overlayAnimation, value: store.state.isAddGroupMenuPresented)
         .background(background)
         .ygLoading(store.state.phase == .idle || store.state.phase == .loading)
@@ -78,6 +84,11 @@ public struct GroupView: View {
             }
         }
         .task { store.send(.screenAppeared) }
+        .onChange(of: scenePhase) { _, newScenePhase in
+            if newScenePhase == .background {
+                store.send(.enteredBackground)
+            }
+        }
         .onDisappear { store.send(.screenDisappeared) }
     }
 
@@ -98,7 +109,7 @@ public struct GroupView: View {
     /// `YGTopBar` 는 60pt 짜리 바만 그리고 기기별 안전영역은 모른다.
     private var topBar: some View {
         YGTopBar(
-            .default,
+            .default(groupCount: store.state.groupCount),
             onLeadingTap: { router.push(.setting) },
             onNewGroupTap: { store.send(.addGroupTapped) }
         )
@@ -126,25 +137,39 @@ public struct GroupView: View {
             ParfaitSceneView(groups: groups, scale: scale) { group in
                 router.push(.canvas(groupID: group.id))
             }
+            if store.state.isEmptyGuidePresented {
+                DummyToppingsView(
+                    revealedCount: store.state.revealedDummyGroupCount,
+                    isSettled: store.state.emptyGuide == .completed,
+                    scale: scale
+                )
+                .transition(.opacity)
+            }
         }
-        // 툴팁은 바깥 아무 데나 눌러 닫는다 — 툴팁 자신은 위에 떠 있어 이 제스처를 가린다.
+        // 0건 안내는 화면 아무 데나 눌러 닫는다 — 툴팁은 탭을 통과시켜 이 제스처가 받는다.
         .simultaneousGesture(
             TapGesture().onEnded { store.send(.backgroundTapped) },
-            isEnabled: store.state.isTooltipVisible
+            isEnabled: store.state.isEmptyGuidePresented
         )
     }
 
-    // MARK: - 0건 툴팁 (G-001-Empty)
+    // MARK: - 0건 안내 툴팁 (G-001-Empty)
 
     /// 상단 바 바로 아래에 고정. 꼬리가 그룹 추가 칩을 가리키므로 스크롤을 따라가지 않는다.
     @ViewBuilder
     private var tooltip: some View {
-        if store.state.isTooltipVisible {
+        if store.state.isEmptyGuidePresented {
+            let isRevealed = store.state.isEmptyGuideTooltipRevealed
             GroupTooltipView()
+                .opacity(isRevealed ? 1 : 0)
+                .animation(
+                    isRevealed && store.state.emptyGuide != .completed ? Self.tooltipRevealAnimation : nil,
+                    value: isRevealed
+                )
                 .padding(.top, Self.topBarHeight)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                // 가리키는 칩 쪽을 붙잡고 펼쳐지도록 우상단을 기준으로.
-                .transition(.scale(scale: 0.94, anchor: .topTrailing).combined(with: .opacity))
+                .allowsHitTesting(false)
+                .transition(.opacity)
         }
     }
 

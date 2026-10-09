@@ -8,9 +8,9 @@
 import SwiftUI
 import UIComponent
 
-/// 그룹이 0건일 때 "그룹 추가하기" 버튼을 가리키는 온보딩 툴팁 (G-001-Empty).
+/// 그룹이 0건일 때 "그룹 추가하기" 버튼을 가리키는 온보딩 툴팁 (G-001-Empty). 더미 그룹이 다 나온 뒤에 뜬다.
 ///
-/// 최초 1회 플래그를 두지 않는다 — 0건이면 진입할 때마다 다시 뜬다. 닫기는 툴팁 밖 탭.
+/// 최초 1회 플래그를 두지 않는다 — 0건이면 진입할 때마다 다시 뜬다. 닫기는 재생이 끝난 뒤의 화면 탭.
 struct GroupTooltipView: View {
     /// 말풍선 오른쪽 끝에서 꼬리 중앙까지 — 상단 바의 그룹 추가 칩을 가리키는 자리.
     private static let pointerInsetFromTrailing: CGFloat = 54.35
@@ -31,7 +31,7 @@ struct GroupTooltipView: View {
                     pointerInsetFromTrailing: Self.pointerInsetFromTrailing
                 )
                 .fill(.whiteFixed)
-                .stroke(.melon500, lineWidth: 1.25)
+                .stroke(.soda500, lineWidth: 1.25)
             }
             .padding(.leading, Self.leadingInset)
             .padding(.trailing, Self.trailingInset)
@@ -40,14 +40,15 @@ struct GroupTooltipView: View {
     private var message: some View {
         VStack(spacing: 0) {
             line {
-                Text("여기를 눌러 ")
                 emphasis("새 그룹")
-                Text("을 만들거나,")
+                Text("을 만들거나 ")
+                emphasis("그룹에 참여")
+                Text("하면")
             }
             line {
-                Text("친구에게 받은 초대코드로 ")
-                emphasis("그룹에 참여")
-                Text("해 보세요.")
+                Text("내 그룹 목록을 ")
+                emphasis("파르페")
+                Text("로 쌓을 수 있어요.")
             }
         }
         .foregroundStyle(.blackFixed)
@@ -61,7 +62,7 @@ struct GroupTooltipView: View {
     private func emphasis(_ text: String) -> some View {
         Text(text)
             .suit(.body02Bold)
-            .foregroundStyle(.melon500)
+            .foregroundStyle(.soda500)
     }
 }
 
