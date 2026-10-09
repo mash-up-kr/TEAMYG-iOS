@@ -64,7 +64,7 @@ public final class AlbumPickerStore: MVIStore {
             )
         case let .recentUploadTapped(upload, _):
             onRecentUploadConfirmed?(upload)
-        case .confirmReselectTapped:
+        case .confirmReselectTapped, .selectionReset:
             state.selectedPhoto = nil
         case .confirmNextTapped:
             guard let asset = state.selectedPhoto?.asset else { return }
@@ -178,6 +178,7 @@ public final class AlbumPickerStore: MVIStore {
         case photoTapped(PHAsset, thumbnail: UIImage?)
         case recentUploadTapped(StoredImage, thumbnail: UIImage?)
         case confirmReselectTapped
+        case selectionReset
         case confirmNextTapped
     }
 

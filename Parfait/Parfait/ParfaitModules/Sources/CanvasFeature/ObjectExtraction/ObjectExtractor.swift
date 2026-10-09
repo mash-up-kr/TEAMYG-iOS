@@ -19,13 +19,9 @@ protocol ObjectExtracting: Sendable {
     func analyze(_ source: PhotoAnalysisSource) async throws -> PhotoAnalysis
     func extractTopping(candidateID: Int) async throws -> ExtractedTopping
     func makeEditCanvas(candidateID: Int) async throws -> CutoutEditCanvas
-    /// 분석 없이 원본 사진으로 편집 캔버스를 만든다 — 분석 실패 화면(C-103-Error)의 두 경로.
-    /// `includesWholePhoto` 가 true 면 사진 전체를 포함한 마스크("편집 없이 사용" → 곧장 배치),
-    /// false 면 전부 제외된 빈 마스크("직접 편집" → 사용자가 C-104 에서 영역을 직접 채운다).
-    func makeCutoutWithoutAnalysis(
-        from source: PhotoAnalysisSource,
-        includesWholePhoto: Bool
-    ) async throws -> CutoutEditCanvas
+    /// 분석 없이 원본 사진으로 편집 캔버스를 만든다 — 대상 감지에 실패했을 때 쓴다.
+    /// 마스크는 전부 제외된 상태라 사용자가 C-104 에서 영역을 직접 채운다.
+    func makeCutoutWithoutAnalysis(from source: PhotoAnalysisSource) async throws -> CutoutEditCanvas
     /// 분석 세션(원본 이미지·Vision 핸들러·마스크 관측)을 놓아준다. 누끼 흐름을 벗어날 때 호출한다.
     func reset() async
 }
@@ -119,23 +115,18 @@ actor ObjectExtractor: ObjectExtracting {
         )
     }
 
-    func makeCutoutWithoutAnalysis(
-        from source: PhotoAnalysisSource,
-        includesWholePhoto: Bool
-    ) async throws -> CutoutEditCanvas {
+    func makeCutoutWithoutAnalysis(from source: PhotoAnalysisSource) async throws -> CutoutEditCanvas {
         let photo = try await normalizedPhoto(from: source)
         let canvas = photo.image.downscaled(longEdge: ObjectExtractionPolicy.extractionCanvasLongEdge)
-        let maskGray: CGFloat = includesWholePhoto ? 1 : 0
-        guard let mask = Self.makeUniformMask(width: canvas.width, height: canvas.height, gray: maskGray),
+        guard let mask = Self.makeEmptyMask(width: canvas.width, height: canvas.height),
               let image = ToppingCutoutCompositor.composite(photo: canvas, mask: mask, context: renderContext)
         else { throw ObjectExtractionError.renderingFailed }
 
         return CutoutEditCanvas(photo: canvas, mask: mask, image: image)
     }
 
-    /// 한 값으로 채운 그레이스케일 마스크 — `ToppingMaskRenderer` 가 쓰는 마스크와 같은 포맷.
-    /// `gray` 0 은 전부 제외(검정), 1 은 전부 포함(흰색).
-    private static func makeUniformMask(width: Int, height: Int, gray: CGFloat) -> CGImage? {
+    /// 전부 제외(검정)로 채운 그레이스케일 마스크 — `ToppingMaskRenderer` 가 쓰는 마스크와 같은 포맷.
+    private static func makeEmptyMask(width: Int, height: Int) -> CGImage? {
         guard let context = CGContext(
             data: nil,
             width: width,
@@ -146,7 +137,7 @@ actor ObjectExtractor: ObjectExtracting {
             bitmapInfo: CGImageAlphaInfo.none.rawValue
         ) else { return nil }
 
-        context.setFillColor(gray: gray, alpha: 1)
+        context.setFillColor(gray: 0, alpha: 1)
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()
     }

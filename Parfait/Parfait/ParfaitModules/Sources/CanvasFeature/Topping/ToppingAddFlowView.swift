@@ -5,26 +5,25 @@
 //  Created by 박서연 on 8/9/26.
 //
 
-import CanvasDomain
 import SwiftUI
 import UIComponent
 
 struct ToppingAddFlowView: View {
     @State private var store: ToppingAddStore
     @State private var toasts: [YGToastItem] = []
+    @State private var areaSelectionToasts: [YGToastItem] = []
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
 
-    private let makeAlbumPickerStore: AlbumPickerStoreFactory
+    private static let quitPopupDescription = "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?"
+
     private let toppingRenderer: CanvasToppingRenderer
 
     init(
         store: ToppingAddStore,
-        makeAlbumPickerStore: @escaping AlbumPickerStoreFactory,
         toppingRenderer: CanvasToppingRenderer
     ) {
         _store = State(initialValue: store)
-        self.makeAlbumPickerStore = makeAlbumPickerStore
         self.toppingRenderer = toppingRenderer
     }
 
@@ -46,6 +45,26 @@ struct ToppingAddFlowView: View {
         }
         // 후보 추출·빈 누끼 생성 같은 짧은 작업은 전용 로딩 화면 대신 현재 화면 위 오버레이로.
         .ygLoading(store.state.extractionState == .extracting)
+        .ygPopup(
+            isPresented: store.binding(\.isAddPhotoQuitPopupPresented) {
+                .quitPopupVisibilityChanged(.addPhoto, $0)
+            },
+            title: ToppingAddStore.QuitConfirmation.addPhoto.title,
+            description: Self.quitPopupDescription,
+            secondaryTitle: "그만두기",
+            primaryTitle: ToppingAddStore.QuitConfirmation.addPhoto.continueTitle,
+            secondaryAction: { store.send(.quitConfirmed(.addPhoto)) }
+        )
+        .ygPopup(
+            isPresented: store.binding(\.isEditPhotoQuitPopupPresented) {
+                .quitPopupVisibilityChanged(.editPhoto, $0)
+            },
+            title: ToppingAddStore.QuitConfirmation.editPhoto.title,
+            description: Self.quitPopupDescription,
+            secondaryTitle: "그만두기",
+            primaryTitle: ToppingAddStore.QuitConfirmation.editPhoto.continueTitle,
+            secondaryAction: { store.send(.quitConfirmed(.editPhoto)) }
+        )
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {
@@ -54,6 +73,16 @@ struct ToppingAddFlowView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
+                case .detectionFailed:
+                    areaSelectionToasts = [
+                        YGToastItem(kind: .warning, message: "대상 감지에 실패했어요, 영역을 직접 선택해 주세요")
+                    ]
+                case .photoUnavailable:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "사진을 불러오지 못했어요, 다시 시도해 주세요")
+                    )
+                case .dismissRequested:
+                    dismiss()
                 }
             }
         }
@@ -100,7 +129,8 @@ struct ToppingAddFlowView: View {
                     isRetakeEnabled: store.cameraState.isRetakeEnabled,
                     isNextEnabled: store.cameraState.hasCapture,
                     onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) }
+                    onNextTap: { store.send(.photoConfirmed) },
+                    onCloseTap: { store.send(.closeTapped) }
                 )
             }
 
@@ -125,22 +155,12 @@ struct ToppingAddFlowView: View {
         }
     }
 
-    /// 일반 사진은 확인 화면(C-102-Confirm)을 거치고, 최근 업로드 누끼는 곧장 테두리 편집으로 간다.
-    private func albumPickerStore(isLimited: Bool) -> AlbumPickerStore {
-        makeAlbumPickerStore(isLimited, true, confirmGalleryPhoto, confirmRecentUpload)
-    }
-
-    private func confirmGalleryPhoto(_ assetIdentifier: String) {
-        store.send(.galleryPhotoConfirmed(assetIdentifier: assetIdentifier))
-    }
-
-    private func confirmRecentUpload(_ upload: StoredImage) {
-        store.send(.recentUploadConfirmed(upload))
-    }
-
     private var galleryFlow: some View {
         ZStack {
-            AlbumView(makeAlbumPickerStore: albumPickerStore(isLimited:))
+            AlbumView(
+                makeAlbumPickerStore: { store.albumPickerStore(isLimited: $0) },
+                onCloseTap: { store.send(.closeTapped) }
+            )
 
             if store.state.screen.isAnalysisScreen {
                 analysisFlow
@@ -153,29 +173,8 @@ struct ToppingAddFlowView: View {
         switch store.state.screen {
         case .analysisLoading:
             ToppingAnalysisLoadingView(
-                onCancelTap: {
-                    store.send(.analysisCancelled)
-                    dismiss()
-                }
+                onCancelTap: { store.send(.analysisCancelled) }
             )
-
-        case .analysisError:
-            ZStack {
-                Color.whiteFixed
-                    .ignoresSafeArea()
-
-                YGErrorView(
-                    title: "사진 편집에 실패했어요",
-                    message: "편집 없이 사용하거나 직접 편집할 수 있어요",
-                    buttonTitle: "편집 없이 사용",
-                    action: { store.send(.useWithoutEditTapped) },
-                    secondaryButtonTitle: "직접 편집",
-                    secondaryAction: { store.send(.manualEditTapped) }
-                )
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                YGFloatingBar(.close, onClose: { store.send(.analysisErrorClosed) })
-            }
 
         case .candidateSelection:
             if let analysis = store.state.analysis {
@@ -183,23 +182,14 @@ struct ToppingAddFlowView: View {
                     photo: analysis.photo,
                     candidates: analysis.candidates,
                     onBackTap: { store.send(.candidateSelectionBackTapped) },
+                    onCloseTap: { store.send(.closeTapped) },
                     onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) }
                 )
             }
 
-        case .cutoutResult:
-            if let extractedTopping = store.state.extractedTopping {
-                ToppingCutoutResultView(
-                    topping: extractedTopping,
-                    onCloseTap: { store.send(.cutoutResultClosed) },
-                    onPhotoEditTap: { store.send(.photoEditTapped) },
-                    onNextTap: { store.send(.cutoutConfirmed) }
-                )
-            }
-
-        case .manualCutout:
+        case .areaSelection:
             if let cutoutEditCanvas = store.state.cutoutEditCanvas {
-                ToppingManualCutoutView(
+                ToppingAreaSelectionView(
                     canvas: cutoutEditCanvas,
                     brush: store.state.maskEditor.brush,
                     canUndo: store.state.maskEditor.canUndo,
@@ -209,46 +199,32 @@ struct ToppingAddFlowView: View {
                     onBrushModeSelect: { store.send(.brushModeSelected($0)) },
                     onBrushDiameterChange: { store.send(.brushDiameterChanged($0)) },
                     onStrokeEnd: { store.send(.brushStrokeEnded($0)) },
-                    onCloseTap: { store.send(.manualCutoutClosed) },
-                    onConfirmTap: { store.send(.manualCutoutConfirmed) }
-                )
-            }
-
-        case .borderEdit:
-            if let extractedTopping = store.state.extractedTopping {
-                ToppingBorderEditView(
-                    topping: extractedTopping.image,
-                    silhouette: store.state.borderSilhouette?.image,
-                    border: store.state.borderEditor.border,
-                    canUndo: store.state.borderEditor.canUndo,
-                    canRedo: store.state.borderEditor.canRedo,
-                    onUndoTap: { store.send(.borderUndoTapped) },
-                    onRedoTap: { store.send(.borderRedoTapped) },
-                    onWidthChange: { store.send(.borderWidthChanged($0)) },
-                    onWidthEditingChange: { store.send(.borderWidthEditingChanged($0)) },
-                    onColorSelect: { store.send(.borderColorSelected($0)) },
-                    onPreviewLongEdgeChange: { store.send(.borderPreviewLongEdgeChanged($0)) },
-                    placementScale: nil,
-                    showsAreaTab: store.state.cutoutPath.allowsAreaEdit,
-                    onAreaTabTap: { store.send(.borderAreaTabTapped) },
-                    onCloseTap: { store.send(.borderEditClosed) },
-                    onConfirmTap: { store.send(.borderConfirmed) }
+                    isNextEnabled: store.state.cutoutHasArea,
+                    onBackTap: { store.send(.areaSelectionBackTapped) },
+                    onCloseTap: { store.send(.closeTapped) },
+                    onNextTap: { store.send(.areaSelectionConfirmed) },
+                    toasts: $areaSelectionToasts
                 )
             }
 
         case .placement:
             if let extractedTopping = store.state.extractedTopping {
-                ToppingPlacementView(
+                ToppingPlacementBorderView(
                     canvasContent: store.state.canvasContent,
                     topping: extractedTopping,
                     silhouette: store.state.borderSilhouette?.image,
-                    borderColor: store.state.borderEditor.border.color.strokeColor,
-                    borderWidth: CGFloat(store.state.borderEditor.border.width),
+                    border: store.state.border,
                     editor: store.state.placementEditor,
+                    isBorderPanelExpanded: store.state.isBorderPanelExpanded,
                     isSaving: store.state.saveState == .saving,
                     onCanvasResize: { store.send(.placementCanvasResized($0)) },
                     onTransform: { store.send(.placementTransformed($0)) },
-                    onCloseTap: { store.send(.placementClosed) },
+                    onBorderWidthChange: { store.send(.borderWidthChanged($0)) },
+                    onBorderColorSelect: { store.send(.borderColorSelected($0)) },
+                    onBorderPanelExpandTap: { store.send(.borderPanelExpandTapped) },
+                    onBorderPanelClose: { store.send(.borderPanelClosed) },
+                    onBackTap: { store.send(.placementBackTapped) },
+                    onCloseTap: { store.send(.closeTapped) },
                     onConfirmTap: { store.send(.placementConfirmed) }
                 )
             }

@@ -13,6 +13,7 @@ struct ToppingCandidateSelectionView: View {
     let photo: NormalizedPhoto
     let candidates: [ExtractionCandidate]
     let onBackTap: () -> Void
+    let onCloseTap: () -> Void
     let onCandidateTap: (CGPoint) -> Void
 
     @Environment(\.displayScale) private var displayScale
@@ -41,7 +42,7 @@ struct ToppingCandidateSelectionView: View {
                 .padding(.vertical, .padding6)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            backBar
+            YGFloatingBar(.backClose, onBack: onBackTap, onClose: onCloseTap)
         }
         // 분석용 원본은 화면보다 훨씬 커서 그대로 그리면 그 크기의 백킹 스토어를 잡는다.
         .task(id: displayLongEdge) {
@@ -72,16 +73,6 @@ struct ToppingCandidateSelectionView: View {
         let downscaledImage = image.downscaled(longEdge: longEdge)
         try Task.checkCancellation()
         return downscaledImage
-    }
-
-    private var backBar: some View {
-        HStack(spacing: 0) {
-            YGCircleButton(.icCaretLeft, variant: .default, action: onBackTap)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, .padding7)
-        .padding(.top, .padding6)
     }
 
     private var guideBanner: some View {

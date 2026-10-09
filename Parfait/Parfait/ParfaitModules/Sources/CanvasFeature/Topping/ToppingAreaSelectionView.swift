@@ -1,16 +1,15 @@
 //
-//  ToppingManualCutoutView.swift
+//  ToppingAreaSelectionView.swift
 //  CanvasFeature
 //
-//  Created by 박서연 on 8/23/26.
+//  Created by 박서연 on 10/9/26.
 //
 
 import CoreGraphics
 import SwiftUI
 import UIComponent
 
-struct ToppingManualCutoutView: View {
-    static let historyBarInset: CGFloat = 18
+struct ToppingAreaSelectionView: View {
     static let modeButtonHeight: CGFloat = 40
     static let modeIconLength: CGFloat = 24
     static let backgroundGuideOpacity: Double = 0.5
@@ -25,8 +24,11 @@ struct ToppingManualCutoutView: View {
     let onBrushModeSelect: (ToppingBrushMode) -> Void
     let onBrushDiameterChange: (Double) -> Void
     let onStrokeEnd: (ToppingBrushStroke) -> Void
+    let isNextEnabled: Bool
+    let onBackTap: () -> Void
     let onCloseTap: () -> Void
-    let onConfirmTap: () -> Void
+    let onNextTap: () -> Void
+    @Binding var toasts: [YGToastItem]
 
     @State private var viewportSize: CGSize = .zero
     @State private var scale: CGFloat = ToppingMaskEditor.minimumScale
@@ -42,39 +44,19 @@ struct ToppingManualCutoutView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                historyBar
                 viewport
+                    .ygToastOverlay($toasts)
+                    .padding(.top, .padding3)
                 editArea
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .safeAreaInset(edge: .top, spacing: 0) {
             YGFloatingBar(
-                .editTab(tabs: ["영역", "테두리"], selection: tabSelection),
-                onClose: onCloseTap,
-                onConfirm: onConfirmTap
+                .backTitleClose("대상 영역 선택"),
+                onBack: onBackTap,
+                onClose: onCloseTap
             )
         }
-    }
-
-    private var tabSelection: Binding<Int> {
-        Binding(
-            get: { 0 },
-            set: { newTab in
-                guard newTab == 1 else { return }
-                onConfirmTap()
-            }
-        )
-    }
-
-    private var historyBar: some View {
-        ToppingHistoryBar(
-            canUndo: canUndo,
-            canRedo: canRedo,
-            onUndoTap: onUndoTap,
-            onRedoTap: onRedoTap
-        )
-        .padding(.horizontal, Self.historyBarInset)
-        .padding(.top, .padding7)
     }
 
     private var viewport: some View {
@@ -161,10 +143,21 @@ struct ToppingManualCutoutView: View {
 
     private var editArea: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("브러시 크기")
-                .suit(.caption01Medium)
-                .foregroundStyle(.gray800)
-                .padding(.top, .padding6)
+            HStack(alignment: .bottom, spacing: 0) {
+                Text("브러시 크기")
+                    .suit(.caption01Medium)
+                    .foregroundStyle(.gray800)
+
+                Spacer(minLength: 0)
+
+                ToppingHistoryBar(
+                    canUndo: canUndo,
+                    canRedo: canRedo,
+                    onUndoTap: onUndoTap,
+                    onRedoTap: onRedoTap
+                )
+                .fixedSize()
+            }
 
             YGSlider(
                 value: Binding(get: { brush.diameter }, set: { onBrushDiameterChange($0) }),
@@ -179,6 +172,10 @@ struct ToppingManualCutoutView: View {
                 modeButton("영역 채우기", icon: .icAddRound, mode: .fill)
             }
             .padding(.top, .padding3)
+
+            YGButton("다음", variant: .large, action: onNextTap)
+                .disabled(!isNextEnabled)
+                .padding(.top, .padding3)
         }
         .padding(.horizontal, .padding7)
         .padding(.vertical, .padding6)
@@ -212,7 +209,7 @@ struct ToppingManualCutoutView: View {
     }
 }
 
-private extension ToppingManualCutoutView {
+private extension ToppingAreaSelectionView {
     /// 뷰포트 안에 상·하·좌·우 `10pt` 여백을 두고 Aspect Fit 한 크기가 `scale 1.0` 이다.
     var baseSize: CGSize {
         let available = CGSize(

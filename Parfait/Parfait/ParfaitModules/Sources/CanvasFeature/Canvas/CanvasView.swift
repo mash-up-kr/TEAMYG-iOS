@@ -217,9 +217,9 @@ public struct CanvasView: View {
                     toppingUseCase: toppingUseCase,
                     recentUploadsRepository: recentUploadsRepository,
                     onSaved: { store.send(.toppingSaved) }
-                )
+                ),
+                makeAlbumPickerStore: makeAlbumPickerStore
             ),
-            makeAlbumPickerStore: makeAlbumPickerStore,
             toppingRenderer: toppingRenderer
         )
     }

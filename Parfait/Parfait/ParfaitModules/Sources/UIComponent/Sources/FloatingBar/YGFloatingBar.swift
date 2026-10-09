@@ -9,13 +9,14 @@ import SwiftUI
 
 /// 파르페 플로팅 바.
 ///
-/// Figma `Floating Bar` — Status(Back-Close·Close·Edit·Edit-Tab).
+/// Figma `Floating Bar` — Status(Back-Close·Back-Title-Close·Close·Edit·Edit-Tab).
 /// 배경 없이 콘텐츠 위에 떠 있는 상단 바로, 원형 버튼은 `YGCircleButton`(`.default`) 재사용.
 /// 뒤로가기·닫기 액션을 생략하면 `dismiss` 가 기본 동작.
 public struct YGFloatingBar: View {
     public enum Status {
         /// 뒤로가기(좌) + 닫기(우)
         case backClose
+        case backTitleClose(String)
         /// 닫기(우)
         case close
         /// 타이틀(중앙) + 닫기(우)
@@ -35,7 +36,7 @@ public struct YGFloatingBar: View {
 
     /// - Parameters:
     ///   - status: 바 구성 상태.
-    ///   - onBack: 뒤로가기 버튼 탭. `backClose` 에서만 노출. 생략하면 `dismiss`.
+    ///   - onBack: 뒤로가기 버튼 탭. `backClose`/`backTitleClose` 에서만 노출. 생략하면 `dismiss`.
     ///   - onClose: 닫기 버튼 탭. 모든 상태에서 노출. 생략하면 `dismiss`.
     ///   - onConfirm: 확인(체크) 버튼 탭. `edit`/`editTab` 에서만 노출.
     public init(
@@ -55,6 +56,12 @@ public struct YGFloatingBar: View {
             switch status {
             case .backClose:
                 circleButton(.icCaretLeft, action: onBack ?? { dismiss() })
+                Spacer(minLength: 0)
+                closeButton
+            case .backTitleClose(let title):
+                circleButton(.icCaretLeft, action: onBack ?? { dismiss() })
+                Spacer(minLength: 0)
+                titleText(title)
                 Spacer(minLength: 0)
                 closeButton
             case .close:
@@ -140,6 +147,7 @@ public struct YGFloatingBar: View {
 
     VStack(spacing: .gap5) {
         YGFloatingBar(.backClose)
+        YGFloatingBar(.backTitleClose("대상 영역 선택"))
         YGFloatingBar(.close)
         YGFloatingBar(.title("이미지 미리보기"))
         YGFloatingBar(.edit(title: "Text"), onConfirm: {})
