@@ -126,18 +126,6 @@ extension ParfaitSummaryDTO {
     }
 }
 
-extension UpdatedPlacementDTO {
-    func toEntity() -> ToppingPlacementValues {
-        ToppingPlacementValues(
-            positionX: positionX,
-            positionY: positionY,
-            positionZ: positionZ,
-            scale: scale,
-            rotation: rotation
-        )
-    }
-}
-
 extension UpdatedBorderDTO {
     func toEntity() -> ToppingBorderStyle {
         ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth)

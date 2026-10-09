@@ -5,10 +5,7 @@
 //  Created by 박서연 on 8/26/26.
 //
 
-// swiftlint:disable file_length
-
 import CanvasDomain
-import CoreGraphics
 import Foundation
 import Observation
 import UIComponent
@@ -22,8 +19,6 @@ final class CanvasEditStore: MVIStore {
 
     private let dependencies: Dependencies
 
-    @ObservationIgnored private var borderToppingLoadTask: Task<Void, Never>?
-    @ObservationIgnored private var borderSilhouetteRenderTask: Task<Void, Never>?
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     @ObservationIgnored private var canvasRefreshTask: Task<Void, Never>?
 
@@ -65,13 +60,6 @@ final class CanvasEditStore: MVIStore {
             state.selectedBackgroundImageSource = source
             state.pendingUploadedBackground = nil
             state.backgroundImageSource = nil
-        case .backgroundTabTapped:
-            guard state.saveState != .saving else { return }
-            state.screen = .background
-            state.selectedToppingID = nil
-        case .toppingTabTapped:
-            guard state.saveState != .saving else { return }
-            state.screen = .toppings
         case .toppingTapped(let toppingID):
             selectTopping(toppingID)
         case .toppingPlacementChanged(let toppingID, let placement):
@@ -80,37 +68,24 @@ final class CanvasEditStore: MVIStore {
             updateTopping(toppingID) { $0.isDeleted = true }
             if state.selectedToppingID == toppingID {
                 state.selectedToppingID = nil
+                state.isBorderPanelExpanded = false
             }
-        case .toppingBorderEditTapped(let toppingID):
-            openBorderEditor(toppingID)
-        case .borderPreviewLongEdgeChanged(let longEdge):
-            guard state.borderPreviewLongEdge != longEdge else { break }
-            state.borderPreviewLongEdge = longEdge
-            renderBorderSilhouette()
         case .borderWidthChanged(let width):
-            state.borderEditor.changeWidth(width)
-            renderBorderSilhouette()
-        case .borderWidthEditingChanged(let isEditing):
-            state.borderEditor.updateWidthEditing(isEditing)
+            updateBorderPanelTopping { $0.border.width = width }
         case .borderColorSelected(let color):
-            state.borderEditor.select(color)
-            renderBorderSilhouette()
-        case .borderUndoTapped:
-            state.borderEditor.undo()
-            renderBorderSilhouette()
-        case .borderRedoTapped:
-            state.borderEditor.redo()
-            renderBorderSilhouette()
-        case .borderEditClosed:
-            state.screen = .toppings
-            stopBorderRendering()
-        case .borderEditConfirmed:
-            applyBorderDraft()
-            stopBorderRendering()
+            updateBorderPanelTopping { $0.border.color = color }
+        case .borderPanelExpandTapped:
+            guard state.saveState != .saving, state.selectedTopping != nil else { return }
+            state.isBorderPanelExpanded = true
+        case .borderPanelClosed:
+            state.isBorderPanelExpanded = false
+        case .backgroundImagePickerCloseTapped:
+            state.backgroundImageSource = nil
+            dependencies.onDismiss()
         case .closeTapped:
             closeEditor()
-        case .continueEditingTapped:
-            state.showsExitPopup = false
+        case .exitPopupVisibilityChanged(let isPresented):
+            state.showsExitPopup = isPresented
         case .discardTapped:
             state.showsExitPopup = false
             dependencies.onDismiss()
@@ -129,36 +104,28 @@ final class CanvasEditStore: MVIStore {
             eventChannel.send(.otherToppingSelected)
             return
         }
+        if state.selectedToppingID != toppingID {
+            state.isBorderPanelExpanded = false
+        }
         state.selectedToppingID = toppingID
     }
 
-    private func openBorderEditor(_ toppingID: Int) {
-        guard let topping = state.toppings.first(where: { $0.id == toppingID }),
-              topping.isMine,
-              !topping.isDeleted
-        else { return }
-
-        state.selectedToppingID = toppingID
-        state.borderEditor = ToppingBorderEditor(border: topping.border)
-        state.screen = .border(toppingID: toppingID)
-        loadBorderTopping(of: topping)
-        renderBorderSilhouette()
-    }
-
-    private func applyBorderDraft() {
-        guard case .border(let toppingID) = state.screen else { return }
-        let border = state.borderEditor.border
-        updateTopping(toppingID) { $0.border = border }
-        state.screen = .toppings
+    private func updateBorderPanelTopping(_ update: (inout EditableTopping) -> Void) {
+        guard state.saveState != .saving, let topping = state.borderPanelTopping else { return }
+        updateTopping(topping.id, update: update)
     }
 
     private func closeEditor() {
         guard state.saveState != .saving else { return }
         switch state.screen {
-        case .background, .toppings:
+        case .background:
+            dependencies.onDismiss()
+        case .toppings:
+            guard state.hasChanges else {
+                dependencies.onDismiss()
+                return
+            }
             state.showsExitPopup = true
-        case .border:
-            state.screen = .toppings
         }
     }
 
@@ -169,69 +136,7 @@ final class CanvasEditStore: MVIStore {
 }
 
 extension CanvasEditStore {
-    /// 토핑 이미지와 테두리 실루엣은 **따로** 로드한다. 한 흐름으로 묶으면 굵기 슬라이더를
-    /// 움직일 때마다 토핑까지 다시 로드하며 미리보기가 스피너로 깜빡인다.
-    fileprivate func loadBorderTopping(of topping: EditableTopping) {
-        borderToppingLoadTask?.cancel()
-        // 이미 그려 둔 토핑은 새 이미지가 도착할 때까지 그대로 둔다 — 화면이 비지 않게.
-        borderToppingLoadTask = Task { [self] in
-            let image = await dependencies.toppingRenderer.topping(
-                at: topping.imageURL,
-                neededLongEdge: ToppingImageEncoder.maximumLongEdge
-            )
-            guard !Task.isCancelled, let image else { return }
-            state.borderTopping = image
-        }
-    }
-
-    /// 굵기·색이 바뀔 때마다 여기만 다시 돈다. 토핑 이미지는 건드리지 않는다.
-    fileprivate func renderBorderSilhouette() {
-        borderSilhouetteRenderTask?.cancel()
-        guard let topping = state.borderEditingTopping,
-              state.borderEditor.border.isVisible,
-              state.borderPreviewLongEdge > 0
-        else {
-            state.borderSilhouette = nil
-            return
-        }
-
-        let imageURL = topping.imageURL
-        let width = state.borderEditor.border.width
-        let renderedLongEdge = state.borderPreviewLongEdge
-        let loadedTopping = state.borderTopping
-        borderSilhouetteRenderTask = Task { [self] in
-            // 토핑 로드가 아직 안 끝났을 수 있다 — 캐시에서 다시 받아 온다(대개 즉시 반환).
-            var toppingImage = loadedTopping
-            if toppingImage == nil {
-                toppingImage = await dependencies.toppingRenderer.topping(
-                    at: imageURL,
-                    neededLongEdge: ToppingImageEncoder.maximumLongEdge
-                )
-            }
-            guard !Task.isCancelled, let toppingImage else { return }
-
-            let silhouette = try? await dependencies.toppingRenderer.silhouette(
-                of: toppingImage,
-                at: imageURL,
-                width: width,
-                renderedLongEdge: renderedLongEdge
-            )
-            guard !Task.isCancelled, let silhouette else { return }
-            state.borderSilhouette = BorderSilhouette(image: silhouette)
-        }
-    }
-
-    /// 테두리 화면을 떠날 때 로드를 끊고 비운다 — 다른 토핑으로 재진입할 때 이전 이미지가 비치지 않게.
-    fileprivate func stopBorderRendering() {
-        borderToppingLoadTask?.cancel()
-        borderSilhouetteRenderTask?.cancel()
-        state.borderTopping = nil
-        state.borderSilhouette = nil
-    }
-}
-
-extension CanvasEditStore {
-    /// 배경·토핑 탭을 오가며 만든 초안을 한 번에 저장한다. 성공한 항목은 즉시 기준값으로 승격해
+    /// 배경 변경 또는 토핑 편집 화면에서 만든 초안을 한 번에 저장한다. 성공한 항목은 즉시 기준값으로 승격해
     /// 중간 실패 뒤 재시도해도 이미 성공한 DELETE/PATCH를 다시 보내지 않는다.
     fileprivate func saveChanges() {
         guard state.saveState != .saving else { return }
@@ -310,15 +215,14 @@ extension CanvasEditStore {
                 .map { ($0.id, $0.placementUpdate) }
         )
 
-        try await saveConcurrently(Array(updates.keys)) { [dependencies] toppingID in
-            guard let update = updates[toppingID] else { return }
-            _ = try await dependencies.toppingUseCase.updatePlacement(
-                update,
-                toppingID: toppingID,
-                groupID: dependencies.groupID,
-                parfaitID: dependencies.parfaitID
-            )
-        } promote: { toppingID in
+        guard !updates.isEmpty else { return }
+
+        try await dependencies.toppingUseCase.updatePlacements(
+            updates,
+            groupID: dependencies.groupID,
+            parfaitID: dependencies.parfaitID
+        )
+        for toppingID in updates.keys {
             updateTopping(toppingID) { $0.savedPlacement = $0.placement }
         }
     }
@@ -362,8 +266,6 @@ extension CanvasEditStore {
 extension CanvasEditStore {
     fileprivate func refreshCanvas() {
         guard state.saveState != .saving, canvasRefreshTask == nil else { return }
-        // C-306 이 화면을 덮고 있는 동안엔 편집 중인 토핑이 목록에서 갈아끼워지면 안 된다.
-        if case .border = state.screen { return }
 
         canvasRefreshTask = Task { [self] in
             let parfait = try? await dependencies.canvasUseCase.fetchToday(groupID: dependencies.groupID)
@@ -399,6 +301,7 @@ extension CanvasEditStore {
         if let selectedToppingID = state.selectedToppingID,
            !state.toppings.contains(where: { $0.id == selectedToppingID && !$0.isDeleted }) {
             state.selectedToppingID = nil
+            state.isBorderPanelExpanded = false
         }
     }
 }

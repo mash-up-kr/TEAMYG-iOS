@@ -73,6 +73,17 @@ final class BackgroundImagePickerStore: MVIStore {
             camera.prepare()
         case .settingsTapped:
             openSystemSettings()
+        case .closeTapped:
+            guard state.screen == .cameraConfirmation else {
+                dependencies.onClose()
+                return
+            }
+            state.showsQuitPopup = true
+        case .quitPopupVisibilityChanged(let isPresented):
+            state.showsQuitPopup = isPresented
+        case .quitConfirmed:
+            state.showsQuitPopup = false
+            dependencies.onClose()
         }
     }
 

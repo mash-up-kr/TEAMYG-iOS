@@ -6,7 +6,6 @@
 //
 
 import CanvasDomain
-import CoreGraphics
 import Foundation
 
 extension CanvasEditStore {
@@ -16,12 +15,9 @@ extension CanvasEditStore {
         var savedBackground: CanvasStore.CanvasBackground
         var background: CanvasStore.CanvasBackground
         var toppings: [EditableTopping]
-        var screen: Screen = .background
+        let screen: Screen
         var selectedToppingID: Int?
-        var borderEditor = ToppingBorderEditor()
-        var borderTopping: CGImage?
-        var borderSilhouette: BorderSilhouette?
-        var borderPreviewLongEdge: CGFloat = 0
+        var isBorderPanelExpanded = false
         var backgroundImageSource: BackgroundImagePickerStore.PhotoSource?
         var selectedBackgroundImageSource: BackgroundImagePickerStore.PhotoSource?
         var pendingUploadedBackground: UploadedImage?
@@ -56,17 +52,17 @@ extension CanvasEditStore {
             }
         }
 
-        var editTabIndex: Int {
-            screen == .background ? 0 : 1
-        }
-
         var activeToppings: [EditableTopping] {
             toppings.filter { !$0.isDeleted }
         }
 
-        var borderEditingTopping: EditableTopping? {
-            guard case .border(let toppingID) = screen else { return nil }
-            return toppings.first { $0.id == toppingID && !$0.isDeleted }
+        var selectedTopping: EditableTopping? {
+            guard let selectedToppingID else { return nil }
+            return toppings.first { $0.id == selectedToppingID && $0.isMine && !$0.isDeleted }
+        }
+
+        var borderPanelTopping: EditableTopping? {
+            isBorderPanelExpanded ? selectedTopping : nil
         }
 
         var hasChanges: Bool {
@@ -136,7 +132,6 @@ extension CanvasEditStore {
         let canvasUseCase: any CanvasUseCase
         let toppingUseCase: any ToppingUseCase
         let imageUploadRepository: any ImageUploadRepository
-        let toppingRenderer: CanvasToppingRenderer
         let onDismiss: @MainActor @Sendable () -> Void
         let onSaved: @MainActor @Sendable () -> Void
     }
@@ -144,7 +139,6 @@ extension CanvasEditStore {
     enum Screen: Equatable, Sendable {
         case background
         case toppings
-        case border(toppingID: Int)
     }
 
     /// 저장 진행 상태. **실패는 여기 담지 않는다** — 일회성 알림이라 이벤트 채널로 보낸다
@@ -169,22 +163,16 @@ extension CanvasEditStore {
         case backgroundImageSourceTapped(BackgroundImagePickerStore.PhotoSource)
         case backgroundImageFlowDismissed
         case backgroundImageSelected(Data, source: BackgroundImagePickerStore.PhotoSource)
-        case backgroundTabTapped
-        case toppingTabTapped
         case toppingTapped(Int)
         case toppingPlacementChanged(toppingID: Int, placement: ToppingPlacement)
         case toppingDeleteTapped(Int)
-        case toppingBorderEditTapped(Int)
-        case borderPreviewLongEdgeChanged(CGFloat)
         case borderWidthChanged(Double)
-        case borderWidthEditingChanged(Bool)
         case borderColorSelected(ToppingBorderColor)
-        case borderUndoTapped
-        case borderRedoTapped
-        case borderEditClosed
-        case borderEditConfirmed
+        case borderPanelExpandTapped
+        case borderPanelClosed
+        case backgroundImagePickerCloseTapped
         case closeTapped
-        case continueEditingTapped
+        case exitPopupVisibilityChanged(Bool)
         case discardTapped
         case confirmTapped
     }

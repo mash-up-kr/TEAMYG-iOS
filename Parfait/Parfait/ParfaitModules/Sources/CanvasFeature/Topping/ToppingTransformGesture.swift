@@ -19,35 +19,11 @@ struct ToppingTransformDraft: Equatable {
     private(set) var scaleFactor: Double = 1
     private(set) var rotationDegrees: Double = 0
 
-    /// 핸들 회전 제스처가 반 바퀴를 넘을 때 각도가 접히지 않도록, 직전 프레임의 원시 각도를 들고 있는다.
-    private var lastRawRotation: Double?
-
     func applied(to placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingPlacement {
         placement
             .magnified(by: scaleFactor)
             .moved(by: translation, in: canvasSize)
             .rotated(by: rotationDegrees)
-    }
-
-    /// `rotation(from:to:in:)` 은 `[-180, 180]` 으로 접힌 값을 준다. 그대로 쓰면 한 드래그에서
-    /// 180°를 지나는 순간 토핑이 반대로 홱 뒤집힌다 (`canvas-policy.md` §6.4.3 "회전 각도 제한은 없다").
-    /// 프레임 간 변화량만 누적해 래핑을 푼다.
-    private mutating func accumulateRotation(rawDegrees: Double) {
-        guard let lastRawRotation else {
-            self.lastRawRotation = rawDegrees
-            rotationDegrees = rawDegrees
-            return
-        }
-        rotationDegrees += remainder(rawDegrees - lastRawRotation, 360)
-        self.lastRawRotation = rawDegrees
-    }
-
-    mutating func scaleByHandle(magnification: Double) {
-        scaleFactor = magnification
-    }
-
-    mutating func rotateByHandle(rawDegrees: Double) {
-        accumulateRotation(rawDegrees: rawDegrees)
     }
 
     mutating func move(by delta: CGSize) {
@@ -63,7 +39,7 @@ struct ToppingTransformDraft: Equatable {
         rotationDegrees += degrees
     }
 
-    /// 핸들·오버레이 공용의 유일한 커밋 지점. 커밋 값은 프리뷰와 같은 `applied(to:in:)` 로
+    /// 유일한 커밋 지점. 커밋 값은 프리뷰와 같은 `applied(to:in:)` 로
     /// 반영하므로 프리뷰와 확정 결과가 구조적으로 일치한다.
     mutating func endTransform() -> ToppingTransformDraft {
         let committed = self
@@ -75,7 +51,6 @@ struct ToppingTransformDraft: Equatable {
         translation = .zero
         scaleFactor = 1
         rotationDegrees = 0
-        lastRawRotation = nil
     }
 }
 

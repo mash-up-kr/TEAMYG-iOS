@@ -20,6 +20,7 @@ struct ToppingCameraView: View {
     let onFlashTap: () -> Void
     let onShutterTap: (ViewFinderRegion?) -> Void
     let onSwitchCameraTap: () -> Void
+    var onCloseTap: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var previewFrame: CGRect = .zero
@@ -77,7 +78,7 @@ struct ToppingCameraView: View {
         HStack(spacing: 0) {
             ToppingDateBadge(dateText: dateText, weekdayText: weekdayText)
             Spacer(minLength: .gap4)
-            YGCircleButton(.icClose, variant: .secondary) { dismiss() }
+            YGCircleButton(.icClose, variant: .secondary, action: onCloseTap ?? { dismiss() })
         }
         .frame(height: 44)
     }

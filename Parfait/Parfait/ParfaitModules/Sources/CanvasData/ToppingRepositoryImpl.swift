@@ -35,21 +35,14 @@ public struct ToppingRepositoryImpl: ToppingRepository {
         return try dto.toEntity(border: border)
     }
 
-    public func updatePlacement(
-        _ update: ToppingPlacementUpdate,
-        toppingID: Int,
+    public func updatePlacements(
+        _ updates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
-    ) async throws -> ToppingPlacementValues {
-        let dto: UpdatedPlacementDTO = try await networkClient.request(
-            UpdateToppingPlacementEndpoint(
-                groupID: groupID,
-                parfaitID: parfaitID,
-                toppingID: toppingID,
-                update: update
-            )
+    ) async throws {
+        let _: EmptyDTO = try await networkClient.request(
+            UpdateToppingPlacementsEndpoint(groupID: groupID, parfaitID: parfaitID, updates: updates)
         )
-        return dto.toEntity()
     }
 
     public func updateBorder(

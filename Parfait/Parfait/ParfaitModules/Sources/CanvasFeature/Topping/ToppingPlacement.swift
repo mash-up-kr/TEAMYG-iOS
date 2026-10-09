@@ -103,24 +103,6 @@ extension ToppingPlacement {
             y: placementCenter.y + corner.width * sin(radians) + corner.height * cos(radians)
         )
     }
-
-    func magnification(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
-        let placementCenter = center(in: canvasSize)
-        let startDistance = hypot(startLocation.x - placementCenter.x, startLocation.y - placementCenter.y)
-        let currentDistance = hypot(location.x - placementCenter.x, location.y - placementCenter.y)
-        guard startDistance > 0 else { return 1 }
-
-        return Double(currentDistance / startDistance)
-    }
-
-    func rotation(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
-        let placementCenter = center(in: canvasSize)
-        let startAngle = atan2(startLocation.y - placementCenter.y, startLocation.x - placementCenter.x)
-        let currentAngle = atan2(location.y - placementCenter.y, location.x - placementCenter.x)
-        let degrees = Double(currentAngle - startAngle) * 180 / .pi
-
-        return remainder(degrees, 360)
-    }
 }
 
 extension ToppingPlacement {

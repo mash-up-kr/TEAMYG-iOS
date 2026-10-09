@@ -26,6 +26,17 @@ struct BackgroundImagePickerView: View {
     var body: some View {
         content
             .ygLoading(store.state.isPreparingImage)
+            .ygPopup(
+                isPresented: store.binding(
+                    \.showsQuitPopup,
+                    BackgroundImagePickerStore.Intent.quitPopupVisibilityChanged
+                ),
+                title: "배경 변경을 그만둘까요?",
+                description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
+                secondaryTitle: "그만두기",
+                primaryTitle: "계속 편집",
+                secondaryAction: { store.send(.quitConfirmed) }
+            )
             .toolbar(.hidden, for: .navigationBar)
             .ygToastOverlay($toasts)
             .task {
@@ -72,7 +83,8 @@ struct BackgroundImagePickerView: View {
                     onToastDismissed: { store.send(.cameraGuideDismissed) },
                     onFlashTap: { store.send(.flashTapped) },
                     onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                    onSwitchCameraTap: { store.send(.cameraPositionTapped) }
+                    onSwitchCameraTap: { store.send(.cameraPositionTapped) },
+                    onCloseTap: { store.send(.closeTapped) }
                 )
             } confirmation: {
                 ToppingCameraConfirmationView(
@@ -82,7 +94,8 @@ struct BackgroundImagePickerView: View {
                     isRetakeEnabled: store.cameraState.isRetakeEnabled,
                     isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
                     onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) }
+                    onNextTap: { store.send(.photoConfirmed) },
+                    onCloseTap: { store.send(.closeTapped) }
                 )
             }
 
@@ -91,6 +104,7 @@ struct BackgroundImagePickerView: View {
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
                 buttonTitle: "설정으로 이동",
+                onCloseTap: { store.send(.closeTapped) },
                 action: { store.send(.settingsTapped) }
             )
 
@@ -99,6 +113,7 @@ struct BackgroundImagePickerView: View {
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
                 buttonTitle: "다시 시도",
+                onCloseTap: { store.send(.closeTapped) },
                 action: { store.send(.cameraRetryTapped) }
             )
 
@@ -114,7 +129,8 @@ struct BackgroundImagePickerView: View {
                         nil
                     )
                 },
-                showsSelectionGuide: false
+                showsSelectionGuide: false,
+                onCloseTap: { store.send(.closeTapped) }
             )
         }
     }
