@@ -14,19 +14,24 @@ public struct InviteCodeView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var store: InviteCodeStore
     private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
+    private let onJoined: (String) -> Void
 
     public init(
         store: InviteCodeStore,
-        makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore
+        makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore,
+        onJoined: @escaping (String) -> Void
     ) {
         _store = State(initialValue: store)
         self.makeJoinGroupNicknameStore = makeJoinGroupNicknameStore
+        self.onJoined = onJoined
     }
 
     public var body: some View {
         Group {
             if let joinedGroup = store.state.joinedGroup {
-                JoinGroupNicknameView(store: makeJoinGroupNicknameStore(joinedGroup))
+                JoinGroupNicknameView(store: makeJoinGroupNicknameStore(joinedGroup)) {
+                    onJoined(joinedGroup.id)
+                }
             } else {
                 inviteCodeEntry
             }
@@ -126,7 +131,8 @@ public struct InviteCodeView: View {
         store: InviteCodeStore(groupUseCase: PreviewGroupUseCase()),
         makeJoinGroupNicknameStore: {
             JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
-        }
+        },
+        onJoined: { _ in }
     )
 }
 
@@ -135,6 +141,7 @@ public struct InviteCodeView: View {
         store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull)),
         makeJoinGroupNicknameStore: {
             JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
-        }
+        },
+        onJoined: { _ in }
     )
 }

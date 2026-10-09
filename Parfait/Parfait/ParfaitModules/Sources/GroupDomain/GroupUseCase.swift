@@ -14,8 +14,8 @@ public protocol GroupUseCase: Sendable {
     func fetchGroups() async throws -> [ParfaitGroup]
 
     /// 새 그룹을 만든다. 그룹명·닉네임·인원 규칙 검증을 거친다.
-    /// 만들어진 그룹은 돌려주지 않는다 — 생성 직후 화면이 목록으로 돌아가고 목록이 서버에서 다시 받아온다.
-    func create(_ draft: GroupDraft) async throws
+    /// 만들어진 그룹을 돌려준다 — 생성 직후 화면이 그 그룹의 캔버스로 이어진다.
+    func create(_ draft: GroupDraft) async throws -> CreatedGroup
 
     /// 초대코드로 그룹에 참여하고, 참여한 그룹을 돌려준다.
     func join(inviteCode: String) async throws -> JoinedGroup
@@ -67,7 +67,7 @@ public struct GroupUseCaseImpl: GroupUseCase {
             .map(\.element)
     }
 
-    public func create(_ draft: GroupDraft) async throws {
+    public func create(_ draft: GroupDraft) async throws -> CreatedGroup {
         if let violation = GroupNamePolicy.validate(draft.name) {
             throw CreateGroupError.invalidName(violation)
         }
@@ -79,7 +79,7 @@ public struct GroupUseCaseImpl: GroupUseCase {
         guard GroupDraft.memberCountRange.contains(draft.memberCount) else {
             throw CreateGroupError.invalidMemberCount
         }
-        try await groupRepository.create(draft)
+        return try await groupRepository.create(draft)
     }
 
     public func join(inviteCode: String) async throws -> JoinedGroup {
