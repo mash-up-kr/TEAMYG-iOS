@@ -28,6 +28,7 @@ struct CanvasToppingEditView: View {
                 .overlay(alignment: .bottom) {
                     borderPanel
                 }
+                .canvasBoardFrame()
                 .ygToastOverlay($toasts)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.horizontal, .padding7)
@@ -40,7 +41,8 @@ struct CanvasToppingEditView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGButton("캔버스에 쌓기", variant: .large) { store.send(.confirmTapped) }
                 .padding(.horizontal, .padding7)
-                .padding(.vertical, .padding6)
+                .padding(.top, .padding6)
+                .padding(.bottom, .padding1)
         }
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .canvasEditLifecycle(

@@ -50,7 +50,8 @@ struct ToppingPlacementBorderView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGButton("캔버스에 쌓기", variant: .large, action: onConfirmTap)
                 .padding(.horizontal, .padding7)
-                .padding(.vertical, .padding6)
+                .padding(.top, .padding6)
+                .padding(.bottom, .padding1)
         }
         .ygLoading(isSaving)
         .disabled(isSaving)
@@ -75,10 +76,10 @@ struct ToppingPlacementBorderView: View {
                 onCommit: onTransform
             )
         }
-        .canvasBoardFrame()
         .overlay(alignment: .bottom) {
             borderPanel
         }
+        .canvasBoardFrame()
         .onGeometryChange(for: CGSize.self, of: { $0.size }, action: onCanvasResize)
     }
 

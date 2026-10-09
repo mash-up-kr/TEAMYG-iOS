@@ -146,7 +146,7 @@ struct ToppingAreaSelectionView: View {
             HStack(alignment: .bottom, spacing: 0) {
                 Text("브러시 크기")
                     .suit(.caption01Medium)
-                    .foregroundStyle(.gray800)
+                    .foregroundStyle(.gray700)
 
                 Spacer(minLength: 0)
 
@@ -175,10 +175,10 @@ struct ToppingAreaSelectionView: View {
 
             YGButton("다음", variant: .large, action: onNextTap)
                 .disabled(!isNextEnabled)
-                .padding(.top, .padding3)
+                .padding(.top, 11)
         }
         .padding(.horizontal, .padding7)
-        .padding(.vertical, .padding6)
+        .padding(.top, .padding6)
     }
 
     private func modeButton(_ title: String, icon: Image, mode: ToppingBrushMode) -> some View {

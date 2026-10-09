@@ -54,7 +54,8 @@ struct CanvasBackgroundEditView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGButton("저장하기", variant: .large) { store.send(.confirmTapped) }
                 .padding(.horizontal, .padding7)
-                .padding(.vertical, .padding6)
+                .padding(.top, .padding6)
+                .padding(.bottom, .padding1)
         }
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .navigationDestination(item: backgroundImageSourceBinding) { source in

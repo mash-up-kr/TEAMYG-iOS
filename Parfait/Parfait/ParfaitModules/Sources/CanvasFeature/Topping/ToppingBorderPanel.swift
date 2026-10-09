@@ -22,7 +22,7 @@ struct ToppingBorderPanel: View {
             HStack(spacing: 0) {
                 Text("테두리 굵기")
                     .suit(.caption01Medium)
-                    .foregroundStyle(.gray800)
+                    .foregroundStyle(.gray700)
 
                 Spacer(minLength: 0)
 
@@ -36,19 +36,18 @@ struct ToppingBorderPanel: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, .padding7)
+            .padding(.horizontal, .padding6)
 
             YGSlider(
                 value: Binding(get: { border.width }, set: { onWidthChange($0) }),
                 in: ToppingBorder.widthRange
             )
             .frame(height: 32)
-            .padding(.horizontal, .padding7)
+            .padding(.horizontal, .padding6)
 
             palette
         }
-        .padding(.top, .padding6)
-        .padding(.bottom, .padding6)
+        .padding(.vertical, .padding7)
         .background(.whiteFixed)
     }
 
@@ -59,8 +58,8 @@ struct ToppingBorderPanel: View {
                     paletteChip(color)
                 }
             }
-            .padding(.horizontal, .padding7)
-            .padding(.vertical, .padding2)
+            .padding(.horizontal, .padding6)
+            .padding(.top, .padding2)
         }
     }
 
@@ -120,7 +119,7 @@ struct ToppingBorderPanelHandle: View {
             HStack(spacing: 0) {
                 Text("테두리 설정")
                     .suit(.caption01Medium)
-                    .foregroundStyle(.gray800)
+                    .foregroundStyle(.gray700)
 
                 Spacer(minLength: 0)
 
@@ -130,8 +129,7 @@ struct ToppingBorderPanelHandle: View {
                     .frame(width: Self.caretLength, height: Self.caretLength)
                     .foregroundStyle(.gray800)
             }
-            .padding(.horizontal, .padding7)
-            .padding(.vertical, .padding5)
+            .padding(.padding6)
             .background(.white75)
             .contentShape(.rect)
         }
