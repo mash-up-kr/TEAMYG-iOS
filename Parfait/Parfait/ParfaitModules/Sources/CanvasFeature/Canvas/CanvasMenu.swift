@@ -9,21 +9,22 @@ import SwiftUI
 import UIComponent
 
 struct CanvasMenuBar: View {
+    let isSourceOptionsPresented: Bool
     let onToppingAddTap: () -> Void
     let onCanvasEditTap: () -> Void
 
     var body: some View {
         HStack(spacing: -1) {
             CanvasMenuButton(
-                "토핑 추가",
+                "사진 추가",
                 icon: .icPlus,
                 style: .primary,
                 action: onToppingAddTap
             )
             CanvasMenuButton(
-                "캔버스 편집",
+                "배경 변경",
                 icon: .icCaretRight,
-                style: .primary,
+                style: isSourceOptionsPresented ? .dimmed : .primary,
                 action: onCanvasEditTap
             )
         }
@@ -61,6 +62,7 @@ private struct CanvasMenuButton: View {
     enum Style {
         case primary
         case option
+        case dimmed
     }
 
     let title: String
@@ -93,7 +95,7 @@ private struct CanvasMenuButton: View {
                 }
             }
             .suit(.body02Regular)
-            .foregroundStyle(.gray700)
+            .foregroundStyle(style == .dimmed ? .gray300 : .gray700)
             .frame(maxWidth: .infinity)
             .frame(height: 44)
             .contentShape(.rect)
@@ -115,7 +117,10 @@ private struct CanvasMenuButtonStyle: ButtonStyle {
     }
 
     private func backgroundColor(isPressed: Bool) -> Color {
-        if isPressed { return .gray100 }
-        return style == .primary ? .whiteFixed : .white75
+        switch style {
+        case .primary: isPressed ? .gray100 : .whiteFixed
+        case .option: isPressed ? .gray100 : .white75
+        case .dimmed: .gray200
+        }
     }
 }

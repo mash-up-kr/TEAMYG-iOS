@@ -115,6 +115,7 @@ struct CanvasContainer: View {
             )
         } else {
             CanvasMenuBar(
+                isSourceOptionsPresented: state.menuState == .sourceOptions,
                 onToppingAddTap: { send(.toppingAddTapped) },
                 onCanvasEditTap: { send(.canvasEditTapped) }
             )
@@ -173,7 +174,7 @@ private struct CanvasBoard: View {
             Group {
                 switch contentState {
                 case .empty:
-                    message("아직 캔버스가 비어 있어요", "첫번째 토핑을 올려 캔버스를 채워보세요")
+                    message("아직 캔버스가 비어 있어요", "첫번째 사진을 올려 캔버스를 채워보세요")
 
                 // 네트워크 실패를 빈 캔버스로 보여주면 "우리 캔버스가 비었다" 고 오해한다.
                 // 전용 시안이 없어(`canvas-policy.md` §8) 문구만 구분하고 재시도는 Pull-to-Refresh 로 받는다.
