@@ -12,8 +12,6 @@ import SwiftUI
 import UIComponent
 
 struct CanvasContentView: View {
-    /// Spotlight 우선순위: 강조 토핑 → Dim → 나머지 토핑 → 배경 (`canvas-policy.md` §4.2).
-    ///
     /// 토핑은 서버 `positionZ` 값이 아니라 **정렬된 배열 순서**로 쌓는다 — `positionZ` 는
     /// 클라이언트가 매기는 값이라 범위가 정해져 있지 않고, dim/Spotlight 상수와 같은 축을 쓰면
     /// 값이 커졌을 때 순서가 뒤집힌다.
@@ -154,7 +152,7 @@ private struct LocalCanvasBackgroundImage: View {
 }
 
 /// 테두리는 이미지에 굽지 않고 색·굵기로만 저장되므로(확정 규약), 알파 실루엣을 떠서 토핑 뒤에 깐다.
-/// C-105·C-106 미리보기와 같은 `ToppingBorderRenderer` 를 타야 저장 전후 모습이 같다.
+/// C-105 미리보기와 같은 `ToppingBorderRenderer` 를 타야 저장 전후 모습이 같다.
 struct CanvasPlacedImage: View {
     let canvasImage: CanvasStore.CanvasImage
     let canvasSize: CGSize

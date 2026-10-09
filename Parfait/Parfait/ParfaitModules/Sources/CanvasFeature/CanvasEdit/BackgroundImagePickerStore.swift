@@ -144,8 +144,6 @@ final class BackgroundImagePickerStore: MVIStore {
     }
 }
 
-/// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 토핑 추가와 공용 화면 — `canvas-policy.md` §5.1).
-/// 여기서는 배경 편집 흐름의 화면 전이만 해석한다.
 private extension BackgroundImagePickerStore {
     func cancelImagePreparation() {
         imagePreparationTask?.cancel()

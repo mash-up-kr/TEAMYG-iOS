@@ -23,9 +23,6 @@ struct CanvasContainer: View {
                     height: max(proxy.size.height - .padding6 * 2, 0)
                 )
 
-                // Pull-to-Refresh 를 걸기 위한 스크롤 컨테이너. 내용 높이를 뷰포트에 맞춰
-                // 실제 스크롤은 일어나지 않고 당겨서 새로고침만 동작한다
-                // (`canvas-policy.md` §4.2 — 다른 그룹원의 토핑을 받아오는 유일한 경로).
                 ScrollView {
                     VStack(spacing: -1) {
                         CanvasBoard(
@@ -176,8 +173,6 @@ private struct CanvasBoard: View {
                 case .empty:
                     message("아직 캔버스가 비어 있어요", "첫번째 사진을 올려 캔버스를 채워보세요")
 
-                // 네트워크 실패를 빈 캔버스로 보여주면 "우리 캔버스가 비었다" 고 오해한다.
-                // 전용 시안이 없어(`canvas-policy.md` §8) 문구만 구분하고 재시도는 Pull-to-Refresh 로 받는다.
                 case .failed:
                     message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")
 

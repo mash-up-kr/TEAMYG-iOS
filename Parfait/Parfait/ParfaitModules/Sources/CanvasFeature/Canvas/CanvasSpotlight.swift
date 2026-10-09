@@ -37,7 +37,6 @@ extension CanvasStore {
 }
 
 extension CanvasStore.State {
-    /// Spotlight 중에는 다른 토핑으로 바로 넘어가지 않는다 (`canvas-policy.md` §4.2).
     func tappableTopping(_ toppingID: Int) -> CanvasStore.CanvasImage? {
         guard spotlightedToppingID == nil else { return nil }
         return canvasContent?.images.first { $0.id == toppingID }

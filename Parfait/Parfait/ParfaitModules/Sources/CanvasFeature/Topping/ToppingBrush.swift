@@ -15,8 +15,6 @@ enum ToppingBrushMode: Equatable, Sendable {
     case fill
 }
 
-/// 브러시 굵기는 `scale 1.0`(뷰포트 Aspect Fit) 화면 기준 pt 다. 확대해도 마스크에 닿는 크기는 그대로다
-/// (`topping_ui.md` §6.2). Figma 프리뷰 원이 38pt 라 `2~50` 은 pt 로 읽어야 맞는다.
 struct ToppingBrushStroke: Equatable, Sendable {
     let mode: ToppingBrushMode
     let diameter: Double

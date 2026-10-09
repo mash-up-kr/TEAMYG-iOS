@@ -290,8 +290,8 @@ final class ToppingAddStore: MVIStore {
         }
     }
 
-    /// 최근 업로드 누끼는 이미 잘라낸 결과물이라 분석·후보 선택을 건너뛰고 곧장 테두리 편집으로 간다
-    /// (`canvas-policy.md` §5.3). 원본 사진이 없으므로 영역 편집은 이 경로에서 제공하지 않는다.
+    /// 최근 업로드 누끼는 이미 잘라낸 결과물이라 분석·후보 선택·영역 편집을 건너뛰고 곧장 C-105 로 간다.
+    /// 원본 사진이 없으므로 영역 편집은 이 경로에서 제공하지 않는다.
     private func openRecentUpload(_ upload: StoredImage) {
         lastAnalysisSource = nil
         analysisTask?.cancel()
@@ -343,7 +343,7 @@ extension ToppingAddStore {
         let groupID: Int
         /// 오늘 캔버스 조회에 실패했으면 nil — 저장할 대상이 없다.
         let parfaitID: Int?
-        /// 배치 화면(C-106) 뒤에 깔리는 캔버스를 주기적으로 다시 받아오는 데 쓴다.
+        /// 배치 화면(C-105) 뒤에 깔리는 캔버스를 주기적으로 다시 받아오는 데 쓴다.
         let canvasUseCase: any CanvasUseCase
         let toppingUseCase: any ToppingUseCase
         let recentUploadsRepository: any RecentUploadsRepository
@@ -532,8 +532,6 @@ private extension ToppingAddStore {
     }
 }
 
-/// 카메라 흐름은 `CameraFlow` 가 소유한다 (C-101 은 배경 편집과 공용 화면 — `canvas-policy.md` §5.1).
-/// 여기서는 이 흐름의 화면 전이만 해석한다.
 private extension ToppingAddStore {
     func handleCameraEvent(_ event: CameraFlowEvent) {
         switch event {
@@ -566,7 +564,7 @@ private extension ToppingAddStore {
     }
 }
 
-/// C-106 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
+/// C-105 배치와 저장 파이프라인. 확정 시 누끼를 PNG 로 굽고 업로드·배치까지 맡긴다.
 private extension ToppingAddStore {
     func updatePlacement(_ update: (inout ToppingPlacementEditor) -> Void) {
         let longEdgeBeforeUpdate = state.borderRenderLongEdge
@@ -643,7 +641,7 @@ private extension ToppingAddStore {
     }
 }
 
-/// 배치 화면(C-106) 뒤 캔버스를 10초마다 서버 값으로 맞춘다. 사용자의 배치 초안
+/// 배치 화면(C-105) 뒤 캔버스를 10초마다 서버 값으로 맞춘다. 사용자의 배치 초안
 /// (`placementEditor`)과는 분리된 배경이라 통째로 갈아 끼워도 안전하다.
 private extension ToppingAddStore {
     func stopCanvasRefresh() {

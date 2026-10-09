@@ -140,7 +140,7 @@ public struct CanvasView: View {
         .fullScreenCover(item: savePreviewBinding) { savePreview in
             savePreviewFlow(savePreview)
         }
-        // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
+        // C-001 과 C-105 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
     }
 

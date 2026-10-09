@@ -11,9 +11,6 @@ import UIKit
 
 /// 토핑 배치 제스처의 진행 중 값. 확정 전까지는 로컬 상태로만 들고 있다가
 /// 제스처가 끝날 때 한 번만 intent 로 올린다 (`docs/mvi.md` 바인딩 절).
-///
-/// C-106(신규 배치)과 C-305(기존 토핑 편집)가 같은 값을 쓴다 — 두 화면의 이동·크기·회전 동작은
-/// 동일하다고 정책이 못박고 있다 (`canvas-policy.md` §6.4.4).
 struct ToppingTransformDraft: Equatable {
     private(set) var translation: CGSize = .zero
     private(set) var scaleFactor: Double = 1
@@ -62,7 +59,7 @@ struct ToppingTransformDraft: Equatable {
 /// 핀치 중 드래그를 죽이는 우회는 핀치 시작 시점까지의 이동을 날려 버렸다(위치 스냅백).
 /// 그래서 이 레이어만 UIKit 인식기를 쓴다 (`ToppingCanvasGestureOverlay` 와 같은 사정).
 ///
-/// 델타는 window 좌표로 읽는다 — 이 면이 토핑을 따라 회전해도(C-305) 이동 방향이 뒤틀리지 않는다.
+/// 델타는 window 좌표로 읽는다 — 이 면이 토핑을 따라 회전해도(토핑 편집 화면) 이동 방향이 뒤틀리지 않는다.
 struct ToppingTransformGestureOverlay: UIViewRepresentable {
     @Binding var draft: ToppingTransformDraft
     var onTap: (() -> Void)?

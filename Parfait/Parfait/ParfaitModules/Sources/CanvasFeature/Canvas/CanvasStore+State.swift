@@ -105,7 +105,6 @@ public extension CanvasStore {
             calendar.weekdayText
         }
 
-        /// 과거 캔버스(SY-001-Closed)는 열람 전용이다 (`canvas-policy.md` §7.2).
         var isClosedCanvas: Bool {
             calendar.selectedDate != calendar.today
         }
@@ -347,8 +346,6 @@ public extension CanvasStore {
         case canvasNotReady
         /// 아직 아무것도 안 올라간 캔버스라 저장할 그림이 없다.
         case canvasEmpty
-        /// 조회 실패. 전용 화면 시안이 없어(`canvas-policy.md` §8) 토스트로 알린다 —
-        /// 빈 캔버스와 구분되지 않으면 사용자가 "우리 캔버스가 비었다" 고 오해한다.
         case canvasLoadFailed
         case toppingSpotlighted(SpotlightToast)
     }

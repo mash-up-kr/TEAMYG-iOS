@@ -133,7 +133,6 @@ extension UpdatedBorderDTO {
 }
 
 private extension ParfaitMember {
-    /// 탈퇴했거나 그룹에서 나간 사용자 (`canvas-policy.md` §4.2).
     static let unknown = ParfaitMember(id: 0, nickname: "알 수 없음", nametagChip: .unassigned)
 }
 

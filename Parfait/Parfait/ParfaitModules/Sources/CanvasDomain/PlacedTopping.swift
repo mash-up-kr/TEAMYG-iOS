@@ -7,7 +7,6 @@
 
 import Foundation
 
-/// 캔버스에 배치된 토핑 하나. 좌표·크기는 정규화 값이다 (`topping-api.md` §8).
 public struct PlacedTopping: Identifiable, Equatable, Sendable {
     public let id: Int
     public let imageID: Int

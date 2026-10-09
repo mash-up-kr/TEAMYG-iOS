@@ -50,7 +50,6 @@ struct ToppingCameraView: View {
                     onShutterTap: { onShutterTap(viewFinderRegion) },
                     onSwitchCameraTap: onSwitchCameraTap
                 )
-                // 뷰파인더와 촬영 버튼 영역 사이 10pt (`canvas-policy.md` §5.2).
                 .padding(.top, .padding4)
             }
             .padding(.horizontal, .padding7)
@@ -58,8 +57,6 @@ struct ToppingCameraView: View {
         }
     }
 
-    /// 뷰파인더 밖은 흐리게 + `black25` 로 덮는다 (`canvas-policy.md` §5.2).
-    /// 흐림이 먼저, 딤이 그 위다 — 순서가 바뀌면 딤까지 흐려진다.
     @ViewBuilder
     private var dimOverlay: some View {
         if viewFinderFrame != .zero {
@@ -91,7 +88,6 @@ struct ToppingCameraView: View {
                 viewFinderFrame = frame
             }
             .ygToastOverlay($guideToasts)
-            // 상단 바와 뷰파인더 사이 8pt (`canvas-policy.md` §5.2).
             .padding(.top, .padding3)
             .task { presentGuideToastIfNeeded() }
             .onChange(of: guideToasts.isEmpty) { _, isEmpty in

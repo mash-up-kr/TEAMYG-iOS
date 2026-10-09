@@ -163,7 +163,6 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
     private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
         guard !state.isClosedCanvas, state.parfaitID != nil else { return }
         state.calendar.close()
@@ -171,7 +170,6 @@ public final class CanvasStore: MVIStore {
         state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
-    /// Pull-to-Refresh — Spotlight 를 먼저 해제하고 Default 상태에서 새로고침한다 (`canvas-policy.md` §4.2).
     private func refreshCanvas() {
         state.spotlightedToppingID = nil
         state.menuState = .collapsed
@@ -185,8 +183,6 @@ public final class CanvasStore: MVIStore {
         loadCanvas(for: date)
     }
 
-    /// SY-001-New `보러가기` — 안내된 날짜의 과거 캔버스로 이동한다 (`canvas-policy.md` §7.1).
-    /// 안내 날짜가 다른 해면 그 해 목록을 먼저 받아 `parfaitID` 매핑을 채운다.
     private func openPastParfaitNudgeTarget() {
         guard let date = state.pastParfaitNudge?.date else { return }
         state.menuState = .collapsed
@@ -334,7 +330,6 @@ private extension CanvasStore {
         }
     }
 
-    /// 오늘 캔버스의 내 토핑은 C-305 로, 그 밖의 토핑은 Spotlight 로 간다 (`canvas-policy.md` §4.2).
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
         state.calendar.close()
