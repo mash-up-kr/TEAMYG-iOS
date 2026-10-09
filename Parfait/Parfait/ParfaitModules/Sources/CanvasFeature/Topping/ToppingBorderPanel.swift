@@ -114,12 +114,14 @@ struct ToppingBorderPanelHandle: View {
 
     let onExpandTap: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
+
     var body: some View {
         Button(action: onExpandTap) {
             HStack(spacing: 0) {
                 Text("테두리 설정")
                     .suit(.caption01Medium)
-                    .foregroundStyle(.gray700)
+                    .foregroundStyle(isEnabled ? .gray700 : .gray400)
 
                 Spacer(minLength: 0)
 
@@ -127,7 +129,7 @@ struct ToppingBorderPanelHandle: View {
                     .renderingMode(.template)
                     .resizable()
                     .frame(width: Self.caretLength, height: Self.caretLength)
-                    .foregroundStyle(.gray800)
+                    .foregroundStyle(isEnabled ? .gray800 : .gray400)
             }
             .padding(.padding6)
             .background(.white75)

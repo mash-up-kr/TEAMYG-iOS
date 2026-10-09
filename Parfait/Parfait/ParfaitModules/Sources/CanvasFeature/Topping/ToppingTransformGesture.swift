@@ -76,6 +76,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
     @Binding var draft: ToppingTransformDraft
     let placementCenter: CGPoint?
     var onTouchBegan: (() -> Void)?
+    var onSwallowedTouch: (() -> Void)?
     var onTap: ((CGPoint) -> Void)?
     let onCommit: (ToppingTransformDraft) -> Void
 
@@ -83,6 +84,9 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         let view = Surface()
         view.backgroundColor = .clear
         context.coordinator.attach(to: view)
+        view.cancelRecognition = { [coordinator = context.coordinator] in
+            coordinator.cancelRecognition()
+        }
         return view
     }
 
@@ -90,6 +94,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         context.coordinator.overlay = self
         context.coordinator.setTransformEnabled(placementCenter != nil)
         uiView.onTouchBegan = onTouchBegan
+        uiView.onSwallowedTouch = onSwallowedTouch
         uiView.isUserInteractionEnabled = context.environment.isEnabled
     }
 
@@ -99,10 +104,39 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
 
     final class Surface: UIView {
         var onTouchBegan: (() -> Void)?
+        var onSwallowedTouch: (() -> Void)?
+        var cancelRecognition: (() -> Void)?
+        private var isSwallowingTouches = false
 
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             super.touchesBegan(touches, with: event)
             onTouchBegan?()
+            if let onSwallowedTouch {
+                isSwallowingTouches = true
+                onSwallowedTouch()
+            }
+            if isSwallowingTouches {
+                cancelRecognition?()
+            }
+        }
+
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+            super.touchesEnded(touches, with: event)
+            stopSwallowingIfTouchesFinished(event)
+        }
+
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+            super.touchesCancelled(touches, with: event)
+            stopSwallowingIfTouchesFinished(event)
+        }
+
+        private func stopSwallowingIfTouchesFinished(_ event: UIEvent?) {
+            let hasActiveTouch = event?.allTouches?.contains {
+                $0.phase != .ended && $0.phase != .cancelled
+            } ?? false
+            if !hasActiveTouch {
+                isSwallowingTouches = false
+            }
         }
     }
 
@@ -110,6 +144,7 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         var overlay: ToppingTransformGestureOverlay
         private var draft = ToppingTransformDraft()
         private var transformRecognizers: [UIGestureRecognizer] = []
+        private var recognizers: [UIGestureRecognizer] = []
 
         init(overlay: ToppingTransformGestureOverlay) {
             self.overlay = overlay
@@ -128,7 +163,16 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
                 view.addGestureRecognizer(recognizer)
             }
 
-            view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+            view.addGestureRecognizer(tap)
+            recognizers = transformRecognizers + [tap]
+        }
+
+        func cancelRecognition() {
+            for recognizer in recognizers where recognizer.isEnabled {
+                recognizer.isEnabled = false
+                recognizer.isEnabled = true
+            }
         }
 
         func setTransformEnabled(_ isEnabled: Bool) {

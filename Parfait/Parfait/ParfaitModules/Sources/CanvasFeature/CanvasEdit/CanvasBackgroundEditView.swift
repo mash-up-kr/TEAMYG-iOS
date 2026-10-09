@@ -80,6 +80,14 @@ struct CanvasBackgroundEditView: View {
             isSaving: store.state.saveState == .saving,
             send: { store.send($0) }
         )
+        .ygPopup(
+            isPresented: store.binding(\.showsExitPopup, CanvasEditStore.Intent.exitPopupVisibilityChanged),
+            title: "배경 변경을 그만둘까요?",
+            description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
+            secondaryTitle: "그만두기",
+            primaryTitle: "계속 편집",
+            secondaryAction: { store.send(.discardTapped) }
+        )
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {

@@ -170,8 +170,9 @@ final class ToppingAddStore: MVIStore {
             } else if state.quitConfirmation == quitConfirmation {
                 state.quitConfirmation = nil
             }
-        case .quitConfirmed(let quitConfirmation):
-            confirmQuit(quitConfirmation)
+        case .quitConfirmed:
+            state.quitConfirmation = nil
+            eventChannel.send(.dismissRequested)
         }
     }
 
@@ -186,16 +187,6 @@ final class ToppingAddStore: MVIStore {
             state.quitConfirmation = .editPhoto
         default:
             eventChannel.send(.dismissRequested)
-        }
-    }
-
-    private func confirmQuit(_ quitConfirmation: QuitConfirmation) {
-        state.quitConfirmation = nil
-        switch quitConfirmation {
-        case .addPhoto:
-            eventChannel.send(.dismissRequested)
-        case .editPhoto:
-            returnToPhotoSelection()
         }
     }
 

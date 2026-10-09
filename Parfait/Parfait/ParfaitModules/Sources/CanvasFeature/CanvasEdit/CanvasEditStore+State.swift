@@ -15,7 +15,6 @@ extension CanvasEditStore {
         var savedBackground: CanvasStore.CanvasBackground
         var background: CanvasStore.CanvasBackground
         var toppings: [EditableTopping]
-        let screen: Screen
         var selectedToppingID: Int?
         var isBorderPanelExpanded = false
         var backgroundImageSource: BackgroundImagePickerStore.PhotoSource?
@@ -28,7 +27,6 @@ extension CanvasEditStore {
             dateText: String,
             weekdayText: String,
             canvasContent: CanvasStore.CanvasContent,
-            screen: Screen = .background,
             selectedToppingID: Int? = nil
         ) {
             self.dateText = dateText
@@ -36,7 +34,6 @@ extension CanvasEditStore {
             savedBackground = canvasContent.background
             background = canvasContent.background
             toppings = canvasContent.images.map(EditableTopping.init)
-            self.screen = screen
             self.selectedToppingID = toppings.first { $0.id == selectedToppingID && $0.isMine }?.id
         }
 
@@ -134,11 +131,6 @@ extension CanvasEditStore {
         let imageUploadRepository: any ImageUploadRepository
         let onDismiss: @MainActor @Sendable () -> Void
         let onSaved: @MainActor @Sendable () -> Void
-    }
-
-    enum Screen: Equatable, Sendable {
-        case background
-        case toppings
     }
 
     /// 저장 진행 상태. **실패는 여기 담지 않는다** — 일회성 알림이라 이벤트 채널로 보낸다

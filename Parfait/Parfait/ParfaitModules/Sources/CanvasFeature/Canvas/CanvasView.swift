@@ -243,7 +243,6 @@ public struct CanvasView: View {
                     dateText: store.state.dateText,
                     weekdayText: store.state.weekdayText,
                     canvasContent: store.state.canvasContent ?? .empty,
-                    screen: destination.editScreen,
                     selectedToppingID: destination.selectedToppingID
                 ),
                 dependencies: .init(

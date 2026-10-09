@@ -23,13 +23,6 @@ public extension CanvasStore {
 }
 
 extension CanvasStore.CanvasEditDestination {
-    var editScreen: CanvasEditStore.Screen {
-        switch self {
-        case .background: .background
-        case .toppings: .toppings
-        }
-    }
-
     var selectedToppingID: Int? {
         switch self {
         case .background: nil

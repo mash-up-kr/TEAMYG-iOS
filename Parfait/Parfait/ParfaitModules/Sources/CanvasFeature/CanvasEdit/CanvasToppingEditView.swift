@@ -81,7 +81,7 @@ struct CanvasToppingEditView: View {
                 store.send(.toppingPlacementChanged(toppingID: $0, placement: $1))
             },
             onDeleteTap: { store.send(.toppingDeleteTapped($0)) },
-            onTouchBegan: store.state.borderPanelTopping == nil ? nil : { store.send(.borderPanelClosed) }
+            onBorderPanelDismiss: store.state.borderPanelTopping == nil ? nil : { store.send(.borderPanelClosed) }
         )
     }
 
@@ -96,6 +96,7 @@ struct CanvasToppingEditView: View {
             )
         } else {
             ToppingBorderPanelHandle(onExpandTap: { store.send(.borderPanelExpandTapped) })
+                .disabled(store.state.selectedTopping == nil)
         }
     }
 }

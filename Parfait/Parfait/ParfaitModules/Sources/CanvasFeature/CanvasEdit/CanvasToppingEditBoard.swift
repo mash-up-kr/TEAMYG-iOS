@@ -12,6 +12,7 @@ import UIComponent
 struct CanvasToppingEditBoard: View {
     /// 선택된 토핑은 항상 맨 위. 나머지는 배열 순서로 쌓는다(서버 `positionZ` 값과 축을 섞지 않는다).
     private static let selectedZIndex: Double = 1_000_000
+    private static let borderPanelAnimation: Animation = .easeInOut(duration: 0.25)
 
     let background: CanvasStore.CanvasBackground
     let toppings: [CanvasEditStore.EditableTopping]
@@ -19,7 +20,7 @@ struct CanvasToppingEditBoard: View {
     let onToppingTap: (Int) -> Void
     let onPlacementChange: (Int, ToppingPlacement) -> Void
     let onDeleteTap: (Int) -> Void
-    var onTouchBegan: (() -> Void)?
+    var onBorderPanelDismiss: (() -> Void)?
 
     @State private var draft = ToppingTransformDraft()
     @State private var toppingPixelSizes: [Int: CGSize] = [:]
@@ -40,21 +41,22 @@ struct CanvasToppingEditBoard: View {
                 ToppingTransformGestureOverlay(
                     draft: $draft,
                     placementCenter: selectedTopping?.placement.center(in: proxy.size),
-                    onTouchBegan: onTouchBegan,
+                    onSwallowedTouch: onBorderPanelDismiss,
                     onTap: { selectTopping(at: $0, in: proxy.size) },
                     onCommit: { commit($0, in: proxy.size) }
                 )
 
                 if let selectedTopping {
                     ToppingDeleteHandle(
-                        placement: selectedTopping.placement,
+                        placement: displayPlacement(of: selectedTopping),
                         canvasSize: proxy.size,
                         toppingPixelSize: toppingPixelSizes[selectedTopping.id] ?? .zero,
                         draft: draft,
-                        onDeleteTap: { onDeleteTap(selectedTopping.id) }
+                        onDeleteTap: onBorderPanelDismiss ?? { onDeleteTap(selectedTopping.id) }
                     )
                 }
             }
+            .animation(Self.borderPanelAnimation, value: onBorderPanelDismiss != nil)
         }
         .canvasBoardFrame()
     }
@@ -92,8 +94,17 @@ private extension CanvasToppingEditBoard {
 
     func previewPlacement(of topping: CanvasEditStore.EditableTopping, in canvasSize: CGSize) -> ToppingPlacement {
         topping.id == selectedToppingID
-            ? draft.applied(to: topping.placement, in: canvasSize)
+            ? draft.applied(to: displayPlacement(of: topping), in: canvasSize)
             : topping.placement
+    }
+
+    func displayPlacement(of topping: CanvasEditStore.EditableTopping) -> ToppingPlacement {
+        guard onBorderPanelDismiss != nil, topping.id == selectedToppingID else { return topping.placement }
+
+        var centered = topping.placement
+        centered.positionX = 0.5
+        centered.positionY = 0.5
+        return centered
     }
 
     func selectTopping(at point: CGPoint, in canvasSize: CGSize) {
@@ -104,7 +115,10 @@ private extension CanvasToppingEditBoard {
                 canvasSize: canvasSize
             )
         }
-        if let selectedTopping, isTapped(selectedTopping) { return }
+        if let selectedTopping, isTapped(selectedTopping) {
+            onToppingTap(selectedTopping.id)
+            return
+        }
         guard let tappedTopping = (otherToppings + myToppings).last(where: isTapped) else { return }
         onToppingTap(tappedTopping.id)
     }

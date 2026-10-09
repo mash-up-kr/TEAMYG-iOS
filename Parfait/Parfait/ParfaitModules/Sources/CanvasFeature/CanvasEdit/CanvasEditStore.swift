@@ -104,9 +104,7 @@ final class CanvasEditStore: MVIStore {
             eventChannel.send(.otherToppingSelected)
             return
         }
-        if state.selectedToppingID != toppingID {
-            state.isBorderPanelExpanded = false
-        }
+        state.isBorderPanelExpanded = state.selectedToppingID == toppingID
         state.selectedToppingID = toppingID
     }
 
@@ -117,16 +115,11 @@ final class CanvasEditStore: MVIStore {
 
     private func closeEditor() {
         guard state.saveState != .saving else { return }
-        switch state.screen {
-        case .background:
+        guard state.hasChanges else {
             dependencies.onDismiss()
-        case .toppings:
-            guard state.hasChanges else {
-                dependencies.onDismiss()
-                return
-            }
-            state.showsExitPopup = true
+            return
         }
+        state.showsExitPopup = true
     }
 
     private func updateTopping(_ toppingID: Int, update: (inout EditableTopping) -> Void) {
