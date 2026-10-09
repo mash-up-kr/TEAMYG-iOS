@@ -68,14 +68,14 @@ struct ToppingPlacementBorderView: View {
 
             placedTopping
 
-            ToppingTransformGestureOverlay(draft: $draft, onCommit: onTransform)
+            ToppingTransformGestureOverlay(
+                draft: $draft,
+                placementCenter: editor.placement.center(in: editor.canvasSize),
+                onTouchBegan: isBorderPanelExpanded ? onBorderPanelClose : nil,
+                onCommit: onTransform
+            )
         }
         .canvasBoardFrame()
-        .overlay {
-            if isBorderPanelExpanded {
-                panelDismissSurface
-            }
-        }
         .overlay(alignment: .bottom) {
             borderPanel
         }
@@ -92,15 +92,6 @@ struct ToppingPlacementBorderView: View {
             canvasSize: editor.canvasSize,
             isSelected: true
         )
-    }
-
-    private var panelDismissSurface: some View {
-        Color.clear
-            .contentShape(.rect)
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in onBorderPanelClose() }
-            )
     }
 
     @ViewBuilder

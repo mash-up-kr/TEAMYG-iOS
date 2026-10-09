@@ -84,6 +84,20 @@ extension ToppingPlacement {
 }
 
 extension ToppingPlacement {
+    private static let minimumHitLength: CGFloat = 44
+
+    func contains(_ point: CGPoint, toppingPixelSize: CGSize, canvasSize: CGSize) -> Bool {
+        let size = renderedSize(toppingPixelSize: toppingPixelSize, canvasSize: canvasSize)
+        let placementCenter = center(in: canvasSize)
+        let offset = CGSize(width: point.x - placementCenter.x, height: point.y - placementCenter.y)
+        let radians = -rotationDegrees * .pi / 180
+        let localX = offset.width * cos(radians) - offset.height * sin(radians)
+        let localY = offset.width * sin(radians) + offset.height * cos(radians)
+
+        return abs(localX) <= max(size.width, Self.minimumHitLength) / 2
+            && abs(localY) <= max(size.height, Self.minimumHitLength) / 2
+    }
+
     func handleCenter(
         horizontal: CGFloat,
         vertical: CGFloat,

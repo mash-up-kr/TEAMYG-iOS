@@ -25,11 +25,6 @@ struct CanvasToppingEditView: View {
 
             board
                 .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
-                .overlay {
-                    if store.state.borderPanelTopping != nil {
-                        borderPanelDismissSurface
-                    }
-                }
                 .overlay(alignment: .bottom) {
                     borderPanel
                 }
@@ -83,7 +78,8 @@ struct CanvasToppingEditView: View {
             onPlacementChange: {
                 store.send(.toppingPlacementChanged(toppingID: $0, placement: $1))
             },
-            onDeleteTap: { store.send(.toppingDeleteTapped($0)) }
+            onDeleteTap: { store.send(.toppingDeleteTapped($0)) },
+            onTouchBegan: store.state.borderPanelTopping == nil ? nil : { store.send(.borderPanelClosed) }
         )
     }
 
@@ -99,14 +95,5 @@ struct CanvasToppingEditView: View {
         } else {
             ToppingBorderPanelHandle(onExpandTap: { store.send(.borderPanelExpandTapped) })
         }
-    }
-
-    private var borderPanelDismissSurface: some View {
-        Color.clear
-            .contentShape(.rect)
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in store.send(.borderPanelClosed) }
-            )
     }
 }
