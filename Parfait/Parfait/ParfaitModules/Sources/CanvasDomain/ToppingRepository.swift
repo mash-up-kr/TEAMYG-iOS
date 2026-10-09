@@ -16,13 +16,11 @@ public protocol ToppingRepository: Sendable {
         parfaitID: Int
     ) async throws -> PlacedTopping
 
-    /// 위치·크기·각도를 바꾼다. 값이 있는 필드만 전송된다.
-    func updatePlacement(
-        _ update: ToppingPlacementUpdate,
-        toppingID: Int,
+    func updatePlacements(
+        _ updates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
-    ) async throws -> ToppingPlacementValues
+    ) async throws
 
     /// 테두리를 바꾼다.
     func updateBorder(

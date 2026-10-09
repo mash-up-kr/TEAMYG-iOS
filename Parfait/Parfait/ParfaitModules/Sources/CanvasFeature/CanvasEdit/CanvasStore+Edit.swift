@@ -15,7 +15,7 @@ public extension CanvasStore {
 
     enum CanvasEditDestination: Hashable, Identifiable, Sendable {
         case background
-        /// C-001 에서 내 토핑을 탭해 바로 C-305 로 들어간 경우.
+        /// C-001 에서 내 토핑을 탭해 토핑 편집 화면으로 들어간 경우.
         case toppings(selectedToppingID: Int)
 
         public var id: Self { self }
@@ -23,13 +23,6 @@ public extension CanvasStore {
 }
 
 extension CanvasStore.CanvasEditDestination {
-    var editScreen: CanvasEditStore.Screen {
-        switch self {
-        case .background: .background
-        case .toppings: .toppings
-        }
-    }
-
     var selectedToppingID: Int? {
         switch self {
         case .background: nil

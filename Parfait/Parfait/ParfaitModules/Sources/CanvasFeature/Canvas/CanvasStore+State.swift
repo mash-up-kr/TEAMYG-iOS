@@ -7,6 +7,7 @@
 
 import CanvasDomain
 import Foundation
+import Routing
 import UIComponent
 
 /// 캔버스 조회가 시작조차 못 하는 경우.
@@ -29,6 +30,7 @@ extension CanvasStore.Dependencies {
 public extension CanvasStore {
     struct Dependencies: Sendable {
         public let groupID: Int
+        public let entry: CanvasEntry
         public let canvasUseCase: any CanvasUseCase
         /// 과거 캔버스를 사진 앨범에 저장할 때 쓰는 합성기. 토핑 캐시를 화면과 공유한다.
         public let canvasImageExporter: CanvasImageExporter
@@ -36,11 +38,13 @@ public extension CanvasStore {
 
         public init(
             groupID: Int,
+            entry: CanvasEntry = .regular,
             canvasUseCase: any CanvasUseCase,
             canvasImageExporter: CanvasImageExporter,
             now: @escaping @Sendable () -> Date = { .now }
         ) {
             self.groupID = groupID
+            self.entry = entry
             self.canvasUseCase = canvasUseCase
             self.canvasImageExporter = canvasImageExporter
             self.now = now
@@ -50,6 +54,7 @@ public extension CanvasStore {
     struct State: Equatable, Sendable {
         /// 캔버스 응답(`Parfait.groupName`)이 채운다. 로딩 전엔 빈 제목.
         public var groupName: String = ""
+        var entry = CanvasEntry.regular
         public var members: [Member]
         public var contentState: ContentState
         public var canvasContent: CanvasContent?
@@ -64,7 +69,8 @@ public extension CanvasStore {
         /// 아직 안내하지 않은 최근 마감 캔버스 날짜 — SY-001-New 안내 판단용.
         /// 안내한 날짜는 기기에 남겨 두고 응답을 받을 때 걸러서 채운다.
         public var lastClosedDate: CalendarDate?
-        /// C-202 Spotlight 로 강조된 토핑 (`canvas-policy.md` §4.2).
+        /// 그 마감 캔버스에 토핑을 올린 인원. `lastClosedDate` 와 함께 채운다.
+        var lastClosedParticipantCount = 0
         var spotlightedToppingID: Int?
         /// 다운로드가 끝난 토핑 이미지 — 캔버스의 토핑이 전부 모여야 로딩 딤(C-001-Loading)을 걷는다.
         var loadedToppingImageIDs: Set<Int> = []
@@ -99,7 +105,6 @@ public extension CanvasStore {
             calendar.weekdayText
         }
 
-        /// 과거 캔버스(SY-001-Closed)는 열람 전용이다 (`canvas-policy.md` §7.2).
         var isClosedCanvas: Bool {
             calendar.selectedDate != calendar.today
         }
@@ -117,7 +122,24 @@ public extension CanvasStore {
                   let lastClosedDate
             else { return nil }
 
-            return PastParfaitNudge(date: lastClosedDate, friendCount: members.count)
+            return PastParfaitNudge(date: lastClosedDate, friendCount: lastClosedParticipantCount)
+        }
+
+        var entryNudge: EntryNudge? {
+            guard !isClosedCanvas,
+                  contentState == .empty || contentState == .filled,
+                  !groupName.isEmpty
+            else { return nil }
+
+            switch entry {
+            case .regular:
+                return nil
+            case .joined:
+                return .joined(groupName: groupName)
+            case .created(let inviteCode, let memberCount):
+                guard memberCount > 1 else { return .joined(groupName: groupName) }
+                return .created(groupName: groupName, inviteCode: inviteCode)
+            }
         }
 
         /// 캔버스 조회부터 토핑 이미지 다운로드까지를 덮는 전체 화면 딤의 단계.
@@ -149,6 +171,30 @@ public extension CanvasStore {
 
         var descriptionText: String {
             "\(friendCount)명의 친구들과 함께했어요"
+        }
+    }
+
+    enum EntryNudge: Equatable, Sendable {
+        case joined(groupName: String)
+        case created(groupName: String, inviteCode: String)
+
+        var titleText: String {
+            switch self {
+            case .joined(let groupName): "\(groupName) 그룹에 참여했어요"
+            case .created(let groupName, _): "\(groupName) 그룹을 만들었어요"
+            }
+        }
+
+        var descriptionText: String {
+            switch self {
+            case .joined: "+ 버튼을 눌러 토핑을 쌓아보세요"
+            case .created(_, let inviteCode): "초대코드는 \(inviteCode)이에요"
+            }
+        }
+
+        var inviteCode: String? {
+            if case .created(_, let inviteCode) = self { return inviteCode }
+            return nil
         }
     }
 
@@ -300,8 +346,6 @@ public extension CanvasStore {
         case canvasNotReady
         /// 아직 아무것도 안 올라간 캔버스라 저장할 그림이 없다.
         case canvasEmpty
-        /// 조회 실패. 전용 화면 시안이 없어(`canvas-policy.md` §8) 토스트로 알린다 —
-        /// 빈 캔버스와 구분되지 않으면 사용자가 "우리 캔버스가 비었다" 고 오해한다.
         case canvasLoadFailed
         case toppingSpotlighted(SpotlightToast)
     }

@@ -34,7 +34,7 @@ public struct AlbumPickerView: View {
                     topBar
                 }
                 ScrollView {
-                    VStack(alignment: .leading, spacing: .gap7) {
+                    LazyVStack(alignment: .leading, spacing: .gap7) {
                         if !store.state.recentUploads.isEmpty {
                             recentUploadsSection
                         }
@@ -97,7 +97,7 @@ public struct AlbumPickerView: View {
 
     /// 네비게이션 바 형태의 상단 바 — 닫기 버튼(44, AlbumView 소유)과 같은 라인에 가운데 제목.
     private var topBar: some View {
-        Text("오늘 찍은 사진")
+        Text("사진 선택")
             .suit(.body01Regular)
             .foregroundStyle(Color.gray900)
             .frame(maxWidth: .infinity)
@@ -139,15 +139,33 @@ public struct AlbumPickerView: View {
         }
     }
 
+    private var todayGuide: some View {
+        HStack(spacing: 0) {
+            Image.icWarningRound
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 16, height: 16)
+                .padding(4)
+            Text("늦은 밤까지 담도록, 새벽 3시를 기준으로 하루의 사진을 불러와요")
+                .suit(.caption01Regular)
+        }
+        .foregroundStyle(Color.soda500)
+    }
+
     private func daySection(_ section: PhotoDaySection) -> some View {
         VStack(alignment: .leading, spacing: .gap4) {
-            HStack(spacing: .gap1) {
-                Text(section.dayTitle)
-                    .suit(.body02Regular)
-                    .foregroundStyle(Color.gray900)
-                Text(section.weekdayTitle)
-                    .suit(.body02Regular)
-                    .foregroundStyle(Color.gray300)
+            VStack(alignment: .leading, spacing: .gap1) {
+                HStack(spacing: .gap1) {
+                    Text(section.dayTitle)
+                        .suit(.body02Regular)
+                        .foregroundStyle(Color.gray900)
+                    Text(section.weekdayTitle)
+                        .suit(.body02Regular)
+                        .foregroundStyle(Color.gray300)
+                }
+                if section.isToday {
+                    todayGuide
+                }
             }
             LazyVGrid(columns: gridColumns, spacing: .gap4) {
                 ForEach(section.assets, id: \.localIdentifier) { asset in

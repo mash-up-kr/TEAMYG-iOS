@@ -14,6 +14,7 @@ struct CameraErrorScreen: View {
     let title: String
     let message: String
     let buttonTitle: String
+    var onCloseTap: (() -> Void)?
     let action: () -> Void
 
     var body: some View {
@@ -29,7 +30,7 @@ struct CameraErrorScreen: View {
             )
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.close)
+            YGFloatingBar(.close, onClose: onCloseTap)
         }
     }
 }

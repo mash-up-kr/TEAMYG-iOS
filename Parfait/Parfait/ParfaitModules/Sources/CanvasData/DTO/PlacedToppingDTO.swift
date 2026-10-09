@@ -18,16 +18,6 @@ struct PlacedToppingDTO: Decodable, Sendable {
     let placedBy: PlacedByDTO?
 }
 
-/// `UpdateParfaitImageResponse`
-struct UpdatedPlacementDTO: Decodable, Sendable {
-    let parfaitImageId: Int
-    let positionX: Double
-    let positionY: Double
-    let positionZ: Int
-    let scale: Double
-    let rotation: Double
-}
-
 /// `UpdateParfaitImageBorderResponse`
 struct UpdatedBorderDTO: Decodable, Sendable {
     let parfaitImageId: Int

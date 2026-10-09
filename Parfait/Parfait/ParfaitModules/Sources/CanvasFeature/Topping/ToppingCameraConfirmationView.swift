@@ -19,6 +19,7 @@ struct ToppingCameraConfirmationView: View {
     let isNextEnabled: Bool
     let onRetakeTap: () -> Void
     let onNextTap: () -> Void
+    var onCloseTap: (() -> Void)?
 
     @Environment(\.displayScale) private var displayScale
     @State private var capturedImage: UIImage?
@@ -50,7 +51,7 @@ struct ToppingCameraConfirmationView: View {
             .padding(.horizontal, .padding7)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.close)
+            YGFloatingBar(.close, onClose: onCloseTap)
         }
         .task(id: previewFrame) {
             previewImage = Self.croppedPreviewImage(from: previewFrame, viewFinderRegion: viewFinderRegion)

@@ -69,16 +69,28 @@ public struct GroupView: View {
             case .inviteCode:
                 InviteCodeView(
                     store: makeInviteCodeStore(),
-                    makeJoinGroupNicknameStore: makeJoinGroupNicknameStore
+                    makeJoinGroupNicknameStore: makeJoinGroupNicknameStore,
+                    onJoined: { replaceTopWithCanvas(groupID: $0, entry: .joined) }
                 )
             case .createGroup:
-                CreateGroupView(store: makeCreateGroupStore()) {
-                    // ponytail: 캔버스(C-001) 화면이 붙으면 만들어진 그룹으로 이동.
+                CreateGroupView(store: makeCreateGroupStore()) { createdGroup in
+                    replaceTopWithCanvas(
+                        groupID: createdGroup.id,
+                        entry: .created(
+                            inviteCode: createdGroup.inviteCode,
+                            memberCount: createdGroup.memberCount
+                        )
+                    )
                 }
             }
         }
         .task { store.send(.screenAppeared) }
         .onDisappear { store.send(.screenDisappeared) }
+    }
+
+    private func replaceTopWithCanvas(groupID: String, entry: CanvasEntry) {
+        router.pop()
+        router.push(.canvas(groupID: groupID, entry: entry))
     }
 
     /// 화면 전체를 덮는 배경.

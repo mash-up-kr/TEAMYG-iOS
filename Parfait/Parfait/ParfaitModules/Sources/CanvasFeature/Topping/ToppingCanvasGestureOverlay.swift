@@ -8,8 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// 한 손가락은 브러시, 두 손가락은 pinch/pan 으로 갈라야 한다 (`topping_ui.md` §6.3).
-/// SwiftUI 제스처로는 "두 손가락일 때만" 을 표현할 수 없어 이 레이어만 UIKit 인식기를 쓴다.
 struct ToppingCanvasGestureOverlay: UIViewRepresentable {
     let onBrushBegan: (CGPoint) -> Void
     let onBrushMoved: (CGPoint) -> Void

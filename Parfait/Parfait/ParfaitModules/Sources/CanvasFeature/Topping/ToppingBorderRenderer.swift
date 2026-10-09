@@ -53,8 +53,6 @@ actor ToppingBorderRenderer {
         )
     }
 
-    /// 알파 실루엣을 굵기만큼 바깥으로 부풀린 테두리 판. 색은 그릴 때 `.template` 로 입힌다.
-    /// 굵기는 화면 절대 두께(pt)라(`canvas-policy.md` §5.7) 그려질 긴 변을 함께 받아야 반경이 정해진다.
     func silhouette(
         of image: CGImage,
         source sourceName: String,

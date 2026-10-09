@@ -40,12 +40,12 @@ public struct GroupRepositoryImpl: GroupRepository {
 
     /// 그룹 생성 (`POST /api/parfait-groups`).
     ///
-    /// 응답 본문(`groupId`·`groupName`·`inviteCode`·`memberLimit`)은 버린다. 생성 직후 화면은
-    /// 목록으로 돌아가고 목록이 서버에서 다시 받아오므로 쓸 자리가 없다. 타입을 맞춰 두면
-    /// 안 읽는 필드 때문에 디코딩이 깨질 수 있어, 형태를 보지 않는 `EmptyDTO` 로 받는다.
-    public func create(_ draft: GroupDraft) async throws {
+    /// 응답 본문(`groupId`·`groupName`·`inviteCode`·`memberLimit`) 중 `groupId`·`inviteCode` 만 읽는다.
+    /// 생성 직후 화면이 그 그룹의 캔버스로 이어지고, 캔버스가 초대코드를 안내한다.
+    public func create(_ draft: GroupDraft) async throws -> CreatedGroup {
         do {
-            let _: EmptyDTO = try await request(CreateGroupEndpoint(draft: draft))
+            let createdGroup: CreatedGroupDTO = try await request(CreateGroupEndpoint(draft: draft))
+            return createdGroup.toEntity(memberCount: draft.memberCount)
         } catch is CancellationError {
             // 취소는 실패가 아니다. CreateGroupError 로 바꿔 버리면 호출부의
             // `catch is CancellationError` 를 못 타고 실패 알럿 경로로 빠진다.

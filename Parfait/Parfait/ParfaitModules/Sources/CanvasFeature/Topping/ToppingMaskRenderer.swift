@@ -15,7 +15,7 @@ import CoreImage
 struct RenderedCutout: Sendable {
     let mask: CGImage
     let image: CGImage
-    /// 포함 픽셀이 하나라도 있는지. 비어 있으면 C-104 확인을 막는 근거가 된다.
+    /// 포함 픽셀이 하나라도 있는지. 비어 있으면 C-104 다음 버튼을 막는 근거가 된다.
     let hasArea: Bool
 }
 

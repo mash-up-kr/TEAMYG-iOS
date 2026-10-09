@@ -65,15 +65,6 @@ struct ToppingBorder: Equatable, Sendable {
 }
 
 extension ToppingBorder {
-    init(_ style: ToppingBorderStyle) {
-        switch style {
-        case .none:
-            self.init()
-        case .solid(let colorHex, let width):
-            self.init(color: ToppingBorderColor(hex: colorHex) ?? .none, width: width)
-        }
-    }
-
     init(_ border: CanvasStore.CanvasImageBorder?) {
         guard let border else {
             self.init()
@@ -101,49 +92,5 @@ struct BorderSilhouette: Equatable, Sendable {
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.image === rhs.image
-    }
-}
-
-struct ToppingBorderEditor: Equatable, Sendable {
-    private(set) var border = ToppingBorder()
-    private var history = BorderHistory()
-    private var widthBaseline: ToppingBorder?
-
-    var canUndo: Bool { history.canUndo }
-    var canRedo: Bool { history.canRedo }
-
-    init(border: ToppingBorder = ToppingBorder()) {
-        self.border = border
-    }
-
-    mutating func changeWidth(_ width: Double) {
-        border.width = width
-    }
-
-    mutating func updateWidthEditing(_ isEditing: Bool) {
-        guard !isEditing else {
-            widthBaseline = border
-            return
-        }
-        guard let baseline = widthBaseline else { return }
-        widthBaseline = nil
-        guard baseline != border else { return }
-        history.record(baseline)
-    }
-
-    mutating func select(_ color: ToppingBorderColor) {
-        guard color != border.color else { return }
-        history.record(border)
-        border.color = color
-    }
-
-    mutating func undo() {
-        guard let previous = history.undo(current: border) else { return }
-        border = previous
-    }
-
-    mutating func redo() {
-        guard let next = history.redo(current: border) else { return }
-        border = next
     }
 }

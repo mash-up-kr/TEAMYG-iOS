@@ -20,6 +20,7 @@ import GroupFeature
 import LoginFeature
 import MemberData
 import MemberDomain
+import Routing
 import SettingFeature
 import UIComponent
 
@@ -163,10 +164,11 @@ struct AppDependencies {
         )
     }
 
-    func makeCanvasStore(groupID: Int) -> CanvasStore {
+    func makeCanvasStore(groupID: Int, entry: CanvasEntry) -> CanvasStore {
         CanvasStore(
             dependencies: .init(
                 groupID: groupID,
+                entry: entry,
                 canvasUseCase: CanvasUseCaseImpl(
                     canvasRepository: CanvasRepositoryImpl(networkClient: networkClient)
                 ),

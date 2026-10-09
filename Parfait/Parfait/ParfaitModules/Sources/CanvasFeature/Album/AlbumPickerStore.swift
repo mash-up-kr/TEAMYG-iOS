@@ -64,7 +64,7 @@ public final class AlbumPickerStore: MVIStore {
             )
         case let .recentUploadTapped(upload, _):
             onRecentUploadConfirmed?(upload)
-        case .confirmReselectTapped:
+        case .confirmReselectTapped, .selectionReset:
             state.selectedPhoto = nil
         case .confirmNextTapped:
             guard let asset = state.selectedPhoto?.asset else { return }
@@ -86,31 +86,44 @@ public final class AlbumPickerStore: MVIStore {
         }
     }
 
-    /// 기기 사진을 정책 창(03:00~다음날 02:59) 안에서 최신순으로 가져와 날짜별 섹션으로 묶는다.
+    /// 기기 사진 전체를 최신순으로 가져와 캔버스 하루(03:00~다음날 02:59) 단위 섹션으로 묶는다.
     /// limited 면 Photos 가 선택된 사진만 돌려주므로 별도 분기가 없다.
     private func fetchDeviceSections() {
-        let window = AlbumPolicy.todayWindow()
         let fetchOptions = PHFetchOptions()
-        fetchOptions.predicate = NSPredicate(
-            format: "creationDate >= %@ AND creationDate < %@",
-            window.start as NSDate,
-            window.end as NSDate
-        )
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         let fetchResult = PHAsset.fetchAssets(with: .image, options: fetchOptions)
 
-        var assets: [PHAsset] = []
-        assets.reserveCapacity(fetchResult.count)
+        // 최신순이라 같은 하루의 사진이 연달아 온다 — 하루가 바뀔 때만 경계를 다시 계산한다.
+        var groups: [(canvasDate: CalendarDate, assets: [PHAsset])] = []
+        var groupIndexByCanvasDate: [CalendarDate: Int] = [:]
+        var currentWindow: DateInterval?
+        var currentGroupIndex = 0
         // ponytail: 전량 열거 — 수만 장 라이브러리에서 느려지면 fetchLimit+페이징 도입.
-        fetchResult.enumerateObjects { asset, _, _ in assets.append(asset) }
-
-        let calendar = Calendar.current
-        let groupedByDay = Dictionary(grouping: assets) { asset in
-            calendar.startOfDay(for: asset.creationDate ?? .distantPast)
+        fetchResult.enumerateObjects { asset, _, _ in
+            let creationDate = asset.creationDate ?? .distantPast
+            if let currentWindow, currentWindow.start <= creationDate, creationDate < currentWindow.end {
+                groups[currentGroupIndex].assets.append(asset)
+                return
+            }
+            let canvasDate = CalendarDate(canvasDayContaining: creationDate)
+            if let existingIndex = groupIndexByCanvasDate[canvasDate] {
+                currentGroupIndex = existingIndex
+            } else {
+                currentGroupIndex = groups.count
+                groupIndexByCanvasDate[canvasDate] = currentGroupIndex
+                groups.append((canvasDate, []))
+            }
+            groups[currentGroupIndex].assets.append(asset)
+            currentWindow = canvasDate.timeInterval
         }
-        state.sections = groupedByDay
-            .sorted { $0.key > $1.key }
-            .map { day, dayAssets in PhotoDaySection(day: day, assets: dayAssets) }
+
+        let today = CalendarDate.today
+        state.sections = groups
+            .sorted { $0.canvasDate > $1.canvasDate }
+            .compactMap { group in
+                guard let day = group.canvasDate.date else { return nil }
+                return PhotoDaySection(day: day, isToday: group.canvasDate == today, assets: group.assets)
+            }
     }
 
     /// 라이브러리 변경(일부허용 선택 변경·사진 추가 등) 시 재조회.
@@ -165,6 +178,7 @@ public final class AlbumPickerStore: MVIStore {
         case photoTapped(PHAsset, thumbnail: UIImage?)
         case recentUploadTapped(StoredImage, thumbnail: UIImage?)
         case confirmReselectTapped
+        case selectionReset
         case confirmNextTapped
     }
 
@@ -203,9 +217,10 @@ private final class PhotoLibraryChangeRelay: NSObject, PHPhotoLibraryChangeObser
     }
 }
 
-/// 하루 단위 사진 섹션. 헤더는 "May 20 (Wed)" 형식 (en 고정 — 디자인 확정 포맷).
+/// 캔버스 하루(03:00 경계) 단위 사진 섹션. 헤더는 "May 20 (Wed)" 형식 (en 고정 — 디자인 확정 포맷).
 public struct PhotoDaySection: Equatable, Identifiable {
     public let day: Date
+    public let isToday: Bool
     public let assets: [PHAsset]
     public var id: Date { day }
 
