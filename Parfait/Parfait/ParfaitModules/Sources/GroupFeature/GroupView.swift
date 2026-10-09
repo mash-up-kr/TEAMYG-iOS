@@ -98,7 +98,7 @@ public struct GroupView: View {
     /// `YGTopBar` 는 60pt 짜리 바만 그리고 기기별 안전영역은 모른다.
     private var topBar: some View {
         YGTopBar(
-            .default,
+            .default(groupCount: store.state.groupCount),
             onLeadingTap: { router.push(.setting) },
             onNewGroupTap: { store.send(.addGroupTapped) }
         )

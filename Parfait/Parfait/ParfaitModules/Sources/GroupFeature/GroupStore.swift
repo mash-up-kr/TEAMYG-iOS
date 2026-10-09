@@ -119,6 +119,11 @@ public final class GroupStore: MVIStore {
             return []
         }
 
+        public var groupCount: Int? {
+            guard case .loaded(let groups) = phase else { return nil }
+            return groups.count
+        }
+
         /// 그룹 0건이면 항상 노출 — 최초 1회 플래그는 두지 않는다.
         public var isTooltipVisible: Bool {
             guard case .loaded(let groups) = phase else { return false }
