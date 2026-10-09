@@ -10,10 +10,7 @@ import GroupDomain
 import SwiftUI
 import UIComponent
 
-/// 파르페 위에 얹히는 그룹 하나. Img(회전) + Grouptag-Chip 으로 이뤄진 160×160 프레임.
-///
-/// 프레임 안에서만 좌표를 계산하고, 파르페 어디에 놓일지는 `ParfaitLayout` 이 정한다.
-/// 렌더링 크기는 화면 폭에 맞춘 `scale` 로 확대하되 칩 글자는 확대하지 않는다.
+/// 파르페 위에 얹히는 그룹 하나. 그룹의 이미지·칩·탭을 정하고, 프레임 안 배치는 `ToppingFrameView` 에 맡긴다.
 struct ToppingView: View {
     let group: ParfaitGroup
     /// 목록에서의 순번 — 짝수 Left / 홀수 Right.
@@ -31,10 +28,40 @@ struct ToppingView: View {
     }
 
     var body: some View {
+        ToppingFrameView(variant: variant, scale: scale, chip: chip) {
+            ToppingImage(group: group)
+        }
+        .contentShape(.rect)
+        .onTapGesture(perform: action)
+    }
+
+    /// 활동 이력이 없는 그룹은 타임스탬프를 넘기지 않는다 — 칩이 이름만 남긴다.
+    /// 색을 정하는 Nametag 타입도 없을 수 있는데, 그때 쓰는 기본 계열은 어차피
+    /// 타임스탬프에만 칠해지므로 눈에 띄지 않는다.
+    private var chip: YGGrouptagChip {
+        YGGrouptagChip(
+            name: group.name,
+            timestamp: group.lastActivityAt.map { RelativeTimeText.string(from: $0) },
+            type: group.lastActorNametagType?.chipType ?? .type1
+        )
+    }
+}
+
+/// Img(회전) + Grouptag-Chip 으로 이뤄진 160×160 프레임. 실제 그룹과 0건 안내의 더미 그룹이 함께 쓴다.
+///
+/// 프레임 안에서만 좌표를 계산하고, 파르페 어디에 놓일지는 `ParfaitLayout` 이 정한다.
+/// 렌더링 크기는 화면 폭에 맞춘 `scale` 로 확대하되 칩 글자는 확대하지 않는다.
+struct ToppingFrameView<ImageContent: View>: View {
+    let variant: ToppingVariant
+    let scale: CGFloat
+    let chip: YGGrouptagChip
+    @ViewBuilder let imageContent: ImageContent
+
+    var body: some View {
         // 프레임 위쪽을 기준점으로 잡아 칩·이미지를 각자의 y 로 내린다(칩은 가로 중앙).
         // Z 순서는 항상 Img > Chip — 칩을 먼저 깔고 이미지를 위에 올린다.
         ZStack(alignment: .top) {
-            chip
+            positionedChip
             image
         }
         .frame(
@@ -42,18 +69,16 @@ struct ToppingView: View {
             height: ParfaitLayout.toppingSize * scale,
             alignment: .top
         )
-        .contentShape(.rect)
-        .onTapGesture(perform: action)
     }
 
     private var image: some View {
-        ToppingImage(group: group)
+        imageContent
             .frame(
                 width: ParfaitLayout.toppingImageSize * scale,
                 height: ParfaitLayout.toppingImageSize * scale
             )
             // 96 밖으로는 테두리 외곽선 폭만큼만 새어 나가게 잘라 둔다 — 이미지 자체는 96 을 그대로 쓴다.
-            // 클립은 프레임이 확정된 여기서 걸어야 한다 — AsyncImage 안쪽에 걸면
+            // 클립은 프레임이 확정된 여기서 걸어야 한다 — 그룹 이미지의 AsyncImage 안쪽에 걸면
             // AsyncImage 가 이미지 원본 크기를 자기 크기로 잡아 아무것도 안 잘린다.
             .clipShape(Rectangle().inset(by: -ToppingImage.borderWidth))
             .rotationEffect(.degrees(variant.rotation))
@@ -71,18 +96,10 @@ struct ToppingView: View {
     }
 
     /// 칩은 회전하지 않고 Img 아래 끝에 붙는다. 글자는 확대하지 않으므로 위치만 scale 을 곱한다.
-    ///
-    /// 활동 이력이 없는 그룹은 타임스탬프를 넘기지 않는다 — 칩이 이름만 남긴다.
-    /// 색을 정하는 Nametag 타입도 없을 수 있는데, 그때 쓰는 기본 계열은 어차피
-    /// 타임스탬프에만 칠해지므로 눈에 띄지 않는다.
-    private var chip: some View {
-        YGGrouptagChip(
-            name: group.name,
-            timestamp: group.lastActivityAt.map { RelativeTimeText.string(from: $0) },
-            type: group.lastActorNametagType?.chipType ?? .type1
-        )
-        .fixedSize()
-        .offset(y: variant.chipTopInFrame * scale)
+    private var positionedChip: some View {
+        chip
+            .fixedSize()
+            .offset(y: variant.chipTopInFrame * scale)
     }
 }
 

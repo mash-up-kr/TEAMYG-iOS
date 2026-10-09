@@ -17,11 +17,18 @@ public final class GroupStore: MVIStore {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
     @ObservationIgnored private var loadGeneration = 0
+    @ObservationIgnored private var emptyGuideTask: Task<Void, Never>?
+
+    private static let emptyGuideStepOffsets: [Duration] = [
+        .milliseconds(500), .milliseconds(1000), .milliseconds(1500), .milliseconds(2500)
+    ]
+    private static let emptyGuideDuration = Duration.milliseconds(3000)
 
     public init(groupUseCase: any GroupUseCase) {
         self.groupUseCase = groupUseCase
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
@@ -30,35 +37,80 @@ public final class GroupStore: MVIStore {
             // `screenDisappeared` 에서 닫으면 안 된다 — 드롭다운의 `NavigationLink` 가 조건부 뷰라,
             // push 직후 `onDisappear` 에서 플래그를 내리면 링크가 트리에서 사라지며 push 가 취소된다.
             state.isAddGroupMenuPresented = false
-            // 재진입마다 새 Store 라 툴팁도 자연히 다시 뜬다 — "0건이면 항상 노출" 정책.
+            // 0건 안내는 진입할 때마다 처음부터 다시 재생한다 — 이번 진입의 조회 결과가 0건으로 확정되면 시작.
+            resetEmptyGuide()
             beginLoad(isRefresh: false)
         case .refreshRequested:
             beginLoad(isRefresh: true)
         case .groupsLoaded(let groups):
             state.phase = .loaded(groups)
+            if !groups.isEmpty {
+                resetEmptyGuide()
+            } else if state.emptyGuide == .idle {
+                playEmptyGuide()
+            }
         case .loadFailed:
             state.phase = .failed
         case .backgroundTapped:
-            // 툴팁 밖 아무 데나 누르면 닫힌다. 드롭다운도 같은 제스처로 닫는다.
-            dismissTooltipIfVisible()
+            // 0건 안내는 재생이 끝난 뒤의 탭에만 닫힌다 — 재생 중 탭은 무시한다.
+            if state.emptyGuide == .completed {
+                state.emptyGuide = .dismissed
+            }
             state.isAddGroupMenuPresented = false
         case .addGroupTapped:
-            // 툴팁이 가리키던 버튼이라 함께 닫는다.
-            dismissTooltipIfVisible()
+            // 재생 중에 누르면 안내를 완료 상태로 넘기고 드롭다운을 연다. 안내는 닫지 않는다.
+            completeEmptyGuideIfPlaying()
             state.isAddGroupMenuPresented.toggle()
         case .addGroupMenuDismissed:
             state.isAddGroupMenuPresented = false
+        case .emptyGuideStepReached(let revealedStepCount):
+            guard case .playing = state.emptyGuide else { return }
+            state.emptyGuide = .playing(revealedStepCount: revealedStepCount)
+        case .emptyGuidePlaybackFinished:
+            guard case .playing = state.emptyGuide else { return }
+            state.emptyGuide = .completed
+        case .enteredBackground:
+            completeEmptyGuideIfPlaying()
         case .screenDisappeared:
             loadTask?.cancel()
             loadTask = nil
+            emptyGuideTask?.cancel()
+            emptyGuideTask = nil
         }
     }
 
-    /// "닫음" 은 사용자가 **떠 있는 툴팁을** 닫았다는 뜻이다.
-    /// 안 떠 있을 때도 플래그를 세우면, 그 뒤에 그룹이 0건이 됐을 때 떠야 할 툴팁이 막힌다.
-    private func dismissTooltipIfVisible() {
-        guard state.isTooltipVisible else { return }
-        state.isTooltipDismissed = true
+    private func playEmptyGuide() {
+        emptyGuideTask?.cancel()
+        state.emptyGuide = .playing(revealedStepCount: 0)
+        emptyGuideTask = Task {
+            let clock = ContinuousClock()
+            let startInstant = clock.now
+            do {
+                for (index, offset) in Self.emptyGuideStepOffsets.enumerated() {
+                    try await clock.sleep(until: startInstant + offset)
+                    try Task.checkCancellation()
+                    send(.emptyGuideStepReached(index + 1))
+                }
+                try await clock.sleep(until: startInstant + Self.emptyGuideDuration)
+                try Task.checkCancellation()
+                send(.emptyGuidePlaybackFinished)
+            } catch {
+                return
+            }
+        }
+    }
+
+    private func completeEmptyGuideIfPlaying() {
+        guard case .playing = state.emptyGuide else { return }
+        emptyGuideTask?.cancel()
+        emptyGuideTask = nil
+        state.emptyGuide = .completed
+    }
+
+    private func resetEmptyGuide() {
+        emptyGuideTask?.cancel()
+        emptyGuideTask = nil
+        state.emptyGuide = .idle
     }
 
     /// `.refreshable` 이 완료를 기다릴 수 있게 열어둔 async 진입점.
@@ -110,8 +162,7 @@ public final class GroupStore: MVIStore {
 
     public struct State: Equatable {
         public var phase = Phase.idle
-        /// 이번 진입에서 툴팁을 닫았는지. 화면을 나갔다 오면 Store 와 함께 초기화된다.
-        public var isTooltipDismissed = false
+        public var emptyGuide = EmptyGuide.idle
         public var isAddGroupMenuPresented = false
 
         public var groups: [ParfaitGroup] {
@@ -124,10 +175,29 @@ public final class GroupStore: MVIStore {
             return groups.count
         }
 
-        /// 그룹 0건이면 항상 노출 — 최초 1회 플래그는 두지 않는다.
-        public var isTooltipVisible: Bool {
-            guard case .loaded(let groups) = phase else { return false }
-            return groups.isEmpty && !isTooltipDismissed
+        /// 그룹 0건이면 진입할 때마다 노출 — 최초 1회 플래그는 두지 않는다.
+        public var isEmptyGuidePresented: Bool {
+            guard case .loaded(let groups) = phase, groups.isEmpty else { return false }
+            switch emptyGuide {
+            case .playing, .completed: return true
+            case .idle, .dismissed: return false
+            }
+        }
+
+        public var revealedDummyGroupCount: Int {
+            min(revealedEmptyGuideStepCount, EmptyGuide.dummyGroupCount)
+        }
+
+        public var isEmptyGuideTooltipRevealed: Bool {
+            revealedEmptyGuideStepCount > EmptyGuide.dummyGroupCount
+        }
+
+        private var revealedEmptyGuideStepCount: Int {
+            switch emptyGuide {
+            case .playing(let revealedStepCount): revealedStepCount
+            case .completed: EmptyGuide.stepCount
+            case .idle, .dismissed: 0
+            }
         }
 
         public var isFailed: Bool { phase == .failed }
@@ -140,16 +210,29 @@ public final class GroupStore: MVIStore {
         case failed
     }
 
+    public enum EmptyGuide: Equatable {
+        case idle
+        case playing(revealedStepCount: Int)
+        case completed
+        case dismissed
+
+        public static let dummyGroupCount = 3
+        public static let stepCount = dummyGroupCount + 1
+    }
+
     public enum Intent {
         case screenAppeared
         case refreshRequested
         /// `loadGroups()` 결과 — View 가 아니라 Store 내부에서만 보낸다.
         case groupsLoaded([ParfaitGroup])
         case loadFailed
-        /// 툴팁·드롭다운 바깥 영역 탭.
+        /// 화면(드롭다운 바깥) 탭.
         case backgroundTapped
         case addGroupTapped
         case addGroupMenuDismissed
+        case emptyGuideStepReached(Int)
+        case emptyGuidePlaybackFinished
+        case enteredBackground
         case screenDisappeared
     }
 }
