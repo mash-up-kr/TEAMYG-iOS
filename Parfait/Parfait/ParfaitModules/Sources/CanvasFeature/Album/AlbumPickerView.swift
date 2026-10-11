@@ -139,33 +139,15 @@ public struct AlbumPickerView: View {
         }
     }
 
-    private var todayGuide: some View {
-        HStack(spacing: 0) {
-            Image.icWarningRound
-                .renderingMode(.template)
-                .resizable()
-                .frame(width: 16, height: 16)
-                .padding(4)
-            Text("늦은 밤까지 담도록, 새벽 3시를 기준으로 하루의 사진을 불러와요")
-                .suit(.caption01Regular)
-        }
-        .foregroundStyle(Color.soda500)
-    }
-
     private func daySection(_ section: PhotoDaySection) -> some View {
         VStack(alignment: .leading, spacing: .gap4) {
-            VStack(alignment: .leading, spacing: .gap1) {
-                HStack(spacing: .gap1) {
-                    Text(section.dayTitle)
-                        .suit(.body02Regular)
-                        .foregroundStyle(Color.gray900)
-                    Text(section.weekdayTitle)
-                        .suit(.body02Regular)
-                        .foregroundStyle(Color.gray300)
-                }
-                if section.isToday {
-                    todayGuide
-                }
+            HStack(spacing: .gap1) {
+                Text(section.dayTitle)
+                    .suit(.body02Regular)
+                    .foregroundStyle(Color.gray900)
+                Text(section.weekdayTitle)
+                    .suit(.body02Regular)
+                    .foregroundStyle(Color.gray300)
             }
             LazyVGrid(columns: gridColumns, spacing: .gap4) {
                 ForEach(section.assets, id: \.localIdentifier) { asset in

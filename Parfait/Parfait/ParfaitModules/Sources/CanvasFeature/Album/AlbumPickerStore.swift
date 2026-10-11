@@ -117,12 +117,11 @@ public final class AlbumPickerStore: MVIStore {
             currentWindow = canvasDate.timeInterval
         }
 
-        let today = CalendarDate.today
         state.sections = groups
             .sorted { $0.canvasDate > $1.canvasDate }
             .compactMap { group in
                 guard let day = group.canvasDate.date else { return nil }
-                return PhotoDaySection(day: day, isToday: group.canvasDate == today, assets: group.assets)
+                return PhotoDaySection(day: day, assets: group.assets)
             }
     }
 
@@ -220,7 +219,6 @@ private final class PhotoLibraryChangeRelay: NSObject, PHPhotoLibraryChangeObser
 /// 캔버스 하루(03:00 경계) 단위 사진 섹션. 헤더는 "May 20 (Wed)" 형식 (en 고정 — 디자인 확정 포맷).
 public struct PhotoDaySection: Equatable, Identifiable {
     public let day: Date
-    public let isToday: Bool
     public let assets: [PHAsset]
     public var id: Date { day }
 
