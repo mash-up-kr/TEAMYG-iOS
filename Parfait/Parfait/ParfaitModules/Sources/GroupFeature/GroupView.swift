@@ -35,7 +35,6 @@ public struct GroupView: View {
     /// 조회 실패 안내 문구의 y (디자인 프레임 220 − 상단 바 아래 108).
     private static let loadFailureMessageY: CGFloat = 112
     private static let overlayAnimation = Animation.snappy(duration: 0.24)
-    private static let emptyGuideDismissAnimation = Animation.easeOut(duration: 0.3)
     private static let tooltipRevealAnimation = Animation.interpolatingSpring(mass: 1, stiffness: 80, damping: 20)
 
     public init(
@@ -63,10 +62,6 @@ public struct GroupView: View {
             tooltip
             addGroupMenu
         }
-        .animation(
-            store.state.emptyGuide == .dismissed ? Self.emptyGuideDismissAnimation : nil,
-            value: store.state.isEmptyGuidePresented
-        )
         .animation(Self.overlayAnimation, value: store.state.isAddGroupMenuPresented)
         .background(background)
         .ygLoading(store.state.phase == .idle || store.state.phase == .loading)
@@ -115,6 +110,7 @@ public struct GroupView: View {
         )
         .background(Color.white75.ignoresSafeArea(edges: .top))
         .frame(maxHeight: .infinity, alignment: .top)
+        .zIndex(1)
     }
 
     @ViewBuilder
@@ -143,7 +139,7 @@ public struct GroupView: View {
                     isSettled: store.state.emptyGuide == .completed,
                     scale: scale
                 )
-                .transition(.opacity)
+                .transition(.identity)
             }
         }
         // 0건 안내는 화면 아무 데나 눌러 닫는다 — 툴팁은 탭을 통과시켜 이 제스처가 받는다.
@@ -160,16 +156,17 @@ public struct GroupView: View {
     private var tooltip: some View {
         if store.state.isEmptyGuidePresented {
             let isRevealed = store.state.isEmptyGuideTooltipRevealed
+            let revealAnimation = store.state.emptyGuide == .completed
+                ? DummyToppingsView.settleAnimation
+                : Self.tooltipRevealAnimation
             GroupTooltipView()
                 .opacity(isRevealed ? 1 : 0)
-                .animation(
-                    isRevealed && store.state.emptyGuide != .completed ? Self.tooltipRevealAnimation : nil,
-                    value: isRevealed
-                )
+                .animation(isRevealed ? revealAnimation : nil, value: isRevealed)
                 .padding(.top, Self.topBarHeight)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .allowsHitTesting(false)
-                .transition(.opacity)
+                .transition(.identity)
+                .zIndex(2)
         }
     }
 
@@ -216,6 +213,7 @@ public struct GroupView: View {
                 .ignoresSafeArea()
                 .onTapGesture { store.send(.addGroupMenuDismissed) }
                 .transition(.opacity)
+                .zIndex(3)
 
             // 딤 위에 칩만 다시 그려 누른 버튼을 밝게 남긴다 — 시안도 칩만 250 으로 남는다.
             // 바 전체를 다시 그리면 배경(white75)까지 겹쳐 딤이 그 구간만 옅어진다.
@@ -226,12 +224,14 @@ public struct GroupView: View {
             .padding(.top, Self.addGroupChipTopInset)
             .padding(.trailing, Self.horizontalInset)
             .transition(.opacity)
+            .zIndex(4)
 
             AddGroupMenu()
                 .padding(.top, Self.addGroupMenuTopInset)
                 .padding(.trailing, Self.horizontalInset)
                 // 누른 칩에서 아래로 펼쳐지도록 위쪽을 붙잡는다.
                 .transition(.scale(scale: 0.9, anchor: .top).combined(with: .opacity))
+                .zIndex(5)
         }
     }
 }

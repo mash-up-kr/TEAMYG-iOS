@@ -13,6 +13,7 @@ struct DummyToppingsView: View {
     let isSettled: Bool
     let scale: CGFloat
 
+    static let settleAnimation = Animation.easeOut(duration: 0.2)
     private static let revealAnimation = Animation.timingCurve(0, 0, 0, 1, duration: 1)
     private static let revealOffsetY: CGFloat = -60
 
@@ -26,6 +27,10 @@ struct DummyToppingsView: View {
                         .scaledToFit()
                 }
                 .opacity(isRevealed ? 1 : 0)
+                .animation(
+                    isRevealed ? (isSettled ? Self.settleAnimation : Self.revealAnimation) : nil,
+                    value: isRevealed
+                )
                 .offset(
                     x: dummyGroup.origin.x * scale,
                     y: (dummyGroup.origin.y + (isRevealed ? 0 : Self.revealOffsetY)) * scale
