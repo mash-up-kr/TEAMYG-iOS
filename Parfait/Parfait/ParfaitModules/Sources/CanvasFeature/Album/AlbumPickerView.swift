@@ -34,7 +34,7 @@ public struct AlbumPickerView: View {
                     topBar
                 }
                 ScrollView {
-                    VStack(alignment: .leading, spacing: .gap7) {
+                    LazyVStack(alignment: .leading, spacing: .gap7) {
                         if !store.state.recentUploads.isEmpty {
                             recentUploadsSection
                         }
@@ -97,7 +97,7 @@ public struct AlbumPickerView: View {
 
     /// 네비게이션 바 형태의 상단 바 — 닫기 버튼(44, AlbumView 소유)과 같은 라인에 가운데 제목.
     private var topBar: some View {
-        Text("오늘 찍은 사진")
+        Text("사진 선택")
             .suit(.body01Regular)
             .foregroundStyle(Color.gray900)
             .frame(maxWidth: .infinity)

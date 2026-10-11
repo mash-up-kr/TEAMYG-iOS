@@ -44,8 +44,8 @@ public final class CreateGroupStore: MVIStore {
         case .createConfirmed:
             state.isCreateConfirmPopupPresented = false
             beginCreateRequest()
-        case .createFinished(let createError):
-            state.phase = createError.map(Phase.failed) ?? .created
+        case .createFinished(let result):
+            state.phase = Phase(result)
         case .failureAcknowledged:
             clearFailure()
         case .screenDisappeared:
@@ -106,12 +106,12 @@ public final class CreateGroupStore: MVIStore {
     /// 제출 시점의 입력을 파라미터로 받아, 통신 중 사용자가 값을 바꿔도 실제로 보낸 것과 어긋나지 않게 한다.
     private func requestCreate(_ draft: GroupDraft) async {
         do {
-            try await groupUseCase.create(draft)
-            send(.createFinished(nil))
+            let createdGroup = try await groupUseCase.create(draft)
+            send(.createFinished(.success(createdGroup)))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.
         } catch {
-            send(.createFinished(error as? CreateGroupError ?? .unknown))
+            send(.createFinished(.failure(error as? CreateGroupError ?? .unknown)))
         }
     }
 
@@ -154,9 +154,10 @@ public final class CreateGroupStore: MVIStore {
             phase != .loading && draft != nil
         }
 
-        /// 생성이 끝나 화면을 떠나야 하는 시점인지. `false` 면 아직 머무른다.
-        public var isCreated: Bool {
-            phase == .created
+        /// 생성이 끝나 화면을 떠나야 하는 시점에 채워지는, 만들어진 그룹. `nil` 이면 아직 머무른다.
+        public var createdGroup: CreatedGroup? {
+            if case .created(let createdGroup) = phase { return createdGroup }
+            return nil
         }
 
         public var createError: CreateGroupError? {
@@ -168,8 +169,15 @@ public final class CreateGroupStore: MVIStore {
     public enum Phase: Equatable {
         case idle
         case loading
-        case created
+        case created(CreatedGroup)
         case failed(CreateGroupError)
+
+        init(_ result: Result<CreatedGroup, CreateGroupError>) {
+            switch result {
+            case .success(let createdGroup): self = .created(createdGroup)
+            case .failure(let createError): self = .failed(createError)
+            }
+        }
     }
 
     public enum Intent {
@@ -181,8 +189,8 @@ public final class CreateGroupStore: MVIStore {
         /// 팝업 자체의 표시 여부 — 확인 버튼 탭(true)과 취소·바깥 탭으로 닫히는 경로(false)가 모두 여기로 온다.
         case createConfirmPopupVisibilityChanged(Bool)
         case createConfirmed
-        /// `requestCreate(_:)` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다. `nil` 이면 생성 성공.
-        case createFinished(CreateGroupError?)
+        /// `requestCreate(_:)` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다. 성공이면 만들어진 그룹.
+        case createFinished(Result<CreatedGroup, CreateGroupError>)
         case failureAcknowledged
         case screenDisappeared
     }

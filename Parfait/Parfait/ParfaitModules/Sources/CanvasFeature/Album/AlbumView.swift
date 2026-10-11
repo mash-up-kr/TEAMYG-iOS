@@ -21,13 +21,16 @@ public struct AlbumView: View {
     /// composition root 가 store 를 미리 만들지 못하고 클로저로 주입한다.
     private let makeAlbumPickerStore: (_ isLimited: Bool) -> AlbumPickerStore
     private let showsSelectionGuide: Bool
+    private let onCloseTap: (() -> Void)?
 
     public init(
         makeAlbumPickerStore: @escaping (_ isLimited: Bool) -> AlbumPickerStore,
-        showsSelectionGuide: Bool = true
+        showsSelectionGuide: Bool = true,
+        onCloseTap: (() -> Void)? = nil
     ) {
         self.makeAlbumPickerStore = makeAlbumPickerStore
         self.showsSelectionGuide = showsSelectionGuide
+        self.onCloseTap = onCloseTap
     }
 
     public var body: some View {
@@ -63,7 +66,7 @@ public struct AlbumView: View {
             .id(store.state.permission)
         }
         .overlay(alignment: .topTrailing) {
-            YGCircleButton(.icClose, variant: .default) { dismiss() }
+            YGCircleButton(.icClose, variant: .default, action: onCloseTap ?? { dismiss() })
                 .padding(.top, .padding6)
                 .padding(.trailing, .padding7)
         }

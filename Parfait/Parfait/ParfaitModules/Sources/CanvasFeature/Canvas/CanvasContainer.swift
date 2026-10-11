@@ -12,8 +12,8 @@ struct CanvasContainer: View {
     let state: CanvasStore.State
     let send: (CanvasStore.Intent) -> Void
 
-    /// SY-001-New 안내는 노출 후 일정 시간이 지나면 내린다 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
-    @State private var isPastParfaitNudgeExpired = false
+    /// 상단 안내는 노출 후 일정 시간이 지나면 내린다 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
+    @State private var isNudgeExpired = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -23,9 +23,6 @@ struct CanvasContainer: View {
                     height: max(proxy.size.height - .padding6 * 2, 0)
                 )
 
-                // Pull-to-Refresh 를 걸기 위한 스크롤 컨테이너. 내용 높이를 뷰포트에 맞춰
-                // 실제 스크롤은 일어나지 않고 당겨서 새로고침만 동작한다
-                // (`canvas-policy.md` §4.2 — 다른 그룹원의 토핑을 받아오는 유일한 경로).
                 ScrollView {
                     VStack(spacing: -1) {
                         CanvasBoard(
@@ -65,7 +62,7 @@ struct CanvasContainer: View {
                 .refreshable { send(.refreshRequested) }
             }
 
-            pastParfaitNudgeLayer
+            nudgeLayer
 
             if state.calendar.presentation != .closed {
                 calendarLayer
@@ -73,31 +70,40 @@ struct CanvasContainer: View {
         }
     }
 
-    /// Store 조건(오늘·토핑 없음·마감 이력)과 뷰 로컬 만료를 합친 최종 노출 여부 — 슬라이드 애니메이션 트리거.
-    private var isPastParfaitNudgeShown: Bool {
-        state.pastParfaitNudge != nil && !isPastParfaitNudgeExpired
+    /// Store 조건과 뷰 로컬 만료를 합친 최종 노출 여부 — 슬라이드 애니메이션 트리거.
+    private var isNudgeShown: Bool {
+        (state.entryNudge != nil || state.pastParfaitNudge != nil) && !isNudgeExpired
     }
 
-    /// SY-001-New 안내 — 위에서 내려와 3초 머물다 위로 올라간다.
-    private var pastParfaitNudgeLayer: some View {
+    /// 상단 안내 — 위에서 내려와 3초 머물다 위로 올라간다. 진입 안내가 SY-001-New 안내보다 먼저다.
+    private var nudgeLayer: some View {
         ZStack(alignment: .top) {
-            if let pastParfaitNudge = state.pastParfaitNudge, !isPastParfaitNudgeExpired {
-                CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
-                    send(.pastParfaitNudgeTapped)
-                }
-                .padding(.top, .padding6)
-                .transition(.move(edge: .top))
-                .task {
-                    // 시간이 다 되기 전에 뷰가 내려가면(과거 이동 등) 취소된다 — 그때는 만료로 치지 않는다.
-                    guard (try? await Task.sleep(for: CanvasPastParfaitNudge.displayDuration)) != nil else { return }
-                    isPastParfaitNudgeExpired = true
+            if isNudgeExpired {
+                EmptyView()
+            } else if let entryNudge = state.entryNudge {
+                nudgeSlot { CanvasEntryNudge(nudge: entryNudge) }
+            } else if let pastParfaitNudge = state.pastParfaitNudge {
+                nudgeSlot {
+                    CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
+                        send(.pastParfaitNudgeTapped)
+                    }
                 }
             }
         }
-        .animation(CanvasPastParfaitNudge.slideAnimation, value: isPastParfaitNudgeShown)
+        .animation(CanvasNudgeBar.slideAnimation, value: isNudgeShown)
     }
 
-    /// 과거 캔버스는 열람 전용이라 토핑 추가·캔버스 편집 대신 오늘 가기를 제공한다 (`canvas-policy.md` §7.2).
+    private func nudgeSlot(@ViewBuilder _ nudge: () -> some View) -> some View {
+        nudge()
+            .padding(.top, .padding6)
+            .transition(.move(edge: .top))
+            .task {
+                // 시간이 다 되기 전에 뷰가 내려가면(과거 이동 등) 취소된다 — 그때는 만료로 치지 않는다.
+                guard (try? await Task.sleep(for: CanvasNudgeBar.displayDuration)) != nil else { return }
+                isNudgeExpired = true
+            }
+    }
+
     @ViewBuilder
     private var menuBar: some View {
         if state.isClosedCanvas {
@@ -106,6 +112,7 @@ struct CanvasContainer: View {
             )
         } else {
             CanvasMenuBar(
+                isSourceOptionsPresented: state.menuState == .sourceOptions,
                 onToppingAddTap: { send(.toppingAddTapped) },
                 onCanvasEditTap: { send(.canvasEditTapped) }
             )
@@ -164,10 +171,8 @@ private struct CanvasBoard: View {
             Group {
                 switch contentState {
                 case .empty:
-                    message("아직 캔버스가 비어 있어요", "첫번째 토핑을 올려 캔버스를 채워보세요")
+                    message("아직 캔버스가 비어 있어요", "첫번째 사진을 올려 캔버스를 채워보세요")
 
-                // 네트워크 실패를 빈 캔버스로 보여주면 "우리 캔버스가 비었다" 고 오해한다.
-                // 전용 시안이 없어(`canvas-policy.md` §8) 문구만 구분하고 재시도는 Pull-to-Refresh 로 받는다.
                 case .failed:
                     message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")
 

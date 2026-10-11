@@ -84,6 +84,20 @@ extension ToppingPlacement {
 }
 
 extension ToppingPlacement {
+    private static let minimumHitLength: CGFloat = 44
+
+    func contains(_ point: CGPoint, toppingPixelSize: CGSize, canvasSize: CGSize) -> Bool {
+        let size = renderedSize(toppingPixelSize: toppingPixelSize, canvasSize: canvasSize)
+        let placementCenter = center(in: canvasSize)
+        let offset = CGSize(width: point.x - placementCenter.x, height: point.y - placementCenter.y)
+        let radians = -rotationDegrees * .pi / 180
+        let localX = offset.width * cos(radians) - offset.height * sin(radians)
+        let localY = offset.width * sin(radians) + offset.height * cos(radians)
+
+        return abs(localX) <= max(size.width, Self.minimumHitLength) / 2
+            && abs(localY) <= max(size.height, Self.minimumHitLength) / 2
+    }
+
     func handleCenter(
         horizontal: CGFloat,
         vertical: CGFloat,
@@ -102,24 +116,6 @@ extension ToppingPlacement {
             x: placementCenter.x + corner.width * cos(radians) - corner.height * sin(radians),
             y: placementCenter.y + corner.width * sin(radians) + corner.height * cos(radians)
         )
-    }
-
-    func magnification(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
-        let placementCenter = center(in: canvasSize)
-        let startDistance = hypot(startLocation.x - placementCenter.x, startLocation.y - placementCenter.y)
-        let currentDistance = hypot(location.x - placementCenter.x, location.y - placementCenter.y)
-        guard startDistance > 0 else { return 1 }
-
-        return Double(currentDistance / startDistance)
-    }
-
-    func rotation(from startLocation: CGPoint, to location: CGPoint, in canvasSize: CGSize) -> Double {
-        let placementCenter = center(in: canvasSize)
-        let startAngle = atan2(startLocation.y - placementCenter.y, startLocation.x - placementCenter.x)
-        let currentAngle = atan2(location.y - placementCenter.y, location.x - placementCenter.x)
-        let degrees = Double(currentAngle - startAngle) * 180 / .pi
-
-        return remainder(degrees, 360)
     }
 }
 

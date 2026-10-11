@@ -16,7 +16,9 @@ struct PreviewGroupUseCase: GroupUseCase {
 
     func fetchGroups() async throws -> [ParfaitGroup] { [] }
 
-    func create(_ draft: GroupDraft) async throws {}
+    func create(_ draft: GroupDraft) async throws -> CreatedGroup {
+        CreatedGroup(id: "preview-group", inviteCode: "WWWWWW", memberCount: draft.memberCount)
+    }
 
     func join(inviteCode: String) async throws -> JoinedGroup {
         if let joinError {

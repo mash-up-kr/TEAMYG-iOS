@@ -7,8 +7,6 @@
 
 import Foundation
 
-/// 오늘 캔버스를 주기적으로 다시 받아오기 위한 타이머. 실시간 동기화 endpoint 가 없어
-/// C-001·C-106·C-304/C-305 가 이 주기로 서버 상태를 따라간다 (`canvas_api.md` §8).
 @MainActor
 final class CanvasRefreshTicker {
     /// 캔버스 자동 최신화 주기. 세 화면이 같은 값을 쓴다.

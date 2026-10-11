@@ -11,13 +11,14 @@ import SwiftUI
 import UIComponent
 
 struct JoinGroupNicknameView: View {
-    @Environment(\.dismiss) private var dismiss
     @State private var store: JoinGroupNicknameStore
     @State private var nicknameInput: String
+    private let onCompleted: () -> Void
 
-    init(store: JoinGroupNicknameStore) {
+    init(store: JoinGroupNicknameStore, onCompleted: @escaping () -> Void) {
         _store = State(initialValue: store)
         _nicknameInput = State(initialValue: store.state.nickname)
+        self.onCompleted = onCompleted
     }
 
     var body: some View {
@@ -49,7 +50,7 @@ struct JoinGroupNicknameView: View {
         .padding(.bottom, 20)
         .onChange(of: store.state.isCompleted) { _, isCompleted in
             guard isCompleted else { return }
-            dismiss()
+            onCompleted()
         }
         .task { store.send(.screenAppeared) }
         .onDisappear { store.send(.screenDisappeared) }
@@ -77,6 +78,7 @@ struct JoinGroupNicknameView: View {
         store: JoinGroupNicknameStore(
             group: JoinedGroup(id: "preview-group", name: "그룹이름"),
             groupUseCase: PreviewGroupUseCase()
-        )
+        ),
+        onCompleted: {}
     )
 }

@@ -8,8 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// 뷰파인더 **바깥만** 흐리게 덮는 레이어 (`canvas-policy.md` §5.2).
-///
 /// 카메라 프리뷰는 SwiftUI 가 그린 내용이 아니라 `AVCaptureVideoPreviewLayer` 라
 /// SwiftUI `.blur()` 가 닿지 않는다. 프레임을 직접 블러 처리하면 매 프레임 GPU 작업이 되므로,
 /// Core Animation 이 합성 단계에서 처리하는 `UIVisualEffectView` 를 얹고 뷰파인더 구멍만 마스크로 뚫는다.

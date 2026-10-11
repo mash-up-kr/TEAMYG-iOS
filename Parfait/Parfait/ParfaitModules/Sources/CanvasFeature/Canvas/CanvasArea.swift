@@ -19,7 +19,6 @@ enum CanvasArea {
         return min(available.width, heightForBoard * aspectRatio)
     }
 
-    /// 긴 변을 `longSide` 에 맞추고 짧은 변은 원본 비율대로 — 정규화 `scale` 규약(`canvas-policy.md` §5.7)의 역산이다.
     static func toppingSize(pixelSize: CGSize, longSide: CGFloat) -> CGSize {
         let pixelLongSide = max(pixelSize.width, pixelSize.height)
         guard pixelLongSide > 0 else { return CGSize(width: longSide, height: longSide) }
@@ -33,7 +32,7 @@ enum CanvasArea {
 
 extension View {
     /// 캔버스 보드 공통 프레임 — 내용을 사각형으로 자르고 1pt 회색 외곽선을 두른다.
-    /// 배치(C-106)·배경 편집·토핑 편집(C-305) 보드가 같은 틀을 쓴다.
+    /// 배치(C-105)·배경 변경·토핑 편집 보드가 같은 틀을 쓴다.
     func canvasBoardFrame() -> some View {
         clipped()
             .overlay {

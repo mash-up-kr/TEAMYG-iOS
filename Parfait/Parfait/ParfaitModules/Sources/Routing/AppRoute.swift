@@ -13,9 +13,15 @@ public enum AppRoute: Hashable {
     ///
     /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id`·`name` 이다.
     /// 엔티티가 아니라 원시값으로 넘긴다 — Routing 이 GroupDomain 에 의존하지 않게 하려는 것이다.
-    /// 그룹명은 캔버스 API 응답(`groupName`)에서 받아 채운다 — 라우트는 ID 만 들고 간다.
+    /// 그룹명은 캔버스 API 응답(`groupName`)에서 받아 채운다 — 라우트는 ID 와 진입 맥락만 들고 간다.
     /// 이름을 모르는 진입점(푸시 탭)은 빈 문자열로 온다.
-    case canvas(groupID: String)
+    case canvas(groupID: String, entry: CanvasEntry = .regular)
     /// 그룹 사이드메뉴(S-101) — 캔버스(C-001) 상단 바 더보기(⋯)로 진입한다. `groupName` 은 상단 바 제목.
     case groupSideMenu(groupID: String, groupName: String)
+}
+
+public enum CanvasEntry: Hashable, Sendable {
+    case regular
+    case joined
+    case created(inviteCode: String, memberCount: Int)
 }

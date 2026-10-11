@@ -14,9 +14,6 @@ enum AlbumPolicy {
 
     /// 정책상 "오늘" 창: 가장 최근 03:00 부터 24시간 (03:00 ~ 다음날 02:59:59).
     /// 기기 사진·최근 업로드 노출 필터가 공용으로 쓴다.
-    ///
-    /// 하루 경계는 `CalendarDate` 가 소유한다 — 캘린더가 보는 "오늘" 과 갤러리가 보는 "오늘" 이
-    /// 갈리지 않도록 경계 계산을 한곳에서만 한다 (`canvas-policy.md` §4.1·§5.3).
     static func todayWindow(now: Date = .now) -> DateInterval {
         let today = CalendarDate(canvasDayContaining: now)
         guard let window = today.timeInterval else {

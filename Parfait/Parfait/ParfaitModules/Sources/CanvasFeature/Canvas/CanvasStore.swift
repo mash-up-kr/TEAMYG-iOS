@@ -26,6 +26,7 @@ public final class CanvasStore: MVIStore {
     private var silentRefreshTask: Task<Void, Never>?
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
+    private var pastParfaitNudgeLoadTask: Task<Void, Never>?
     private var didLoadInitialData = false
     /// 과거 캔버스는 `parfaitID` 로만 조회할 수 있다. 목록 응답에서 받은 매핑을 들고 있는다.
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
@@ -36,6 +37,8 @@ public final class CanvasStore: MVIStore {
         state: State = State(),
         dependencies: Dependencies
     ) {
+        var state = state
+        state.entry = dependencies.entry
         self.state = state
         self.dependencies = dependencies
     }
@@ -160,7 +163,6 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    /// 토핑을 올릴 대상은 언제나 오늘 캔버스다 (`canvas-policy.md` §4.1).
     private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
         guard !state.isClosedCanvas, state.parfaitID != nil else { return }
         state.calendar.close()
@@ -168,7 +170,6 @@ public final class CanvasStore: MVIStore {
         state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
-    /// Pull-to-Refresh — Spotlight 를 먼저 해제하고 Default 상태에서 새로고침한다 (`canvas-policy.md` §4.2).
     private func refreshCanvas() {
         state.spotlightedToppingID = nil
         state.menuState = .collapsed
@@ -182,8 +183,6 @@ public final class CanvasStore: MVIStore {
         loadCanvas(for: date)
     }
 
-    /// SY-001-New `보러가기` — 안내된 날짜의 과거 캔버스로 이동한다 (`canvas-policy.md` §7.1).
-    /// 안내 날짜가 다른 해면 그 해 목록을 먼저 받아 `parfaitID` 매핑을 채운다.
     private func openPastParfaitNudgeTarget() {
         guard let date = state.pastParfaitNudge?.date else { return }
         state.menuState = .collapsed
@@ -230,6 +229,8 @@ public final class CanvasStore: MVIStore {
         canvasLoadTask?.cancel()
         silentRefreshTask?.cancel()
         silentRefreshTask = nil
+        pastParfaitNudgeLoadTask?.cancel()
+        pastParfaitNudgeLoadTask = nil
 
         state.contentState = .loading
         state.canvasContent = nil
@@ -261,15 +262,49 @@ public final class CanvasStore: MVIStore {
 }
 
 private extension CanvasStore {
-    /// SY-001-New 는 마감 날짜당 한 번만 알린다 — 안내할 날짜를 기기에 남기고, 이미 남긴 날짜는 거른다.
-    /// 첫 조회는 항상 오늘 캔버스라 여기서 기록해도 안내 없이 소모되는 일은 없다.
-    func unseenClosedDate(_ closedDate: CalendarDate?) -> CalendarDate? {
-        guard let closedDate else { return nil }
-        let seenClosedDateKey = "canvas.seenClosedDate.\(dependencies.groupID)"
-        let closedDateText = "\(closedDate.year)-\(closedDate.month)-\(closedDate.day)"
-        guard UserDefaults.standard.string(forKey: seenClosedDateKey) != closedDateText else { return nil }
-        UserDefaults.standard.set(closedDateText, forKey: seenClosedDateKey)
-        return closedDate
+    /// SY-001-New 는 마감 날짜당 한 번만 알린다 — 안내한 날짜를 기기에 남기고, 이미 남긴 날짜는 거른다.
+    var seenClosedDateKey: String {
+        "canvas.seenClosedDate.\(dependencies.groupID)"
+    }
+
+    func seenClosedDateText(_ closedDate: CalendarDate) -> String {
+        "\(closedDate.year)-\(closedDate.month)-\(closedDate.day)"
+    }
+
+    /// 안내에 쓰는 참여 인원은 마감 캔버스 상세에만 있어 따로 받는다. 오늘 캔버스를 볼 때만 시작한다 —
+    /// 과거 캔버스를 보는 중에 받으면 안내가 뜨지도 못한 채 소모된다.
+    func loadPastParfaitNudge(closedDate: CalendarDate?) {
+        pastParfaitNudgeLoadTask?.cancel()
+        pastParfaitNudgeLoadTask = nil
+        state.lastClosedDate = nil
+
+        guard dependencies.entry == .regular,
+              !state.isClosedCanvas,
+              let closedDate,
+              UserDefaults.standard.string(forKey: seenClosedDateKey) != seenClosedDateText(closedDate)
+        else { return }
+
+        pastParfaitNudgeLoadTask = Task { [weak self] in
+            await self?.refreshPastParfaitNudge(for: closedDate)
+        }
+    }
+
+    /// 조회에 실패하면 기기에 남기지 않는다 — 다음 조회 때 다시 시도한다.
+    func refreshPastParfaitNudge(for closedDate: CalendarDate) async {
+        if parfaitIDsByDate[closedDate] == nil {
+            await refreshRecordedDates(for: closedDate.year)
+        }
+        guard !Task.isCancelled, let parfaitID = parfaitIDsByDate[closedDate] else { return }
+
+        let closedParfait = try? await dependencies.canvasUseCase.fetchParfait(
+            groupID: dependencies.groupID,
+            parfaitID: parfaitID
+        )
+        guard !Task.isCancelled, let closedParfait else { return }
+
+        UserDefaults.standard.set(seenClosedDateText(closedDate), forKey: seenClosedDateKey)
+        state.lastClosedParticipantCount = Set(closedParfait.toppings.map(\.placedBy.id)).count
+        state.lastClosedDate = closedDate
     }
 
     /// 캘린더 인디케이터와 날짜 → `parfaitID` 매핑을 한 해 단위로 갱신한다.
@@ -295,7 +330,6 @@ private extension CanvasStore {
         }
     }
 
-    /// 오늘 캔버스의 내 토핑은 C-305 로, 그 밖의 토핑은 Spotlight 로 간다 (`canvas-policy.md` §4.2).
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
         state.calendar.close()
@@ -363,13 +397,13 @@ private extension CanvasStore {
     }
 
     func apply(_ parfait: Parfait) {
-        state.lastClosedDate = unseenClosedDate(parfait.lastClosedDate.map(CalendarDate.init))
+        loadPastParfaitNudge(closedDate: parfait.lastClosedDate.map(CalendarDate.init))
         applyContent(parfait)
         state.awaitedToppingImageIDs = Set(state.canvasContent?.images.map(\.id) ?? [])
     }
 
-    /// 주기 갱신 전용 반영. `lastClosedDate` 는 건드리지 않는다 — `unseenClosedDate` 가
-    /// UserDefaults 를 소비해, 틱마다 부르면 SY-001-New 안내가 뜨자마자 사라진다.
+    /// 주기 갱신 전용 반영. `lastClosedDate` 는 건드리지 않는다 — 안내한 날짜는 이미 기기에 남아 있어,
+    /// 틱마다 다시 판단하면 SY-001-New 안내가 뜨자마자 사라진다.
     func applySilently(_ parfait: Parfait) {
         applyContent(parfait)
         // 새로 들어온 토핑까지 로딩 딤이 기다리지 않게 집합은 넓히지 않고, 사라진 토핑만 걷어낸다.
@@ -404,9 +438,11 @@ private extension CanvasStore {
         silentRefreshTask?.cancel()
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
+        pastParfaitNudgeLoadTask?.cancel()
         canvasLoadTask = nil
         silentRefreshTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
+        pastParfaitNudgeLoadTask = nil
     }
 }

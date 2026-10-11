@@ -10,13 +10,11 @@ public protocol ToppingUseCase: Sendable {
     /// 누끼를 업로드하고 캔버스에 배치한다. 업로드 → 배치를 한 번에 처리한다.
     func place(_ draft: ToppingDraft, groupID: Int, parfaitID: Int) async throws -> PlacedTopping
 
-    /// 위치·크기·각도를 바꾼다.
-    func updatePlacement(
-        _ update: ToppingPlacementUpdate,
-        toppingID: Int,
+    func updatePlacements(
+        _ updates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
-    ) async throws -> ToppingPlacementValues
+    ) async throws
 
     /// 테두리를 바꾼다.
     func updateBorder(
@@ -54,18 +52,13 @@ public struct ToppingUseCaseImpl: ToppingUseCase {
         )
     }
 
-    public func updatePlacement(
-        _ update: ToppingPlacementUpdate,
-        toppingID: Int,
+    public func updatePlacements(
+        _ updates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
-    ) async throws -> ToppingPlacementValues {
-        try await toppingRepository.updatePlacement(
-            update,
-            toppingID: toppingID,
-            groupID: groupID,
-            parfaitID: parfaitID
-        )
+    ) async throws {
+        guard !updates.isEmpty else { return }
+        try await toppingRepository.updatePlacements(updates, groupID: groupID, parfaitID: parfaitID)
     }
 
     public func updateBorder(

@@ -99,12 +99,12 @@ struct RootView: View {
                 store: diContainer.makeSettingStore(),
                 makeAccountInfoStore: diContainer.makeAccountInfoStore
             )
-        case .canvas(let groupID):
+        case .canvas(let groupID, let entry):
             // 서버 그룹 ID 는 Int, 라우트 페이로드는 String(`ParfaitGroup.id`·푸시 groupId) —
             // 숫자가 아니면 갈 그룹이 없으므로 아무것도 그리지 않는다(정상 경로에선 항상 숫자).
             if let groupID = Int(groupID) {
                 CanvasView(
-                    store: diContainer.makeCanvasStore(groupID: groupID),
+                    store: diContainer.makeCanvasStore(groupID: groupID, entry: entry),
                     router: router,
                     makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
                     toppingUseCase: diContainer.makeToppingUseCase(),

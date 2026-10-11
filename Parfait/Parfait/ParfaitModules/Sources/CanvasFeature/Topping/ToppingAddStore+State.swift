@@ -16,22 +16,21 @@ extension ToppingAddStore {
         /// 배치 화면 뒤에 깔리는 오늘 캔버스. 10초마다 서버 값으로 갈아 끼운다.
         var canvasContent: CanvasStore.CanvasContent?
         var screen: Screen
-        var galleryAssetIdentifier: String?
         var analysis: PhotoAnalysis?
         var extractedTopping: ExtractedTopping?
         var cutoutEditCanvas: CutoutEditCanvas?
-        var borderEditor = ToppingBorderEditor()
+        var border = ToppingBorder()
         var borderSilhouette: BorderSilhouette?
-        var borderPreviewLongEdge: CGFloat = 0
         var maskEditor = ToppingMaskEditor()
         var placementEditor = ToppingPlacementEditor()
-        var cutoutPath: CutoutPath = .automatic
-        var placementReturnScreen: Screen = .cutoutResult
-        /// 지금 누끼에 포함된 영역이 있는지. 비어 있으면 C-104 확인(→C-105)을 막는다.
+        var isRecentUpload = false
+        /// 지금 누끼에 포함된 영역이 있는지. 비어 있으면 C-104 다음(→C-105)을 막는다.
         var cutoutHasArea = true
         var showsToast = true
         var saveState: SaveState = .idle
         var extractionState: ExtractionState = .idle
+        var quitConfirmation: QuitConfirmation?
+        var isBorderPanelExpanded = true
 
         init(
             canvasDate: CalendarDate,
@@ -44,13 +43,16 @@ extension ToppingAddStore {
             screen = photoSource.entryScreen
         }
 
+        var isAddPhotoQuitPopupPresented: Bool {
+            quitConfirmation == .addPhoto
+        }
+
+        var isEditPhotoQuitPopupPresented: Bool {
+            quitConfirmation == .editPhoto
+        }
+
         var borderRenderLongEdge: CGFloat {
-            switch screen {
-            case .placement:
-                placementEditor.placement.longSide(in: placementEditor.canvasSize)
-            default:
-                borderPreviewLongEdge
-            }
+            placementEditor.placement.longSide(in: placementEditor.canvasSize)
         }
 
         var canvasDateText: String {
@@ -81,52 +83,49 @@ extension ToppingAddStore {
         case analysisCancelled
         case candidateTapped(normalizedPoint: CGPoint)
         case candidateSelectionBackTapped
-        case analysisErrorClosed
-        case useWithoutEditTapped
-        case manualEditTapped
-        case cutoutResultClosed
-        case photoEditTapped
-        case cutoutConfirmed
-        case borderPreviewLongEdgeChanged(CGFloat)
-        case borderWidthChanged(Double)
-        case borderWidthEditingChanged(Bool)
-        case borderColorSelected(ToppingBorderColor)
-        case borderUndoTapped
-        case borderRedoTapped
-        case borderEditClosed
-        case borderAreaTabTapped
-        case borderConfirmed
         case brushModeSelected(ToppingBrushMode)
         case brushDiameterChanged(Double)
         case brushStrokeEnded(ToppingBrushStroke)
         case maskUndoTapped
         case maskRedoTapped
-        case manualCutoutClosed
-        case manualCutoutConfirmed
+        case areaSelectionBackTapped
+        case areaSelectionConfirmed
+        case borderWidthChanged(Double)
+        case borderColorSelected(ToppingBorderColor)
+        case borderPanelExpandTapped
+        case borderPanelClosed
         case placementCanvasResized(CGSize)
         case placementTransformed(ToppingTransformDraft)
-        case placementClosed
+        case placementBackTapped
         case placementConfirmed
+        case closeTapped
+        case quitPopupVisibilityChanged(QuitConfirmation, Bool)
+        case quitConfirmed(QuitConfirmation)
     }
 
     enum Event: Sendable {
         case saveFailed
+        case detectionFailed
+        case photoUnavailable
+        case dismissRequested
     }
 
-    /// 누끼를 어떻게 만들었는지. C-104·C-105 의 X 목적지와 `영역` 탭 제공 여부가 갈린다
-    /// (`topping_ui.md` §7.3).
-    enum CutoutPath: Equatable, Sendable {
-        case automatic
-        /// 최근 업로드에서 바로 C-105 로 온 경로. 원본 사진이 없어 영역 편집(C-104)으로 갈 수 없다.
-        case recentUpload
-        /// 분석 실패 후 원본 사진으로 곧장 시작한 경로 — "직접 편집"은 전부 제외된 빈 마스크로 C-104 부터,
-        /// "편집 없이 사용"은 사진 전체를 토핑으로 삼아 C-106 배치부터 시작한다.
-        /// 돌아갈 C-103 결과 화면이 없어 X 가 실패 화면(C-103-Error)으로 가는 점이 `automatic` 과 다르다.
-        case withoutAnalysis
+    enum QuitConfirmation: Equatable, Sendable {
+        case addPhoto
+        case editPhoto
 
-        /// 영역(C-104) 탭 제공 여부 — 최근 업로드만 원본 사진이 없어 불가.
-        var allowsAreaEdit: Bool {
-            self != .recentUpload
+        var title: String {
+            switch self {
+            case .addPhoto: "사진 추가를 그만둘까요?"
+            case .editPhoto: "사진 편집을 그만둘까요?"
+            }
+        }
+
+        var continueTitle: String {
+            switch self {
+            case .addPhoto: "계속 추가"
+            case .editPhoto: "계속 편집"
+            }
         }
     }
 
@@ -156,11 +155,8 @@ extension ToppingAddStore {
         case cameraUnavailable
         case gallery
         case analysisLoading
-        case analysisError
         case candidateSelection
-        case cutoutResult
-        case manualCutout
-        case borderEdit
+        case areaSelection
         case placement
 
         var isCameraError: Bool {
@@ -173,8 +169,7 @@ extension ToppingAddStore {
 
         var isAnalysisScreen: Bool {
             switch self {
-            case .analysisLoading, .analysisError, .candidateSelection, .cutoutResult,
-                 .manualCutout, .borderEdit, .placement:
+            case .analysisLoading, .candidateSelection, .areaSelection, .placement:
                 true
             default: false
             }

@@ -10,9 +10,9 @@ import SwiftUI
 import UIComponent
 
 struct CanvasToppingEditBoard: View {
-    private static let canvasSpace = "CanvasToppingEditBoard"
     /// 선택된 토핑은 항상 맨 위. 나머지는 배열 순서로 쌓는다(서버 `positionZ` 값과 축을 섞지 않는다).
     private static let selectedZIndex: Double = 1_000_000
+    private static let borderPanelAnimation: Animation = .easeInOut(duration: 0.25)
 
     let background: CanvasStore.CanvasBackground
     let toppings: [CanvasEditStore.EditableTopping]
@@ -20,116 +20,111 @@ struct CanvasToppingEditBoard: View {
     let onToppingTap: (Int) -> Void
     let onPlacementChange: (Int, ToppingPlacement) -> Void
     let onDeleteTap: (Int) -> Void
-    let onBorderEditTap: (Int) -> Void
+    var onBorderPanelDismiss: (() -> Void)?
+
+    @State private var draft = ToppingTransformDraft()
+    @State private var toppingPixelSizes: [Int: CGSize] = [:]
 
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 CanvasContentView(
-                    content: CanvasStore.CanvasContent(
-                        background: background,
-                        images: toppings.filter { !$0.isMine }.map(\.canvasImage)
-                    ),
-                    onImageTap: { onToppingTap($0.id) }
+                    content: CanvasStore.CanvasContent(background: background, images: [])
                 )
 
-                Color.black25
-                    .allowsHitTesting(false)
+                toppingStack(otherToppings, canvasSize: proxy.size)
 
-                ForEach(Array(toppings.filter(\.isMine).enumerated()), id: \.element.id) { order, topping in
-                    CanvasEditableTopping(
-                        topping: topping,
+                Color.black25
+
+                toppingStack(myToppings, canvasSize: proxy.size)
+
+                ToppingTransformGestureOverlay(
+                    draft: $draft,
+                    placementCenter: selectedTopping?.placement.center(in: proxy.size),
+                    onSwallowedTouch: onBorderPanelDismiss,
+                    onTap: { selectTopping(at: $0, in: proxy.size) },
+                    onCommit: { commit($0, in: proxy.size) }
+                )
+
+                if let selectedTopping {
+                    ToppingDeleteHandle(
+                        placement: displayPlacement(of: selectedTopping),
                         canvasSize: proxy.size,
-                        coordinateSpace: Self.canvasSpace,
-                        isSelected: topping.id == selectedToppingID,
-                        onTap: { onToppingTap(topping.id) },
-                        onPlacementChange: { onPlacementChange(topping.id, $0) },
-                        onDeleteTap: { onDeleteTap(topping.id) },
-                        onBorderEditTap: { onBorderEditTap(topping.id) }
+                        toppingPixelSize: toppingPixelSizes[selectedTopping.id] ?? .zero,
+                        draft: draft,
+                        onDeleteTap: onBorderPanelDismiss ?? { onDeleteTap(selectedTopping.id) }
                     )
-                    .zIndex(topping.id == selectedToppingID ? Self.selectedZIndex : Double(order))
                 }
             }
-            .coordinateSpace(.named(Self.canvasSpace))
+            .animation(Self.borderPanelAnimation, value: onBorderPanelDismiss != nil)
         }
         .canvasBoardFrame()
     }
-}
 
-private struct CanvasEditableTopping: View {
-    let topping: CanvasEditStore.EditableTopping
-    let canvasSize: CGSize
-    let coordinateSpace: String
-    let isSelected: Bool
-    let onTap: () -> Void
-    let onPlacementChange: (ToppingPlacement) -> Void
-    let onDeleteTap: () -> Void
-    let onBorderEditTap: () -> Void
-
-    @State private var toppingPixelSize: CGSize = .zero
-    @State private var draft = ToppingTransformDraft()
-
-    var body: some View {
+    private func toppingStack(
+        _ toppings: [CanvasEditStore.EditableTopping],
+        canvasSize: CGSize
+    ) -> some View {
         ZStack {
-            CanvasPlacedImage(
-                canvasImage: topping.canvasImage(placement: previewPlacement),
-                canvasSize: canvasSize,
-                isSelected: isSelected,
-                onToppingLoaded: { toppingPixelSize = $0 }
-            )
-
-            toppingHitTarget
-
-            if isSelected {
-                ToppingEditHandles(
-                    placement: topping.placement,
+            ForEach(Array(toppings.enumerated()), id: \.element.id) { order, topping in
+                CanvasPlacedImage(
+                    canvasImage: topping.canvasImage(placement: previewPlacement(of: topping, in: canvasSize)),
                     canvasSize: canvasSize,
-                    toppingPixelSize: toppingPixelSize,
-                    coordinateSpace: coordinateSpace,
-                    draft: $draft,
-                    onCommit: commit,
-                    onDeleteTap: onDeleteTap,
-                    onBorderEditTap: onBorderEditTap
+                    isSelected: topping.id == selectedToppingID,
+                    onToppingLoaded: { toppingPixelSizes[topping.id] = $0 }
                 )
+                .zIndex(topping.id == selectedToppingID ? Self.selectedZIndex : Double(order))
             }
         }
-        .frame(width: canvasSize.width, height: canvasSize.height)
     }
-
-    private var toppingHitTarget: some View {
-        Group {
-            if isSelected {
-                ToppingTransformGestureOverlay(draft: $draft, onTap: onTap, onCommit: commit)
-            } else {
-                Color.clear
-                    .contentShape(.rect)
-                    .onTapGesture(perform: onTap)
-            }
-        }
-        .frame(width: renderedSize.width, height: renderedSize.height)
-        .rotationEffect(.degrees(previewPlacement.rotationDegrees))
-        .position(center)
-    }
-
 }
 
-private extension CanvasEditableTopping {
-    var previewPlacement: ToppingPlacement {
-        draft.applied(to: topping.placement, in: canvasSize)
+private extension CanvasToppingEditBoard {
+    var myToppings: [CanvasEditStore.EditableTopping] {
+        toppings.filter(\.isMine)
     }
 
-    var renderedSize: CGSize {
-        previewPlacement.renderedSize(
-            toppingPixelSize: toppingPixelSize,
-            canvasSize: canvasSize
-        )
+    var otherToppings: [CanvasEditStore.EditableTopping] {
+        toppings.filter { !$0.isMine }
     }
 
-    var center: CGPoint {
-        previewPlacement.center(in: canvasSize)
+    var selectedTopping: CanvasEditStore.EditableTopping? {
+        myToppings.first { $0.id == selectedToppingID }
     }
 
-    func commit(_ transform: ToppingTransformDraft) {
-        onPlacementChange(transform.applied(to: topping.placement, in: canvasSize))
+    func previewPlacement(of topping: CanvasEditStore.EditableTopping, in canvasSize: CGSize) -> ToppingPlacement {
+        topping.id == selectedToppingID
+            ? draft.applied(to: displayPlacement(of: topping), in: canvasSize)
+            : topping.placement
+    }
+
+    func displayPlacement(of topping: CanvasEditStore.EditableTopping) -> ToppingPlacement {
+        guard onBorderPanelDismiss != nil, topping.id == selectedToppingID else { return topping.placement }
+
+        var centered = topping.placement
+        centered.positionX = 0.5
+        centered.positionY = 0.5
+        return centered
+    }
+
+    func selectTopping(at point: CGPoint, in canvasSize: CGSize) {
+        let isTapped = { (topping: CanvasEditStore.EditableTopping) in
+            topping.placement.contains(
+                point,
+                toppingPixelSize: toppingPixelSizes[topping.id] ?? .zero,
+                canvasSize: canvasSize
+            )
+        }
+        if let selectedTopping, isTapped(selectedTopping) {
+            onToppingTap(selectedTopping.id)
+            return
+        }
+        guard let tappedTopping = (otherToppings + myToppings).last(where: isTapped) else { return }
+        onToppingTap(tappedTopping.id)
+    }
+
+    func commit(_ transform: ToppingTransformDraft, in canvasSize: CGSize) {
+        guard let selectedTopping else { return }
+        onPlacementChange(selectedTopping.id, transform.applied(to: selectedTopping.placement, in: canvasSize))
     }
 }

@@ -11,16 +11,10 @@ import UIKit
 
 /// 토핑 배치 제스처의 진행 중 값. 확정 전까지는 로컬 상태로만 들고 있다가
 /// 제스처가 끝날 때 한 번만 intent 로 올린다 (`docs/mvi.md` 바인딩 절).
-///
-/// C-106(신규 배치)과 C-305(기존 토핑 편집)가 같은 값을 쓴다 — 두 화면의 이동·크기·회전 동작은
-/// 동일하다고 정책이 못박고 있다 (`canvas-policy.md` §6.4.4).
 struct ToppingTransformDraft: Equatable {
     private(set) var translation: CGSize = .zero
     private(set) var scaleFactor: Double = 1
     private(set) var rotationDegrees: Double = 0
-
-    /// 핸들 회전 제스처가 반 바퀴를 넘을 때 각도가 접히지 않도록, 직전 프레임의 원시 각도를 들고 있는다.
-    private var lastRawRotation: Double?
 
     func applied(to placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingPlacement {
         placement
@@ -29,41 +23,30 @@ struct ToppingTransformDraft: Equatable {
             .rotated(by: rotationDegrees)
     }
 
-    /// `rotation(from:to:in:)` 은 `[-180, 180]` 으로 접힌 값을 준다. 그대로 쓰면 한 드래그에서
-    /// 180°를 지나는 순간 토핑이 반대로 홱 뒤집힌다 (`canvas-policy.md` §6.4.3 "회전 각도 제한은 없다").
-    /// 프레임 간 변화량만 누적해 래핑을 푼다.
-    private mutating func accumulateRotation(rawDegrees: Double) {
-        guard let lastRawRotation else {
-            self.lastRawRotation = rawDegrees
-            rotationDegrees = rawDegrees
-            return
-        }
-        rotationDegrees += remainder(rawDegrees - lastRawRotation, 360)
-        self.lastRawRotation = rawDegrees
-    }
-
-    mutating func scaleByHandle(magnification: Double) {
-        scaleFactor = magnification
-    }
-
-    mutating func rotateByHandle(rawDegrees: Double) {
-        accumulateRotation(rawDegrees: rawDegrees)
-    }
-
     mutating func move(by delta: CGSize) {
         translation.width += delta.width
         translation.height += delta.height
     }
 
-    mutating func magnify(by factor: Double) {
+    mutating func magnify(by factor: Double, pivotOffset: CGSize) {
         scaleFactor *= factor
+        translation.width += pivotOffset.width * CGFloat(factor - 1)
+        translation.height += pivotOffset.height * CGFloat(factor - 1)
     }
 
-    mutating func rotate(byDegrees degrees: Double) {
+    mutating func rotate(byDegrees degrees: Double, pivotOffset: CGSize) {
         rotationDegrees += degrees
+
+        let radians = CGFloat(degrees * .pi / 180)
+        let rotatedOffset = CGSize(
+            width: pivotOffset.width * cos(radians) - pivotOffset.height * sin(radians),
+            height: pivotOffset.width * sin(radians) + pivotOffset.height * cos(radians)
+        )
+        translation.width += rotatedOffset.width - pivotOffset.width
+        translation.height += rotatedOffset.height - pivotOffset.height
     }
 
-    /// 핸들·오버레이 공용의 유일한 커밋 지점. 커밋 값은 프리뷰와 같은 `applied(to:in:)` 로
+    /// 유일한 커밋 지점. 커밋 값은 프리뷰와 같은 `applied(to:in:)` 로
     /// 반영하므로 프리뷰와 확정 결과가 구조적으로 일치한다.
     mutating func endTransform() -> ToppingTransformDraft {
         let committed = self
@@ -75,7 +58,6 @@ struct ToppingTransformDraft: Equatable {
         translation = .zero
         scaleFactor = 1
         rotationDegrees = 0
-        lastRawRotation = nil
     }
 }
 
@@ -87,21 +69,32 @@ struct ToppingTransformDraft: Equatable {
 /// 핀치 중 드래그를 죽이는 우회는 핀치 시작 시점까지의 이동을 날려 버렸다(위치 스냅백).
 /// 그래서 이 레이어만 UIKit 인식기를 쓴다 (`ToppingCanvasGestureOverlay` 와 같은 사정).
 ///
-/// 델타는 window 좌표로 읽는다 — 이 면이 토핑을 따라 회전해도(C-305) 이동 방향이 뒤틀리지 않는다.
+/// 캔버스 전체를 덮어야 한다 — 토핑 크기로 자르면 두 번째 손가락이 면 밖에 떨어져 핀치가 깨진다.
+/// 확대·회전의 축은 두 손가락 중점이다. `placementCenter` 는 이 면 좌표계에서 드래프트 적용 전
+/// 토핑 중심이고, `nil` 이면 탭만 받는다.
 struct ToppingTransformGestureOverlay: UIViewRepresentable {
     @Binding var draft: ToppingTransformDraft
-    var onTap: (() -> Void)?
+    let placementCenter: CGPoint?
+    var onTouchBegan: (() -> Void)?
+    var onSwallowedTouch: (() -> Void)?
+    var onTap: ((CGPoint) -> Void)?
     let onCommit: (ToppingTransformDraft) -> Void
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+    func makeUIView(context: Context) -> Surface {
+        let view = Surface()
         view.backgroundColor = .clear
         context.coordinator.attach(to: view)
+        view.cancelRecognition = { [coordinator = context.coordinator] in
+            coordinator.cancelRecognition()
+        }
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
+    func updateUIView(_ uiView: Surface, context: Context) {
         context.coordinator.overlay = self
+        context.coordinator.setTransformEnabled(placementCenter != nil)
+        uiView.onTouchBegan = onTouchBegan
+        uiView.onSwallowedTouch = onSwallowedTouch
         uiView.isUserInteractionEnabled = context.environment.isEnabled
     }
 
@@ -109,9 +102,49 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         Coordinator(overlay: self)
     }
 
+    final class Surface: UIView {
+        var onTouchBegan: (() -> Void)?
+        var onSwallowedTouch: (() -> Void)?
+        var cancelRecognition: (() -> Void)?
+        private var isSwallowingTouches = false
+
+        override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            super.touchesBegan(touches, with: event)
+            onTouchBegan?()
+            if let onSwallowedTouch {
+                isSwallowingTouches = true
+                onSwallowedTouch()
+            }
+            if isSwallowingTouches {
+                cancelRecognition?()
+            }
+        }
+
+        override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+            super.touchesEnded(touches, with: event)
+            stopSwallowingIfTouchesFinished(event)
+        }
+
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+            super.touchesCancelled(touches, with: event)
+            stopSwallowingIfTouchesFinished(event)
+        }
+
+        private func stopSwallowingIfTouchesFinished(_ event: UIEvent?) {
+            let hasActiveTouch = event?.allTouches?.contains {
+                $0.phase != .ended && $0.phase != .cancelled
+            } ?? false
+            if !hasActiveTouch {
+                isSwallowingTouches = false
+            }
+        }
+    }
+
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         var overlay: ToppingTransformGestureOverlay
+        private var draft = ToppingTransformDraft()
         private var transformRecognizers: [UIGestureRecognizer] = []
+        private var recognizers: [UIGestureRecognizer] = []
 
         init(overlay: ToppingTransformGestureOverlay) {
             self.overlay = overlay
@@ -130,15 +163,31 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
                 view.addGestureRecognizer(recognizer)
             }
 
-            view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+            let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+            view.addGestureRecognizer(tap)
+            recognizers = transformRecognizers + [tap]
+        }
+
+        func cancelRecognition() {
+            for recognizer in recognizers where recognizer.isEnabled {
+                recognizer.isEnabled = false
+                recognizer.isEnabled = true
+            }
+        }
+
+        func setTransformEnabled(_ isEnabled: Bool) {
+            for recognizer in transformRecognizers where recognizer.isEnabled != isEnabled {
+                recognizer.isEnabled = isEnabled
+            }
         }
 
         @objc private func handleMove(_ recognizer: UIPanGestureRecognizer) {
             switch recognizer.state {
             case .changed:
-                let translation = recognizer.translation(in: nil)
-                overlay.draft.move(by: CGSize(width: translation.x, height: translation.y))
-                recognizer.setTranslation(.zero, in: nil)
+                let translation = recognizer.translation(in: recognizer.view)
+                draft.move(by: CGSize(width: translation.x, height: translation.y))
+                recognizer.setTranslation(.zero, in: recognizer.view)
+                overlay.draft = draft
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
             default:
@@ -149,8 +198,9 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         @objc private func handleMagnify(_ recognizer: UIPinchGestureRecognizer) {
             switch recognizer.state {
             case .changed:
-                overlay.draft.magnify(by: Double(recognizer.scale))
+                draft.magnify(by: Double(recognizer.scale), pivotOffset: pivotOffset(for: recognizer))
                 recognizer.scale = 1
+                overlay.draft = draft
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
             default:
@@ -161,8 +211,12 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
         @objc private func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
             switch recognizer.state {
             case .changed:
-                overlay.draft.rotate(byDegrees: Double(recognizer.rotation) * 180 / .pi)
+                draft.rotate(
+                    byDegrees: Double(recognizer.rotation) * 180 / .pi,
+                    pivotOffset: pivotOffset(for: recognizer)
+                )
                 recognizer.rotation = 0
+                overlay.draft = draft
             case .ended, .cancelled, .failed:
                 commitIfTransformIdle()
             default:
@@ -170,8 +224,18 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
             }
         }
 
-        @objc private func handleTap() {
-            overlay.onTap?()
+        @objc private func handleTap(_ recognizer: UITapGestureRecognizer) {
+            overlay.onTap?(recognizer.location(in: recognizer.view))
+        }
+
+        private func pivotOffset(for recognizer: UIGestureRecognizer) -> CGSize {
+            guard let placementCenter = overlay.placementCenter else { return .zero }
+
+            let pivot = recognizer.location(in: recognizer.view)
+            return CGSize(
+                width: placementCenter.x + draft.translation.width - pivot.x,
+                height: placementCenter.y + draft.translation.height - pivot.y
+            )
         }
 
         /// 세 인식기 중 마지막 하나가 끝나는 시점에 한 번만 커밋한다.
@@ -179,8 +243,11 @@ struct ToppingTransformGestureOverlay: UIViewRepresentable {
             let isTransforming = transformRecognizers.contains {
                 $0.state == .began || $0.state == .changed
             }
-            guard !isTransforming else { return }
-            overlay.onCommit(overlay.draft.endTransform())
+            guard !isTransforming, draft != ToppingTransformDraft() else { return }
+
+            let committed = draft.endTransform()
+            overlay.draft = draft
+            overlay.onCommit(committed)
         }
 
         func gestureRecognizer(

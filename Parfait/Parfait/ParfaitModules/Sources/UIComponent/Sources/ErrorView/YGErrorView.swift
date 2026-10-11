@@ -23,31 +23,23 @@ public struct YGErrorView: View {
     private let message: String
     private let buttonTitle: String?
     private let action: () -> Void
-    private let secondaryButtonTitle: String?
-    private let secondaryAction: () -> Void
 
     /// - Parameters:
     ///   - tone: 놓이는 배경 톤. 기본은 밝은 배경.
     ///   - buttonTitle: 값을 주면 하단에 버튼 노출 (예: "새로고침"). `nil` 이면 버튼 없음.
     ///   - action: 버튼 탭 동작. `buttonTitle` 이 `nil` 이면 무시된다.
-    ///   - secondaryButtonTitle: 값을 주면 첫 버튼 아래에 보조 버튼 노출. `buttonTitle` 이 `nil` 이면 무시된다.
-    ///   - secondaryAction: 보조 버튼 탭 동작. `secondaryButtonTitle` 이 `nil` 이면 무시된다.
     public init(
         tone: Tone = .light,
         title: String,
         message: String,
         buttonTitle: String? = nil,
-        action: @escaping () -> Void = {},
-        secondaryButtonTitle: String? = nil,
-        secondaryAction: @escaping () -> Void = {}
+        action: @escaping () -> Void = {}
     ) {
         self.tone = tone
         self.title = title
         self.message = message
         self.buttonTitle = buttonTitle
         self.action = action
-        self.secondaryButtonTitle = secondaryButtonTitle
-        self.secondaryAction = secondaryAction
     }
 
     public var body: some View {
@@ -70,12 +62,7 @@ public struct YGErrorView: View {
             }
 
             if let buttonTitle {
-                VStack(spacing: .gap3) {
-                    YGButton(buttonTitle, variant: primaryButtonVariant, action: action)
-                    if let secondaryButtonTitle {
-                        YGButton(secondaryButtonTitle, variant: .mediumSecondary, action: secondaryAction)
-                    }
-                }
+                YGButton(buttonTitle, variant: primaryButtonVariant, action: action)
             }
         }
     }
@@ -111,19 +98,6 @@ public struct YGErrorView: View {
     ) {}
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.whiteFixed)
-}
-
-#Preview("버튼 2개") {
-    YGErrorView(
-        title: "사진 편집에 실패했어요",
-        message: "다시 시도하거나 편집 없이 사용할 수 있어요",
-        buttonTitle: "다시 시도",
-        action: {},
-        secondaryButtonTitle: "편집 없이 사용",
-        secondaryAction: {}
-    )
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.whiteFixed)
 }
 
 #Preview("버튼 없음") {

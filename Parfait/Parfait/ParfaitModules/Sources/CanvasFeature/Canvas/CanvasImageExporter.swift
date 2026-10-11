@@ -13,10 +13,6 @@ import UIComponent
 import UIKit
 
 /// 캔버스를 한 장의 이미지로 합성한다 — C-001-Save-Preview 가 띄우고 그대로 앨범에 넣는 그 이미지다.
-///
-/// 저장본에는 잘린 모서리와 날짜 헤더를 넣지 않고 직사각형 Canvas-Area 만 담는다 (`canvas-policy.md` §4.3).
-/// 배경·토핑을 모두 받아 둔 뒤 한 번에 그리므로, 하나라도 못 받으면 저장을 실패로 돌린다 —
-/// 빠진 토핑이 있는 캔버스를 앨범에 남기지 않기 위해서다.
 public struct CanvasImageExporter: Sendable {
     /// 저장본 크기. 16:9 Canvas-Area 를 3배 배율로 그려 1080 × 1920 픽셀이 된다.
     private static let canvasSize = CGSize(width: 360, height: 640)

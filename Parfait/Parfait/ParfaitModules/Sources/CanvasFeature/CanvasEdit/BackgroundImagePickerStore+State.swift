@@ -15,6 +15,7 @@ extension BackgroundImagePickerStore {
         var screen: Screen
         var showsCameraGuide = true
         var isPreparingImage = false
+        var showsQuitPopup = false
 
         init(dateText: String, weekdayText: String, photoSource: PhotoSource) {
             self.dateText = dateText
@@ -27,6 +28,7 @@ extension BackgroundImagePickerStore {
 
     struct Dependencies: Sendable {
         let onImageSelected: @MainActor @Sendable (Data, PhotoSource) -> Void
+        let onClose: @MainActor @Sendable () -> Void
     }
 
     enum PhotoSource: Hashable, Identifiable, Sendable {
@@ -77,5 +79,8 @@ extension BackgroundImagePickerStore {
         case galleryPhotoConfirmed(assetIdentifier: String)
         case cameraRetryTapped
         case settingsTapped
+        case closeTapped
+        case quitPopupVisibilityChanged(Bool)
+        case quitConfirmed
     }
 }

@@ -130,7 +130,7 @@ public struct CanvasView: View {
             }
         }
         .fullScreenCover(item: canvasEditDestinationBinding) { destination in
-            // 내부에서 배경 이미지 피커를 push 하므로(CanvasEditView) 스택이 필요하다.
+            // 내부에서 배경 이미지 피커를 push 하므로(CanvasBackgroundEditView) 스택이 필요하다.
             NavigationStack {
                 canvasEditFlow(destination)
             }
@@ -140,7 +140,7 @@ public struct CanvasView: View {
         .fullScreenCover(item: savePreviewBinding) { savePreview in
             savePreviewFlow(savePreview)
         }
-        // C-001 과 C-106 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
+        // C-001 과 C-105 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
     }
 
@@ -217,9 +217,9 @@ public struct CanvasView: View {
                     toppingUseCase: toppingUseCase,
                     recentUploadsRepository: recentUploadsRepository,
                     onSaved: { store.send(.toppingSaved) }
-                )
+                ),
+                makeAlbumPickerStore: makeAlbumPickerStore
             ),
-            makeAlbumPickerStore: makeAlbumPickerStore,
             toppingRenderer: toppingRenderer
         )
     }
@@ -238,29 +238,34 @@ public struct CanvasView: View {
     @ViewBuilder
     private func canvasEditFlow(_ destination: CanvasStore.CanvasEditDestination) -> some View {
         if let parfaitID = store.state.parfaitID {
-            CanvasEditView(
-                store: CanvasEditStore(
-                    state: .init(
-                        dateText: store.state.dateText,
-                        weekdayText: store.state.weekdayText,
-                        canvasContent: store.state.canvasContent ?? .empty,
-                        screen: destination.editScreen,
-                        selectedToppingID: destination.selectedToppingID
-                    ),
-                    dependencies: .init(
-                        groupID: store.groupID,
-                        parfaitID: parfaitID,
-                        canvasUseCase: store.canvasUseCase,
-                        toppingUseCase: toppingUseCase,
-                        imageUploadRepository: imageUploadRepository,
-                        toppingRenderer: toppingRenderer,
-                        onDismiss: { store.send(.canvasEditFlowDismissed) },
-                        onSaved: { store.send(.canvasEditSaved) }
-                    )
+            let editStore = CanvasEditStore(
+                state: .init(
+                    dateText: store.state.dateText,
+                    weekdayText: store.state.weekdayText,
+                    canvasContent: store.state.canvasContent ?? .empty,
+                    selectedToppingID: destination.selectedToppingID
                 ),
-                makeAlbumPickerStore: makeAlbumPickerStore,
-                toppingRenderer: toppingRenderer
+                dependencies: .init(
+                    groupID: store.groupID,
+                    parfaitID: parfaitID,
+                    canvasUseCase: store.canvasUseCase,
+                    toppingUseCase: toppingUseCase,
+                    imageUploadRepository: imageUploadRepository,
+                    onDismiss: { store.send(.canvasEditFlowDismissed) },
+                    onSaved: { store.send(.canvasEditSaved) }
+                )
             )
+
+            switch destination {
+            case .background:
+                CanvasBackgroundEditView(
+                    store: editStore,
+                    makeAlbumPickerStore: makeAlbumPickerStore,
+                    toppingRenderer: toppingRenderer
+                )
+            case .toppings:
+                CanvasToppingEditView(store: editStore, toppingRenderer: toppingRenderer)
+            }
         }
     }
 

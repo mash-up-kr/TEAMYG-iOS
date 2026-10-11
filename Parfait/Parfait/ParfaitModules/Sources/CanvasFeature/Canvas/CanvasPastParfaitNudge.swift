@@ -9,61 +9,15 @@ import SwiftUI
 import UIComponent
 
 struct CanvasPastParfaitNudge: View {
-    /// 노출 유지 시간 — 이 시간이 지나면 자동으로 내려간다.
-    static let displayDuration: Duration = .seconds(3)
-    /// 위에서 내려오는 등장, 위로 올라가는 퇴장 슬라이드.
-    static let slideAnimation: Animation = .easeInOut(duration: 0.3)
-
     let nudge: CanvasStore.PastParfaitNudge
     let onOpenTap: () -> Void
 
     var body: some View {
-        HStack(spacing: .gap6) {
-            message
-            openButton
-        }
-        .padding(.horizontal, .padding7)
-        .padding(.vertical, .padding5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background { Color.black75.allowsHitTesting(false) }
-    }
-
-    private var message: some View {
-        VStack(alignment: .leading, spacing: .gap2) {
-            Text(nudge.titleText)
-                .suit(.body02SemiBold)
-                .foregroundStyle(.cherry200)
-
-            Text(nudge.descriptionText)
-                .suit(.body02Regular)
-                .foregroundStyle(.white75)
-        }
-        .lineLimit(1)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .allowsHitTesting(false)
-    }
-
-    private var openButton: some View {
-        Button(action: onOpenTap) {
-            HStack(spacing: .gap2) {
-                Text("보러가기")
-                    .suit(.body02Regular)
-                    .foregroundStyle(.gray950)
-
-                Image.icCaretRight
-                    .renderingMode(.template)
-                    .resizable()
-                    .foregroundStyle(.gray950)
-                    .frame(width: 16, height: 16)
-            }
-            .padding(.leading, .padding5)
-            .padding(.trailing, .padding3)
-            .padding(.vertical, .padding2)
-            .background(.cherry100, in: .capsule)
-            .contentShape(.capsule)
-        }
-        .buttonStyle(.plain)
-        .fixedSize()
+        CanvasNudgeBar(
+            titleText: nudge.titleText,
+            descriptionText: nudge.descriptionText,
+            action: CanvasNudgeBar.Action(title: "보러가기", icon: .icCaretRight, handler: onOpenTap)
+        )
     }
 }
 

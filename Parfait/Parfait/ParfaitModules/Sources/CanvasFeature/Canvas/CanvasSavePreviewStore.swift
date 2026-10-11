@@ -57,7 +57,6 @@ final class CanvasSavePreviewStore: MVIStore {
         }
     }
 
-    /// 권한 거부 전용 화면은 정책 범위 밖이라(`canvas-policy.md` §8) 거부도 실패로 수렴한다.
     private func saveToGallery() {
         guard let canvasImage = state.image, !state.isSaving else { return }
 

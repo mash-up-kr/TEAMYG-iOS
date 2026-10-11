@@ -5,8 +5,6 @@
 //  Created by 박서연 on 8/23/26.
 //
 
-/// 아직 서버에 올리지 않은 토핑. C-106 에서 확정한 배치 값을 담는다.
-/// 좌표·크기는 이미 정규화된 값이며 서버는 그대로 저장한다 (`topping-api.md` §8).
 public struct ToppingDraft: Equatable, Sendable {
     public let image: ImageUpload
     public let placement: ToppingPlacementValues

@@ -8,10 +8,9 @@
 import SwiftUI
 import UIComponent
 
-/// C-104(마스크)·C-105(테두리) 상단의 undo/redo 바.
+/// C-104 마스크 편집의 undo/redo 버튼 묶음. 브러시 크기 라벨 오른쪽에 놓인다.
 ///
-/// Figma 는 두 화면이 같은 컴포넌트(`Button-Edit-Action`)를 쓴다 — 실측값으로 확인했다
-/// (C-104 `1830:20423`, C-105 `1179:6921`). 터치 42 / 원 38 / 아이콘 22,
+/// Figma `Button-Edit-Action` 실측값 — 터치 42 / 원 38 / 아이콘 22,
 /// 활성 `black50`+`whiteFixed`, 비활성 `black5`+`gray200`, 테두리 `white25` 1.5pt.
 struct ToppingHistoryBar: View {
     private static let touchLength: CGFloat = 42

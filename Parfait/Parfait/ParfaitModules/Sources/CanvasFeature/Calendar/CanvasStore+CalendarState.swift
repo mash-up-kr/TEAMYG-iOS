@@ -36,8 +36,6 @@ public struct CalendarDate: Hashable, Comparable, Sendable {
 
     static let dayResetHour = 3
 
-    /// 이 캔버스 하루가 덮는 실제 시각 구간 (시작 포함·끝 제외).
-    /// 기기 현지 시각 오전 3시가 경계다 (`canvas-policy.md` §4.1·§5.3).
     var timeInterval: DateInterval? {
         guard let midnight = date,
               let start = Self.gregorian.date(byAdding: .hour, value: Self.dayResetHour, to: midnight),
@@ -70,7 +68,6 @@ public struct CalendarDate: Hashable, Comparable, Sendable {
         return Self.monthNames[month - 1]
     }
 
-    /// `N월 N일` — 갤러리 저장 결과 Toast 문구에 쓴다 (`canvas-policy.md` §7.3).
     var koreanDateText: String {
         "\(month)월 \(day)일"
     }
@@ -257,9 +254,6 @@ public extension CanvasStore {
             return true
         }
 
-        /// 서버가 "완성됐다" 고 알려준 과거 캔버스(SY-001-New 안내 대상)를 연다.
-        /// 그 날짜에 토핑이 0장이면 `recordedDates` 에 없어 `selectDate` 가 실패하는데,
-        /// 배경만 바꾼 캔버스도 완성으로 취급하므로(`canvas-policy.md` §4.3) 막으면 안 된다.
         mutating func openKnownPastDate(_ date: CalendarDate) -> Bool {
             guard date <= today else { return false }
             recordedDates.insert(date)
