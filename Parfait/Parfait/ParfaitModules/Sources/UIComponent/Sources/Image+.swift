@@ -5,6 +5,9 @@ import UIKit
 public extension Image {
     static let groupListBG = Image("GroupListBG", bundle: .module)
     static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
+    static let imageGroupList1 = Image("Image-GroupList-1", bundle: .module)
+    static let imageGroupList2 = Image("Image-GroupList-2", bundle: .module)
+    static let imageGroupList3 = Image("Image-GroupList-3", bundle: .module)
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
     static let imageOnboarding3 = Image("Image-Onboarding-3", bundle: .module)
@@ -60,6 +63,9 @@ public extension Image {
 public extension UIImage {
     static var groupListBG: UIImage { UIImage(resource: ImageResource(name: "GroupListBG", bundle: .module)) }
     static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
+    static var imageGroupList1: UIImage { UIImage(resource: ImageResource(name: "Image-GroupList-1", bundle: .module)) }
+    static var imageGroupList2: UIImage { UIImage(resource: ImageResource(name: "Image-GroupList-2", bundle: .module)) }
+    static var imageGroupList3: UIImage { UIImage(resource: ImageResource(name: "Image-GroupList-3", bundle: .module)) }
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
     static var imageOnboarding3: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-3", bundle: .module)) }

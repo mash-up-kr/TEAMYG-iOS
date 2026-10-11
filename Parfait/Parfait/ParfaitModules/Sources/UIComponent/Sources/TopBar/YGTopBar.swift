@@ -8,14 +8,14 @@
 import SwiftUI
 
 /// 파르페 공용 상단 바.
-/// 상태(Status)에 따라 좌측 버튼(사이드메뉴/뒤로가기)·중앙 콘텐츠(날짜/타이틀)·우측 액션이 결정된다.
+/// 상태(Status)에 따라 좌측 버튼(사이드메뉴/뒤로가기)·중앙 콘텐츠(그룹 수/타이틀)·우측 액션이 결정된다.
 /// 적용 시 시스템 내비게이션 바를 숨기고, 끊긴 스와이프 백 제스처를 복원한다.
 public struct YGTopBar: View {
     public enum Status {
-        /// 사이드메뉴 + 날짜
-        case empty
-        /// 사이드메뉴 + 날짜 + 그룹 추가하기 버튼
-        case `default`
+        /// 사이드메뉴 + 그룹 수
+        case empty(groupCount: Int?)
+        /// 사이드메뉴 + 그룹 수 + 그룹 추가하기 버튼
+        case `default`(groupCount: Int?)
         /// 뒤로가기만
         case back
         /// 뒤로가기 + 타이틀
@@ -88,8 +88,8 @@ public struct YGTopBar: View {
     @ViewBuilder
     private var content: some View {
         switch status {
-        case .empty, .default:
-            dateView
+        case .empty(let groupCount), .default(let groupCount):
+            groupCountView(groupCount)
         case .back:
             EmptyView()
         case .detail(let title), .canvas(let title, _):
@@ -126,18 +126,17 @@ public struct YGTopBar: View {
         }
     }
 
-    /// `December 31 (Wed)` — 날짜는 gray800, 요일은 gray300.
-    private var dateView: some View {
-        let now = Date.now
-        let locale = Locale(identifier: "en_US")
-
-        return HStack(spacing: .gap3) {
-            Text(now.formatted(.dateTime.month(.wide).day().locale(locale)))
+    /// `내 그룹 3` — 라벨은 gray800, 수는 gray300.
+    private func groupCountView(_ groupCount: Int?) -> some View {
+        HStack(spacing: .gap3) {
+            Text("내 그룹")
                 .suit(.body01Regular)
                 .foregroundStyle(.gray800)
-            Text("(\(now.formatted(.dateTime.weekday(.abbreviated).locale(locale))))")
-                .suit(.body01Regular)
-                .foregroundStyle(.gray300)
+            if let groupCount {
+                Text("\(groupCount)")
+                    .suit(.body01Regular)
+                    .foregroundStyle(.gray300)
+            }
         }
     }
 
@@ -248,8 +247,8 @@ private struct SwipeBackGestureRestorer: UIViewControllerRepresentable {
     ]
 
     VStack(spacing: .gap5) {
-        YGTopBar(.empty, onLeadingTap: {})
-        YGTopBar(.default, onLeadingTap: {}, onNewGroupTap: {})
+        YGTopBar(.empty(groupCount: nil), onLeadingTap: {})
+        YGTopBar(.default(groupCount: 3), onLeadingTap: {}, onNewGroupTap: {})
         YGTopBar(.back, onLeadingTap: {})
         YGTopBar(.detail(title: "그룹이름"), onLeadingTap: {})
         YGTopBar(
