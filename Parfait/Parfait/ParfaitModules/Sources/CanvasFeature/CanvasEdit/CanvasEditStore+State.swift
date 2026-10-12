@@ -153,6 +153,8 @@ extension CanvasEditStore {
         case screenAppeared
         /// 토핑 편집 화면 진입 — screen_view 전용. `screenAppeared` 는 캔버스 주기 갱신까지 켜므로 따로 둔다.
         case toppingEditScreenAppeared
+        /// 배경 편집 화면 진입 — screen_view 전용
+        case backgroundEditScreenAppeared
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground

@@ -27,6 +27,8 @@ public final class InviteCodeStore: MVIStore {
 
     public func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared:
+            logAnalyticsEvent(.screenView(.groupJoin))
         case .inviteCodeChanged(let inviteCode):
             state.inviteCode = String(
                 Self.normalizedInviteCode(from: inviteCode).prefix(Self.inviteCodeLength)
@@ -127,6 +129,7 @@ public final class InviteCodeStore: MVIStore {
     }
 
     public enum Intent {
+        case screenAppeared
         case inviteCodeChanged(String)
         case inviteCodeFieldTapped
         /// 클립보드 붙여넣기 버튼으로 받은 원본 문자열 — 형식 검증·추출은 Store 가 한다.

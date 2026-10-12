@@ -49,6 +49,8 @@ final class CanvasEditStore: MVIStore {
         case .toppingEditScreenAppeared:
             guard dependencies.isToppingEdit else { return }
             dependencies.logAnalyticsEvent(.screenView(.canvasTopping))
+        case .backgroundEditScreenAppeared:
+            dependencies.logAnalyticsEvent(.screenView(.canvasBackground))
         case .colorSelected(let hex):
             guard state.saveState != .saving else { return }
             state.background = .color(hex: hex)

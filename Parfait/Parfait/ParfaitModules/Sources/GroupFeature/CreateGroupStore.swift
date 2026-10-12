@@ -35,6 +35,7 @@ public final class CreateGroupStore: MVIStore {
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            logAnalyticsEvent(.screenView(.groupCreate))
             beginAppNicknameLoad()
         case .appNicknameLoaded(let appNickname):
             applyAppNickname(appNickname)

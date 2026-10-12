@@ -64,14 +64,18 @@ public enum AnalyticsEvent: Sendable, Equatable {
 
     /// `<기능>_<화면>` — 스펙의 기능·화면 단위 표와 같은 값만 쓴다.
     public enum ScreenName: String, Sendable {
+        case appSetting = "app_setting"
         case appAccount = "app_account"
         case canvasMain = "canvas_main"
         case canvasCamera = "canvas_camera"
         case canvasEdit = "canvas_edit"
         case canvasTopping = "canvas_topping"
+        case canvasBackground = "canvas_background"
         case canvasCalendar = "canvas_calendar"
         case canvasSave = "canvas_save"
         case groupList = "group_list"
+        case groupJoin = "group_join"
+        case groupCreate = "group_create"
         case groupMenu = "group_menu"
     }
 

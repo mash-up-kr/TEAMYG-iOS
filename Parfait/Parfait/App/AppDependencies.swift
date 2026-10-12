@@ -152,6 +152,7 @@ struct AppDependencies {
         SettingStore(
             memberUseCase: makeMemberUseCase(),
             authUseCase: makeAuthUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent,
             state: .init(appVersion: installedAppVersion())
         )
     }

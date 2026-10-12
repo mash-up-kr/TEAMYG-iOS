@@ -47,6 +47,7 @@ public struct InviteCodeView: View {
             else { return }
             store.send(.pasted(pastedString))
         }
+        .task { store.send(.screenAppeared) }
         .onDisappear {
             store.send(.screenDisappeared)
         }
