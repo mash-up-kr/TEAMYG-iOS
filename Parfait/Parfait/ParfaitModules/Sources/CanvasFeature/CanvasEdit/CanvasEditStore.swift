@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Common
 import Foundation
 import Observation
 import UIComponent
@@ -45,6 +46,9 @@ final class CanvasEditStore: MVIStore {
             canvasRefreshTask = nil
         case .canvasRefreshTicked:
             refreshCanvas()
+        case .toppingEditScreenAppeared:
+            guard dependencies.isToppingEdit else { return }
+            dependencies.logAnalyticsEvent(.screenView(.canvasTopping))
         case .colorSelected(let hex):
             guard state.saveState != .saving else { return }
             state.background = .color(hex: hex)
@@ -116,10 +120,16 @@ final class CanvasEditStore: MVIStore {
     private func closeEditor() {
         guard state.saveState != .saving else { return }
         guard state.hasChanges else {
+            logClosedUnchanged(.close)
             dependencies.onDismiss()
             return
         }
         state.showsExitPopup = true
+    }
+
+    func logClosedUnchanged(_ action: AnalyticsEvent.CloseAction) {
+        guard dependencies.isToppingEdit else { return }
+        dependencies.logAnalyticsEvent(.canvasToppingClosedUnchanged(action: action))
     }
 
     private func updateTopping(_ toppingID: Int, update: (inout EditableTopping) -> Void) {
@@ -134,6 +144,7 @@ extension CanvasEditStore {
     fileprivate func saveChanges() {
         guard state.saveState != .saving else { return }
         guard state.hasChanges else {
+            logClosedUnchanged(.done)
             dependencies.onDismiss()
             return
         }

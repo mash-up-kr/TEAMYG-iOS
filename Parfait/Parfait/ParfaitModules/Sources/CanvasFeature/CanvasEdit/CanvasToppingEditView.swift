@@ -5,14 +5,12 @@
 //  Created by 박서연 on 10/9/26.
 //
 
-import Common
 import SwiftUI
 import UIComponent
 
 struct CanvasToppingEditView: View {
     @State private var store: CanvasEditStore
     @State private var toasts: [YGToastItem] = []
-    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
     private let toppingRenderer: CanvasToppingRenderer
 
     init(store: CanvasEditStore, toppingRenderer: CanvasToppingRenderer) {
@@ -59,7 +57,7 @@ struct CanvasToppingEditView: View {
             primaryTitle: "계속 편집",
             secondaryAction: { store.send(.discardTapped) }
         )
-        .onAppear { logAnalyticsEvent(.screenView(.canvasTopping)) }
+        .onAppear { store.send(.toppingEditScreenAppeared) }
         .task {
             for await event in store.eventStream() {
                 switch event {

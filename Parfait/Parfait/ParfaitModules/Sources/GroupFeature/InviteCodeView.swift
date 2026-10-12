@@ -128,7 +128,7 @@ public struct InviteCodeView: View {
 
 #Preview("성공") {
     InviteCodeView(
-        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase()),
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(), logAnalyticsEvent: { _ in }),
         makeJoinGroupNicknameStore: {
             JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
         },
@@ -138,7 +138,7 @@ public struct InviteCodeView: View {
 
 #Preview("실패 - 최대 인원") {
     InviteCodeView(
-        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull)),
+        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull), logAnalyticsEvent: { _ in }),
         makeJoinGroupNicknameStore: {
             JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
         },

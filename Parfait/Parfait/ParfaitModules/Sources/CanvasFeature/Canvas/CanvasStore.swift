@@ -8,6 +8,7 @@
 // swiftlint:disable file_length
 
 import CanvasDomain
+import Common
 import Foundation
 import Observation
 import UIComponent
@@ -32,6 +33,8 @@ public final class CanvasStore: MVIStore {
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
     /// Spotlight Toast 문구에만 쓰는 작성자 정보 — 렌더링 모델(`CanvasImage`)과 분리해 둔다.
     private var toppingAuthorsByID: [Int: ToppingAuthor] = [:]
+    /// 마지막으로 보낸 `screen_view`. 하위 화면이 떠 있던 동안은 `nil` — 돌아오면 다시 보낸다.
+    @ObservationIgnored private var loggedScreenName: AnalyticsEvent.ScreenName?
 
     public init(
         state: State = State(),
@@ -54,11 +57,16 @@ public final class CanvasStore: MVIStore {
     var canvasUseCase: any CanvasUseCase { dependencies.canvasUseCase }
     /// 저장 미리보기 Store 가 같은 토핑 캐시를 쓰도록 합성기를 그대로 넘긴다.
     var canvasImageExporter: CanvasImageExporter { dependencies.canvasImageExporter }
+    /// 캔버스 하위 Store(토핑 추가·편집·저장 미리보기)도 같은 경로로 이벤트를 보낸다.
+    var logAnalyticsEvent: AnalyticsEventLogger { dependencies.logAnalyticsEvent }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            // 사이드메뉴 등 push 화면에서 돌아와도 다시 보낸다 — Firebase 는 마지막 screen_view 를 이후 이벤트에 붙인다.
+            loggedScreenName = nil
+            logScreenViewIfChanged()
             state.calendar.updateToday(CalendarDate(canvasDayContaining: dependencies.now()))
             loadInitialDataIfNeeded()
             startCanvasRefreshTicker()
@@ -71,6 +79,8 @@ public final class CanvasStore: MVIStore {
         case .screenDisappeared:
             canvasRefreshTicker.stop()
             cancelTasks()
+        case .screenChanged:
+            logScreenViewIfChanged()
         case .canvasRefreshTicked:
             refreshCanvasSilently()
         case .toppingTapped(let toppingID):
@@ -133,6 +143,7 @@ public final class CanvasStore: MVIStore {
                 loadRecordedDates(for: year)
             }
         case .calendarDateSelected(let date):
+            logAnalyticsEvent(.canvasCalendarDateTapped(groupID: String(groupID)))
             if state.calendar.selectDate(date) {
                 loadCanvas(for: date)
             }
@@ -156,6 +167,7 @@ public final class CanvasStore: MVIStore {
         case .todayParfaitTapped:
             openTodayCanvas()
         case .pastParfaitNudgeTapped:
+            logAnalyticsEvent(.canvasCalendarPastParfaitTapped(groupID: String(groupID)))
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
             state.calendar.close()
@@ -324,6 +336,14 @@ private extension CanvasStore {
         )
     }
 
+    func logScreenViewIfChanged() {
+        let screenName = state.analyticsScreenName
+        guard screenName != loggedScreenName else { return }
+        loggedScreenName = screenName
+        guard let screenName else { return }
+        logAnalyticsEvent(.screenView(screenName))
+    }
+
     private func startCanvasRefreshTicker() {
         canvasRefreshTicker.start { [weak self] in
             self?.send(.canvasRefreshTicked)
@@ -332,6 +352,7 @@ private extension CanvasStore {
 
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
+        logAnalyticsEvent(.canvasToppingEditorChecked(isMine: topping.isMine))
         state.calendar.close()
         state.menuState = .collapsed
 

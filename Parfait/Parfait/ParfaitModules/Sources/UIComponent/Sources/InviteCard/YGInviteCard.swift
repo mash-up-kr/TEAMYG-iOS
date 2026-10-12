@@ -18,13 +18,16 @@ public struct YGInviteCard: View {
 
     private let code: String
     private let status: Status
+    /// 복사 직후 호출 — 호출부가 이벤트 수집 등에 쓴다.
+    private let onCopy: (() -> Void)?
 
     @State private var showsCopied = false
     @State private var revertTask: Task<Void, Never>?
 
-    public init(code: String, status: Status) {
+    public init(code: String, status: Status, onCopy: (() -> Void)? = nil) {
         self.code = code
         self.status = status
+        self.onCopy = onCopy
     }
 
     private var isActive: Bool { status != .invalid }
@@ -84,6 +87,7 @@ public struct YGInviteCard: View {
 
     private func copy() {
         UIPasteboard.general.string = "친구가 파르페에 초대했어요.\n체리 올리러 가볼까요? \(code)"
+        onCopy?()
         revertTask?.cancel()
         showsCopied = true
         revertTask = Task {

@@ -13,7 +13,6 @@ public struct AccountInfoView: View {
     @State private var store: AccountInfoStore
     @FocusState private var isNicknameFocused: Bool
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     public init(store: AccountInfoStore) {
         _store = State(initialValue: store)
@@ -42,7 +41,7 @@ public struct AccountInfoView: View {
                     .padding(.vertical, .padding7)
             }
         }
-        .onAppear { logAnalyticsEvent(.screenView(.appAccount)) }
+        .onAppear { store.send(.screenAppeared) }
         .task {
             for await event in store.events {
                 switch event {
@@ -58,7 +57,8 @@ public struct AccountInfoView: View {
     AccountInfoView(
         store: AccountInfoStore(
             state: .init(nickname: "대충지은랜덤닉네임"),
-            memberUseCase: PreviewMemberUseCase()
+            memberUseCase: PreviewMemberUseCase(),
+            logAnalyticsEvent: { _ in }
         )
     )
 }

@@ -5,8 +5,6 @@
 //  Created by 김남수 on 10/12/26.
 //
 
-import SwiftUI
-
 /// 사용자 액션 이벤트 목록. 원본 → `docs/superpowers/specs/2026-10-06-user-events-design.md`
 ///
 /// - 이름 규칙: `<기능>_<화면>_<동작>` (snake_case, 동작은 과거형)
@@ -28,7 +26,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
 
     /// C101 다시 찍기 탭
     case canvasCameraRetakeTapped
-    /// C102 최근 사진 / 오늘 사진 탭
+    /// C102 최근 사진 / 앨범 사진 선택
     case canvasCameraPhotoSelected(source: PhotoSource)
     /// C104 대상 감지 끝남
     case canvasCameraDetectionCompleted(success: Bool)
@@ -67,6 +65,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
     /// `<기능>_<화면>` — 스펙의 기능·화면 단위 표와 같은 값만 쓴다.
     public enum ScreenName: String, Sendable {
         case appAccount = "app_account"
+        case canvasMain = "canvas_main"
         case canvasCamera = "canvas_camera"
         case canvasEdit = "canvas_edit"
         case canvasTopping = "canvas_topping"
@@ -83,8 +82,10 @@ public enum AnalyticsEvent: Sendable, Equatable {
     }
 
     public enum PhotoSource: String, Sendable {
+        /// 최근 업로드(이미 잘라 둔 누끼)
         case recent
-        case today
+        /// 기기 앨범 전체 사진
+        case album
     }
 
     public enum CloseAction: String, Sendable {
@@ -159,10 +160,6 @@ public enum AnalyticsEvent: Sendable, Equatable {
     }
 }
 
-/// 이벤트 전송 경로. 화면은 `@Environment(\.logAnalyticsEvent)` 로 꺼내 쓴다.
+/// 이벤트 전송 경로. 구현(Firebase)은 App 의 `AppDependencies.logAnalyticsEvent`.
+/// Store 가 이니셜라이저로 주입받아 화면 진입·액션을 모두 보낸다.
 public typealias AnalyticsEventLogger = @Sendable (AnalyticsEvent) -> Void
-
-extension EnvironmentValues {
-    /// App 루트가 Firebase 전송으로 얹는다. 기본값(프리뷰 등)은 아무것도 보내지 않는다.
-    @Entry public var logAnalyticsEvent: AnalyticsEventLogger = { _ in }
-}

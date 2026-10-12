@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Common
 import Foundation
 import Routing
 import UIComponent
@@ -35,19 +36,22 @@ public extension CanvasStore {
         /// 과거 캔버스를 사진 앨범에 저장할 때 쓰는 합성기. 토핑 캐시를 화면과 공유한다.
         public let canvasImageExporter: CanvasImageExporter
         public let now: @Sendable () -> Date
+        public let logAnalyticsEvent: AnalyticsEventLogger
 
         public init(
             groupID: Int,
             entry: CanvasEntry = .regular,
             canvasUseCase: any CanvasUseCase,
             canvasImageExporter: CanvasImageExporter,
-            now: @escaping @Sendable () -> Date = { .now }
+            now: @escaping @Sendable () -> Date = { .now },
+            logAnalyticsEvent: @escaping AnalyticsEventLogger
         ) {
             self.groupID = groupID
             self.entry = entry
             self.canvasUseCase = canvasUseCase
             self.canvasImageExporter = canvasImageExporter
             self.now = now
+            self.logAnalyticsEvent = logAnalyticsEvent
         }
     }
 
@@ -103,6 +107,13 @@ public extension CanvasStore {
 
         public var weekdayText: String {
             calendar.weekdayText
+        }
+
+        /// 지금 보이는 화면의 `screen_view` 이름. 하위 화면(토핑 추가·편집·저장 미리보기)이 떠 있으면 `nil` —
+        /// 그쪽 Store 가 직접 보낸다.
+        var analyticsScreenName: AnalyticsEvent.ScreenName? {
+            guard toppingAddSource == nil, canvasEditDestination == nil, savePreview == nil else { return nil }
+            return calendar.presentation == .closed ? .canvasMain : .canvasCalendar
         }
 
         var isClosedCanvas: Bool {
@@ -309,6 +320,8 @@ public extension CanvasStore {
         case sceneBecameActive
         case sceneEnteredBackground
         case screenDisappeared
+        /// 달력·하위 화면이 열리고 닫혀 `analyticsScreenName` 이 바뀜
+        case screenChanged
         case canvasRefreshTicked
         case toppingTapped(Int)
         case toppingImageLoaded(Int)

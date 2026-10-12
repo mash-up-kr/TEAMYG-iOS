@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
@@ -18,20 +19,23 @@ public final class GroupStore: MVIStore {
     /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
     @ObservationIgnored private var loadGeneration = 0
     @ObservationIgnored private var emptyGuideTask: Task<Void, Never>?
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
     private static let emptyGuideStepOffsets: [Duration] = [
         .milliseconds(500), .milliseconds(1000), .milliseconds(1500), .milliseconds(2500)
     ]
     private static let emptyGuideDuration = Duration.milliseconds(3000)
 
-    public init(groupUseCase: any GroupUseCase) {
+    public init(groupUseCase: any GroupUseCase, logAnalyticsEvent: @escaping AnalyticsEventLogger) {
         self.groupUseCase = groupUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
     // swiftlint:disable:next cyclomatic_complexity
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            logAnalyticsEvent(.screenView(.groupList))
             // 드롭다운 항목으로 들어갔던 화면에서 돌아오면 열린 채로 남으므로 여기서 닫는다.
             //
             // `screenDisappeared` 에서 닫으면 안 된다 — 드롭다운의 `NavigationLink` 가 조건부 뷰라,
@@ -41,6 +45,7 @@ public final class GroupStore: MVIStore {
             resetEmptyGuide()
             beginLoad(isRefresh: false)
         case .refreshRequested:
+            logAnalyticsEvent(.groupListRefreshed)
             beginLoad(isRefresh: true)
         case .groupsLoaded(let groups):
             state.phase = .loaded(groups)

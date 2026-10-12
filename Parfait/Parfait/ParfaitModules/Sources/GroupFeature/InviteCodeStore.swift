@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/15/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
@@ -17,9 +18,11 @@ public final class InviteCodeStore: MVIStore {
 
     private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var joinTask: Task<Void, Never>?
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(groupUseCase: any GroupUseCase) {
+    public init(groupUseCase: any GroupUseCase, logAnalyticsEvent: @escaping AnalyticsEventLogger) {
         self.groupUseCase = groupUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
     public func send(_ intent: Intent) {
@@ -33,10 +36,12 @@ public final class InviteCodeStore: MVIStore {
             state.inviteCode = ""
             state.phase = .idle
         case .pasted(let pastedString):
+            logAnalyticsEvent(.groupListInviteCodePasted)
             applyPastedString(pastedString)
         case .confirmTapped:
             beginJoinRequest()
         case .joinSucceeded(let joinedGroup):
+            logAnalyticsEvent(.groupListJoined)
             state.phase = .idle
             state.joinedGroup = joinedGroup
         case .joinFailed(let joinError):

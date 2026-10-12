@@ -28,14 +28,22 @@ public final class AccountInfoStore: MVIStore {
     private let memberUseCase: any MemberUseCase
     /// 진행 중 저장 작업 핸들 — 중복 요청 방지 (mvi.md)
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(state: State = State(), memberUseCase: any MemberUseCase) {
+    public init(
+        state: State = State(),
+        memberUseCase: any MemberUseCase,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger
+    ) {
         self.state = state
         self.memberUseCase = memberUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
     public func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared:
+            logAnalyticsEvent(.screenView(.appAccount))
         case .nicknameChanged(let nickname):
             state.nickname = nickname
         case .confirmTapped:
@@ -45,6 +53,7 @@ public final class AccountInfoStore: MVIStore {
                 do {
                     let savedNickname = try await memberUseCase.changeNickname(state.nickname)
                     state.nickname = savedNickname
+                    logAnalyticsEvent(.appAccountNicknameChanged)
                     eventContinuation?.yield(.nicknameSaved)
                 } catch {
                     // 에러 UI 정책 미정 — 로그만 남긴다 (docs/server-connection.md)
@@ -68,6 +77,7 @@ public final class AccountInfoStore: MVIStore {
     }
 
     public enum Intent {
+        case screenAppeared
         case nicknameChanged(String)
         case confirmTapped
     }

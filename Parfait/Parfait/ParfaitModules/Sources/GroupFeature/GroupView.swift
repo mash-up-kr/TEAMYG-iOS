@@ -5,7 +5,6 @@
 //  Created by 신상우 on 8/1/26.
 //
 
-import Common
 import GroupDomain
 import Routing
 import SwiftUI
@@ -20,7 +19,6 @@ public struct GroupView: View {
     private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
     private static let topBarHeight: CGFloat = 60
@@ -87,7 +85,6 @@ public struct GroupView: View {
                 }
             }
         }
-        .onAppear { logAnalyticsEvent(.screenView(.groupList)) }
         .task { store.send(.screenAppeared) }
         .onChange(of: scenePhase) { _, newScenePhase in
             if newScenePhase == .background {

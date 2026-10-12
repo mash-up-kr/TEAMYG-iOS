@@ -20,10 +20,16 @@ public final class CreateGroupStore: MVIStore {
     @ObservationIgnored private var createTask: Task<Void, Never>?
     @ObservationIgnored private var appNicknameTask: Task<Void, Never>?
     @ObservationIgnored private var isNicknameEdited = false
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(groupUseCase: any GroupUseCase, memberUseCase: any MemberUseCase) {
+    public init(
+        groupUseCase: any GroupUseCase,
+        memberUseCase: any MemberUseCase,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger
+    ) {
         self.groupUseCase = groupUseCase
         self.memberUseCase = memberUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
     public func send(_ intent: Intent) {
@@ -107,6 +113,7 @@ public final class CreateGroupStore: MVIStore {
     private func requestCreate(_ draft: GroupDraft) async {
         do {
             let createdGroup = try await groupUseCase.create(draft)
+            logAnalyticsEvent(.groupListCreated)
             send(.createFinished(.success(createdGroup)))
         } catch is CancellationError {
             // 화면 이탈로 취소됨 — 실패로 오인하지 않고 조용히 종료.

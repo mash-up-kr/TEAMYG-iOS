@@ -156,7 +156,8 @@ public struct SettingView: View {
             makeAccountInfoStore: { nickname in
                 AccountInfoStore(
                     state: .init(nickname: nickname),
-                    memberUseCase: PreviewMemberUseCase()
+                    memberUseCase: PreviewMemberUseCase(),
+                    logAnalyticsEvent: { _ in }
                 )
             }
         )

@@ -5,6 +5,7 @@
 //  Created by 신상우 on 9/6/26.
 //
 
+import Common
 import Observation
 import UIComponent
 import UIKit
@@ -29,6 +30,7 @@ final class CanvasSavePreviewStore: MVIStore {
     func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            dependencies.logAnalyticsEvent(.screenView(.canvasSave))
             composeCanvasImage()
         case .saveTapped:
             saveToGallery()
@@ -64,6 +66,9 @@ final class CanvasSavePreviewStore: MVIStore {
         saveTask = Task { [weak self] in
             let isSaved = await CanvasGallerySaver.save(canvasImage)
             guard !Task.isCancelled, let self else { return }
+            if isSaved {
+                dependencies.logAnalyticsEvent(.canvasSaveGallerySaved(format: .image))
+            }
             close(.saved(isSaved))
         }
     }
@@ -81,6 +86,9 @@ final class CanvasSavePreviewStore: MVIStore {
                 false
             }
             guard !Task.isCancelled, let self else { return }
+            if isSaved {
+                dependencies.logAnalyticsEvent(.canvasSaveGallerySaved(format: .video))
+            }
             close(.saved(isSaved))
         }
     }
@@ -102,6 +110,7 @@ extension CanvasSavePreviewStore {
         /// 캔버스 화면과 토핑 캐시를 공유하는 합성기.
         let canvasImageExporter: CanvasImageExporter
         let onClose: @MainActor (CloseReason) -> Void
+        let logAnalyticsEvent: AnalyticsEventLogger
     }
 
     struct State: Equatable {

@@ -10,6 +10,7 @@ import Routing
 import SwiftUI
 import UIComponent
 
+// swiftlint:disable:next type_body_length
 public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
@@ -118,6 +119,9 @@ public struct CanvasView: View {
             guard newScenePhase != .inactive else { return }
             store.send(newScenePhase == .active ? .sceneBecameActive : .sceneEnteredBackground)
         }
+        .onChange(of: store.state.analyticsScreenName) {
+            store.send(.screenChanged)
+        }
         .onDisappear {
             store.send(.screenDisappeared)
         }
@@ -184,7 +188,8 @@ public struct CanvasView: View {
                 dependencies: .init(
                     canvasContent: savePreview.canvasContent,
                     canvasImageExporter: store.canvasImageExporter,
-                    onClose: { store.send(.savePreviewClosed($0)) }
+                    onClose: { store.send(.savePreviewClosed($0)) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )
         )
@@ -216,7 +221,8 @@ public struct CanvasView: View {
                     canvasUseCase: store.canvasUseCase,
                     toppingUseCase: toppingUseCase,
                     recentUploadsRepository: recentUploadsRepository,
-                    onSaved: { store.send(.toppingSaved) }
+                    onSaved: { store.send(.toppingSaved) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 ),
                 makeAlbumPickerStore: makeAlbumPickerStore
             ),
@@ -252,7 +258,9 @@ public struct CanvasView: View {
                     toppingUseCase: toppingUseCase,
                     imageUploadRepository: imageUploadRepository,
                     onDismiss: { store.send(.canvasEditFlowDismissed) },
-                    onSaved: { store.send(.canvasEditSaved) }
+                    onSaved: { store.send(.canvasEditSaved) },
+                    isToppingEdit: destination.selectedToppingID != nil,
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )
 
