@@ -12,6 +12,7 @@ import CanvasDomain
 import CanvasFeature
 import Common
 import Core
+import FirebaseAnalytics
 import FirebaseMessaging
 import Foundation
 import GroupData
@@ -36,6 +37,18 @@ struct AppDependencies {
     private let imageProvider = ImageProvider()
     /// `YGImageView` 환경에 얹는 로더 — UIComponent 가 Core 를 모르므로 여기서 클로저로 감싼다.
     let ygImageLoader: YGImageLoader
+    /// 사용자 이벤트 전송 — 피처는 Firebase 를 모르므로 환경(`logAnalyticsEvent`)으로 얹는다.
+    let logAnalyticsEvent: AnalyticsEventLogger = { event in
+        switch event {
+        case let .screenView(screenName):
+            Analytics.logEvent(
+                AnalyticsEventScreenView,
+                parameters: [AnalyticsParameterScreenName: screenName.rawValue]
+            )
+        default:
+            Analytics.logEvent(event.name, parameters: event.parameters)
+        }
+    }
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
 

@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/1/26.
 //
 
+import Common
 import SwiftUI
 import UIComponent
 
@@ -16,6 +17,7 @@ struct CanvasCalendar: View {
     let onYearSelect: (Int) -> Void
     let onDateSelect: (CalendarDate) -> Void
     let onDropdownDismiss: () -> Void
+    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     var body: some View {
         VStack(spacing: .gap2) {
@@ -52,6 +54,7 @@ struct CanvasCalendar: View {
         .padding(.bottom, .padding5)
         .frame(maxWidth: .infinity, alignment: .top)
         .background(.whiteFixed)
+        .onAppear { logAnalyticsEvent(.screenView(.canvasCalendar)) }
     }
 }
 

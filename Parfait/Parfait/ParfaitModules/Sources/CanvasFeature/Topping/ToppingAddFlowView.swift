@@ -5,6 +5,7 @@
 //  Created by 박서연 on 8/9/26.
 //
 
+import Common
 import SwiftUI
 import UIComponent
 
@@ -14,6 +15,7 @@ struct ToppingAddFlowView: View {
     @State private var areaSelectionToasts: [YGToastItem] = []
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     private static let quitPopupDescription = "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?"
 
@@ -42,6 +44,10 @@ struct ToppingAddFlowView: View {
         }
         .onDisappear {
             store.send(.screenDisappeared)
+        }
+        // 한 플로우 안에서 화면이 바뀌므로 onAppear 대신 화면 단위가 바뀔 때마다 찍는다.
+        .onChange(of: analyticsScreenName, initial: true) { _, screenName in
+            logAnalyticsEvent(.screenView(screenName))
         }
         // 후보 추출·빈 누끼 생성 같은 짧은 작업은 전용 로딩 화면 대신 현재 화면 위 오버레이로.
         .ygLoading(store.state.extractionState == .extracting)
@@ -101,6 +107,11 @@ struct ToppingAddFlowView: View {
                 break
             }
         }
+    }
+
+    /// 촬영·사진 선택·대상 감지(C101·C102·C104)는 canvas_camera, 배치·테두리(C105)는 canvas_edit.
+    private var analyticsScreenName: AnalyticsEvent.ScreenName {
+        store.state.screen == .placement ? .canvasEdit : .canvasCamera
     }
 
     @ViewBuilder

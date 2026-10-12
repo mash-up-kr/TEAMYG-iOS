@@ -13,6 +13,7 @@ public struct AccountInfoView: View {
     @State private var store: AccountInfoStore
     @FocusState private var isNicknameFocused: Bool
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     public init(store: AccountInfoStore) {
         _store = State(initialValue: store)
@@ -41,6 +42,7 @@ public struct AccountInfoView: View {
                     .padding(.vertical, .padding7)
             }
         }
+        .onAppear { logAnalyticsEvent(.screenView(.appAccount)) }
         .task {
             for await event in store.events {
                 switch event {

@@ -5,6 +5,7 @@
 //  Created by 신상우 on 9/6/26.
 //
 
+import Common
 import Core
 import SwiftUI
 import UIComponent
@@ -18,6 +19,7 @@ struct CanvasSavePreviewView: View {
     private static let imageHeight: CGFloat = 352
 
     @State private var store: CanvasSavePreviewStore
+    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     init(store: CanvasSavePreviewStore) {
         _store = State(initialValue: store)
@@ -57,6 +59,7 @@ struct CanvasSavePreviewView: View {
                 onClose: { store.send(.closeTapped) }
             )
         }
+        .onAppear { logAnalyticsEvent(.screenView(.canvasSave)) }
         .task {
             store.send(.screenAppeared)
         }

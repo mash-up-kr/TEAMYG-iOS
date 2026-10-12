@@ -21,6 +21,7 @@ public struct GroupSideMenuView: View {
     private let onExit: (GroupSideMenuStore.ExitAction) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.logAnalyticsEvent) private var logAnalyticsEvent
 
     /// 키보드 위 확인 버튼의 노출 조건. 포커스는 `YGTextField` 내부에 있어 밖에서 못 읽으므로
     /// 키보드 노티피케이션으로 판단한다.
@@ -96,6 +97,7 @@ public struct GroupSideMenuView: View {
             ) { _ in
                 isKeyboardVisible = false
             }
+            .onAppear { logAnalyticsEvent(.screenView(.groupMenu)) }
             .task { store.send(.screenAppeared) }
             .onDisappear { store.send(.screenDisappeared) }
     }
