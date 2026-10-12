@@ -92,16 +92,17 @@ final class CameraFlow {
         state.capturePhase = .processing(previewFrame: nil)
 
         captureTask = Task { [weak self, session] in
-            async let pendingPhotoData = session.capturePhoto()
-            let previewFrame = await session.latestPreviewFrame()
-
+            // 사진 출력으로 새로 찍지 않고 셔터 순간의 프레임을 그대로 쓴다 — 누른 뒤 움직여도 보던 장면이 저장된다.
+            let frame = await session.currentFrame()
             guard let self, isLatestRequest(captureGeneration) else { return }
+
+            let previewFrame = frame?.freezeFrame
             if let previewFrame {
                 state.capturePhase = .processing(previewFrame: previewFrame)
                 handle(.freezeFrameReady)
             }
 
-            let photoData = await pendingPhotoData
+            let photoData = await frame?.jpegData()
             guard isLatestRequest(captureGeneration) else { return }
 
             guard let photoData else {

@@ -29,13 +29,14 @@ struct ToppingCameraView: View {
 
     var body: some View {
         ZStack {
+            // 측정은 ignoresSafeArea 안쪽에서 — 바깥에 두면 safe area 를 뺀 크기가 잡혀 뷰파인더 크롭이 어긋난다.
             CameraPreviewView(previewSource: previewSource)
-                .ignoresSafeArea()
                 .onGeometryChange(for: CGRect.self) { geometry in
                     geometry.frame(in: .global)
                 } action: { frame in
                     previewFrame = frame
                 }
+                .ignoresSafeArea()
 
             dimOverlay
 
