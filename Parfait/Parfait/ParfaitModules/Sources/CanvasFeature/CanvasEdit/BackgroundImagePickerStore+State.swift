@@ -73,6 +73,7 @@ extension BackgroundImagePickerStore {
         case cameraGuideDismissed
         case flashTapped
         case cameraPositionTapped
+        case cameraZoomChanged(CGFloat)
         case shutterTapped(viewFinderRegion: ViewFinderRegion?)
         case retakeTapped
         case photoConfirmed

@@ -75,6 +75,7 @@ extension ToppingAddStore {
         case toastDismissed
         case flashTapped
         case cameraPositionTapped
+        case cameraZoomChanged(CGFloat)
         case shutterTapped(viewFinderRegion: ViewFinderRegion?)
         case retakeTapped
         case photoConfirmed

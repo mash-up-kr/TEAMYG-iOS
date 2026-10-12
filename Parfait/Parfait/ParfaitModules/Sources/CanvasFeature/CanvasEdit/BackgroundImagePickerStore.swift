@@ -59,6 +59,8 @@ final class BackgroundImagePickerStore: MVIStore {
             camera.toggleFlash()
         case .cameraPositionTapped:
             camera.switchCamera()
+        case .cameraZoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
         case .shutterTapped(let viewFinderRegion):
             camera.capturePhoto(viewFinderRegion: viewFinderRegion)
         case .retakeTapped:

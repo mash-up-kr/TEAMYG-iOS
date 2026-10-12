@@ -20,12 +20,15 @@ struct ToppingCameraView: View {
     let onFlashTap: () -> Void
     let onShutterTap: (ViewFinderRegion?) -> Void
     let onSwitchCameraTap: () -> Void
+    let zoomFactor: CGFloat
+    let onZoomChange: (CGFloat) -> Void
     var onCloseTap: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
+    @State private var pinchStartZoomFactor: CGFloat?
 
     var body: some View {
         ZStack {
@@ -56,6 +59,19 @@ struct ToppingCameraView: View {
             .padding(.horizontal, .padding7)
             .safeAreaPadding(.top, .padding6)
         }
+        .simultaneousGesture(pinchToZoom)
+    }
+
+    private var pinchToZoom: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let startZoomFactor = pinchStartZoomFactor ?? zoomFactor
+                pinchStartZoomFactor = startZoomFactor
+                onZoomChange(startZoomFactor * value.magnification)
+            }
+            .onEnded { _ in
+                pinchStartZoomFactor = nil
+            }
     }
 
     @ViewBuilder

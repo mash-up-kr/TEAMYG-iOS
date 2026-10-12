@@ -67,6 +67,16 @@ final class CameraFlow {
         }
     }
 
+    func zoom(to zoomFactor: CGFloat) {
+        guard state.isReady else { return }
+        let range = CameraFlowState.zoomFactorRange
+        let clampedZoomFactor = min(max(zoomFactor, range.lowerBound), range.upperBound)
+        state.zoomFactor = clampedZoomFactor
+        Task { [session] in
+            await session.setZoomFactor(clampedZoomFactor)
+        }
+    }
+
     func switchCamera() {
         guard state.isReady else { return }
         state.isSwitching = true
@@ -78,6 +88,7 @@ final class CameraFlow {
             guard let switchedPosition else { return }
 
             state.position = switchedPosition
+            state.zoomFactor = 1
             if switchedPosition == .front {
                 state.flashMode = .off
             }

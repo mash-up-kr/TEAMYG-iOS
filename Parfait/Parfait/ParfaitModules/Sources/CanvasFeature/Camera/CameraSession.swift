@@ -95,6 +95,15 @@ actor CameraSession {
         return nextPosition
     }
 
+    /// 장치가 허용하는 범위로 잘라 적용한다. 미리보기·저장 프레임이 함께 확대된다.
+    func setZoomFactor(_ zoomFactor: CGFloat) {
+        guard let device = videoInput?.device else { return }
+        let range = CameraFlowState.zoomFactorRange
+        let minimumZoomFactor = max(device.minAvailableVideoZoomFactor, range.lowerBound)
+        let maximumZoomFactor = min(device.maxAvailableVideoZoomFactor, range.upperBound)
+        applyZoomFactor(min(max(zoomFactor, minimumZoomFactor), maximumZoomFactor), to: device)
+    }
+
     /// 셔터 순간의 프레임. 사진 출력(AVCapturePhotoOutput)은 요청 뒤 프레임을 찍어 지연이 생기므로 쓰지 않는다.
     func currentFrame() -> CameraPreviewFrame? {
         previewFrameReceiver.latestFrame()
@@ -150,7 +159,19 @@ actor CameraSession {
             for: .video,
             position: position.avFoundationPosition
         ) else { return nil }
+        // 장치 객체는 앱 전역에서 공유돼 이전 화면의 줌이 남아 있다. 상태(1배)와 맞춰 둔다.
+        applyZoomFactor(1, to: device)
         return try? AVCaptureDeviceInput(device: device)
+    }
+
+    private func applyZoomFactor(_ zoomFactor: CGFloat, to device: AVCaptureDevice) {
+        do {
+            try device.lockForConfiguration()
+        } catch {
+            return
+        }
+        device.videoZoomFactor = zoomFactor
+        device.unlockForConfiguration()
     }
 
     private func configureVideoDataOutput() {
