@@ -72,7 +72,7 @@ public final class AlbumPickerStore: MVIStore {
         }
     }
 
-    /// 최근 업로드 기록 로드 — 정책 창(03:00~다음날 02:59) 안의 기록만, 비면 뷰가 섹션을 숨긴다.
+    /// 최근 업로드 기록 로드 — 정책 창(그날 00:00~23:59) 안의 기록만, 비면 뷰가 섹션을 숨긴다.
     private func loadRecentUploads() {
         guard state.showsRecentUploads else { return }
         recentUploadsTask?.cancel()
@@ -86,7 +86,7 @@ public final class AlbumPickerStore: MVIStore {
         }
     }
 
-    /// 기기 사진 전체를 최신순으로 가져와 캔버스 하루(03:00~다음날 02:59) 단위 섹션으로 묶는다.
+    /// 기기 사진 전체를 최신순으로 가져와 달력 하루(00:00~23:59) 단위 섹션으로 묶는다.
     /// limited 면 Photos 가 선택된 사진만 돌려주므로 별도 분기가 없다.
     private func fetchDeviceSections() {
         let fetchOptions = PHFetchOptions()
@@ -105,7 +105,7 @@ public final class AlbumPickerStore: MVIStore {
                 groups[currentGroupIndex].assets.append(asset)
                 return
             }
-            let canvasDate = CalendarDate(canvasDayContaining: creationDate)
+            let canvasDate = CalendarDate(date: creationDate)
             if let existingIndex = groupIndexByCanvasDate[canvasDate] {
                 currentGroupIndex = existingIndex
             } else {
@@ -114,7 +114,7 @@ public final class AlbumPickerStore: MVIStore {
                 groups.append((canvasDate, []))
             }
             groups[currentGroupIndex].assets.append(asset)
-            currentWindow = canvasDate.timeInterval
+            currentWindow = AlbumPolicy.dayWindow(containing: creationDate)
         }
 
         state.sections = groups
@@ -216,7 +216,7 @@ private final class PhotoLibraryChangeRelay: NSObject, PHPhotoLibraryChangeObser
     }
 }
 
-/// 캔버스 하루(03:00 경계) 단위 사진 섹션. 헤더는 "May 20 (Wed)" 형식 (en 고정 — 디자인 확정 포맷).
+/// 달력 하루(00:00 경계) 단위 사진 섹션. 헤더는 "May 20 (Wed)" 형식 (en 고정 — 디자인 확정 포맷).
 public struct PhotoDaySection: Equatable, Identifiable {
     public let day: Date
     public let assets: [PHAsset]
