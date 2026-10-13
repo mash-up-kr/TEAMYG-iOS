@@ -42,7 +42,7 @@ struct CanvasSavePreviewView: View {
                     YGButton("영상으로 저장", variant: .mediumSecondary, fillsWidth: true) {
                         store.send(.saveVideoTapped)
                     }
-                    YGButton("갤러리에 저장", variant: .mediumPrimary, fillsWidth: true) {
+                    YGButton("이미지로 저장", variant: .mediumPrimary, fillsWidth: true) {
                         store.send(.saveTapped)
                     }
                 }
