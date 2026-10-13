@@ -17,14 +17,11 @@ import UIComponent
 public struct AlbumPickerView: View {
     @State private var store: AlbumPickerStore
     @Namespace private var zoomNamespace
-    @State private var toasts: [YGToastItem] = []
-    private let showsSelectionGuide: Bool
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: .gap4), count: 3)
 
-    public init(store: AlbumPickerStore, showsSelectionGuide: Bool = true) {
+    public init(store: AlbumPickerStore) {
         _store = State(initialValue: store)
-        self.showsSelectionGuide = showsSelectionGuide
     }
 
     public var body: some View {
@@ -62,8 +59,6 @@ public struct AlbumPickerView: View {
                         .background(Color.whiteFixed)
                     }
                 }
-                // 상단 바 아래에 붙여 토스트가 바를 가리지 않게 한다 (CanvasView 와 같은 패턴).
-                .ygToastOverlay($toasts)
             }
 
             if let selectedPhoto = store.state.selectedPhoto {
@@ -80,14 +75,7 @@ public struct AlbumPickerView: View {
                 .zIndex(1) // 축소(제거) 애니메이션 동안 그리드 위에 유지
             }
         }
-        .onAppear {
-            store.send(.appeared)
-            if showsSelectionGuide {
-                toasts.append(
-                    YGToastItem(kind: .warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요")
-                )
-            }
-        }
+        .onAppear { store.send(.appeared) }
         .onDisappear { store.send(.disappeared) }
     }
 
