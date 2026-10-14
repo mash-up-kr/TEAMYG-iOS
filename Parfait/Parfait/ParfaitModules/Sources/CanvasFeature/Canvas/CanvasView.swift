@@ -96,7 +96,7 @@ public struct CanvasView: View {
                     )
                 case .canvasEmpty:
                     toasts.append(
-                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요, 토핑을 올려 채워보세요")
+                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요")
                     )
                 case .canvasLoadFailed:
                     toasts.append(
