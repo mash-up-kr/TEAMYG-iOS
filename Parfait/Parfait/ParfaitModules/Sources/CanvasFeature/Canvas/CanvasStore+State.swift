@@ -333,6 +333,7 @@ public extension CanvasStore {
         case toppingAddTapped
         case cameraOptionTapped
         case galleryOptionTapped
+        case textOptionTapped
         case menuDimTapped
         case toppingAddFlowDismissed
         case toppingSaved

@@ -11,6 +11,8 @@ import UIComponent
 struct CanvasContainer: View {
     let state: CanvasStore.State
     let send: (CanvasStore.Intent) -> Void
+    /// 캔버스 패널의 화면 좌표 — 텍스트 입력(C-106)이 같은 자리에 캔버스를 겹쳐 그린다.
+    var onBoardFrameChange: (CGRect) -> Void = { _ in }
 
     /// 상단 안내를 위로 스와이프해 닫았는지 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
     @State private var isNudgeDismissed = false
@@ -41,11 +43,22 @@ struct CanvasContainer: View {
                             onToppingImageLoadFailed: { send(.toppingImageLoadFailed($0)) }
                         )
                         .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                        .onGeometryChange(for: CGRect.self) { proxy in
+                            proxy.frame(in: .global)
+                        } action: { frame in
+                            onBoardFrameChange(frame)
+                        }
                         .overlay(alignment: .bottom) {
                             if state.menuState == .sourceOptions {
                                 CanvasMenuSourceOptions(
                                     onCameraOptionTap: { send(.cameraOptionTapped) },
-                                    onGalleryOptionTap: { send(.galleryOptionTapped) }
+                                    onGalleryOptionTap: { send(.galleryOptionTapped) },
+                                    onTextOptionTap: {
+                                        // 텍스트는 같은 캔버스 위에 바로 쓰는 동작이라 새 화면처럼 밀어 올리지 않는다 — C-106 이 직접 페이드인한다.
+                                        var transaction = Transaction()
+                                        transaction.disablesAnimations = true
+                                        withTransaction(transaction) { send(.textOptionTapped) }
+                                    }
                                 )
                             }
                         }
@@ -138,7 +151,7 @@ struct CanvasContainer: View {
     }
 }
 
-private struct CanvasBoard: View {
+struct CanvasBoard: View {
     let dateText: String
     let weekdayText: String
     let contentState: CanvasStore.ContentState
@@ -275,7 +288,7 @@ struct CanvasDateHeader: View {
     }
 }
 
-private struct CanvasPanelShape: Shape {
+struct CanvasPanelShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let cutLength = min(17, min(rect.width, rect.height))

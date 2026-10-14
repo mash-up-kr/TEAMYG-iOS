@@ -9,6 +9,7 @@ public extension CanvasStore {
     enum ToppingAddSource: Hashable, Identifiable, Sendable {
         case camera(canvasDate: CalendarDate)
         case gallery(canvasDate: CalendarDate)
+        case text(canvasDate: CalendarDate)
 
         public var id: Self { self }
     }

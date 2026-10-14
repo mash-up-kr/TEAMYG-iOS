@@ -49,11 +49,13 @@ struct CanvasClosedMenuBar: View {
 struct CanvasMenuSourceOptions: View {
     let onCameraOptionTap: () -> Void
     let onGalleryOptionTap: () -> Void
+    let onTextOptionTap: () -> Void
 
     var body: some View {
         VStack(spacing: -1) {
             CanvasMenuButton("카메라로 촬영", style: .option, action: onCameraOptionTap)
             CanvasMenuButton("갤러리에서 선택", style: .option, action: onGalleryOptionTap)
+            CanvasMenuButton("텍스트 입력", style: .option, action: onTextOptionTap)
         }
     }
 }
