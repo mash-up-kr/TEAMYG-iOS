@@ -83,7 +83,7 @@ struct ToppingCandidateSelectionView: View {
                 .frame(width: 28, height: 28)
                 .foregroundStyle(.soda500)
 
-            Text("토핑으로 사용할 대상을 하나 선택해 주세요")
+            Text("캔버스에 올릴 대상을 하나 선택해 주세요")
                 .suit(.body02Regular)
                 .foregroundStyle(.whiteFixed)
                 .frame(maxWidth: .infinity, alignment: .leading)
