@@ -85,8 +85,14 @@ public struct YGInviteCard: View {
         .disabled(!isActive)
     }
 
+    /// 초대 메시지 — 링크를 탭하면 앱이 열려 코드가 채워진 초대코드 화면으로 간다(유니버설 링크).
+    /// 붙여넣기 쪽은 맨 뒤 6자를 코드로 읽으므로 링크는 반드시 코드로 끝나야 한다.
+    public static func inviteMessage(code: String) -> String {
+        "친구가 파르페에 초대했어요.\n체리 올리러 가볼까요?\nhttps://parfait-app.store/link?inviteCode=\(code)"
+    }
+
     private func copy() {
-        UIPasteboard.general.string = "친구가 파르페에 초대했어요.\n체리 올리러 가볼까요? \(code)"
+        UIPasteboard.general.string = Self.inviteMessage(code: code)
         onCopy?()
         revertTask?.cancel()
         showsCopied = true

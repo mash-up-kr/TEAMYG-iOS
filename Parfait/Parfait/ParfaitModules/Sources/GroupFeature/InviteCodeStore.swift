@@ -88,7 +88,7 @@ public final class InviteCodeStore: MVIStore {
         rawString.uppercased().filter { ("A"..."Z").contains($0) || ("0"..."9").contains($0) }
     }
 
-    /// 공유 문구("...체리 올리러 가볼까요? KS479J") 맨 뒤 6자를 초대코드로 본다.
+    /// 공유 문구("...가볼까요?\nhttps://parfait-app.store/link?inviteCode=KS479J") 맨 뒤 6자를 초대코드로 본다.
     /// 앞 문구 형식은 검사하지 않으므로 코드만 복사해 붙여넣어도 인정되고,
     /// 마지막 6자에 영숫자가 아닌 문자가 섞이면 nil.
     private static func inviteCode(fromPastedString pastedString: String) -> String? {
