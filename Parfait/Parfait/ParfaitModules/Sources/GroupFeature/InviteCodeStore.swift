@@ -20,9 +20,15 @@ public final class InviteCodeStore: MVIStore {
     @ObservationIgnored private var joinTask: Task<Void, Never>?
     private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(groupUseCase: any GroupUseCase, logAnalyticsEvent: @escaping AnalyticsEventLogger) {
+    /// - Parameter prefilledCode: 미리 채울 초대코드(초대 링크 진입). 입력과 같은 규칙으로 정규화한다.
+    public init(
+        groupUseCase: any GroupUseCase,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger,
+        prefilledCode: String = ""
+    ) {
         self.groupUseCase = groupUseCase
         self.logAnalyticsEvent = logAnalyticsEvent
+        state.inviteCode = String(Self.normalizedInviteCode(from: prefilledCode).prefix(Self.inviteCodeLength))
     }
 
     public func send(_ intent: Intent) {

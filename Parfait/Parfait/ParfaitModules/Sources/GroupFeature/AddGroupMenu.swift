@@ -20,7 +20,7 @@ struct AddGroupMenu: View {
                 .frame(height: 1)
                 .padding(.horizontal, .padding6)
 
-            menuLink(.inviteCode, icon: .icEnter, title: "그룹 들어가기")
+            menuLink(.inviteCode(), icon: .icEnter, title: "그룹 들어가기")
         }
         .frame(width: 136)
         .background(.whiteFixed, in: .rect(cornerRadius: Radius.medium1))

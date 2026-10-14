@@ -19,6 +19,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
 
     /// 푸시 알림으로 앱 진입
     case appPushOpened(type: PushType)
+    /// 딥링크(유니버설 링크)로 앱 진입. 이름은 기획 지정값(`AppLink`)이라 snake_case 규칙 예외.
+    case appLinkOpened(destination: AppLinkDestination)
     /// 계정정보에서 닉네임 변경 완료
     case appAccountNicknameChanged
 
@@ -85,6 +87,11 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case remindPM = "REMIND_PM"
     }
 
+    public enum AppLinkDestination: String, Sendable {
+        /// 초대 링크(`/link?inviteCode=`) → 초대코드 화면
+        case groupInvite = "group_invite"
+    }
+
     public enum PhotoSource: String, Sendable {
         /// 최근 업로드(이미 잘라 둔 누끼)
         case recent
@@ -106,6 +113,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
         switch self {
         case .screenView: "screen_view"
         case .appPushOpened: "app_push_opened"
+        case .appLinkOpened: "AppLink"
         case .appAccountNicknameChanged: "app_account_nickname_changed"
         case .canvasCameraRetakeTapped: "canvas_camera_retake_tapped"
         case .canvasCameraPhotoSelected: "canvas_camera_photo_selected"
@@ -134,6 +142,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
             ["screen_name": screenName.rawValue]
         case let .appPushOpened(type):
             ["type": type.rawValue]
+        case let .appLinkOpened(destination):
+            ["destination": destination.rawValue]
         case let .canvasCameraPhotoSelected(source):
             ["source": source.rawValue]
         case let .canvasCameraDetectionCompleted(success):
