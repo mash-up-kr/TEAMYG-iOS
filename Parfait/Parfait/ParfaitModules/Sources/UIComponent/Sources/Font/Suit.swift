@@ -25,3 +25,12 @@ enum SuitFont {
     }()
     static func registerOnce() { _ = registered }
 }
+
+public extension UIFont {
+    /// 토큰에 없는 임의 크기의 SUIT Regular. 크기가 연속으로 바뀌는 캔버스 텍스트(자동 축소·핀치) 전용 —
+    /// 고정 스펙 텍스트는 `Typography` 토큰을 쓴다.
+    static func suit(size: CGFloat) -> UIFont {
+        SuitFont.registerOnce()
+        return UIFont(name: Suit.regular.rawValue, size: size) ?? .systemFont(ofSize: size)
+    }
+}
