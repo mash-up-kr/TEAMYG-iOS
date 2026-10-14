@@ -29,7 +29,9 @@ struct CanvasBackgroundPalette: View {
                 sourceChip(icon: .icCamera, source: .camera)
 
                 ForEach(Self.colors, id: \.self) { hex in
-                    colorChip(hex)
+                    CanvasColorChip(hex: hex, isSelected: CanvasPalette.matches(selectedColorHex, hex)) {
+                        onColorSelect(hex)
+                    }
                 }
             }
             .padding(.vertical, .padding2)
@@ -78,11 +80,16 @@ struct CanvasBackgroundPalette: View {
         }
         .buttonStyle(.plain)
     }
+}
 
-    private func colorChip(_ hex: String) -> some View {
-        Button {
-            onColorSelect(hex)
-        } label: {
+/// 원형 색 칩 — 배경 팔레트와 텍스트 색 팝오버가 같은 모양을 쓴다.
+struct CanvasColorChip: View {
+    let hex: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             Circle()
                 .fill(Color(hex: hex))
                 .overlay {
@@ -90,7 +97,7 @@ struct CanvasBackgroundPalette: View {
                         .strokeBorder(.black5, lineWidth: 1)
                 }
                 .overlay {
-                    if CanvasPalette.matches(selectedColorHex, hex) {
+                    if isSelected {
                         Circle()
                             .fill(.black25)
                         Image.icCheck

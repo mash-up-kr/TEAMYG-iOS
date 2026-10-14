@@ -14,6 +14,8 @@ import UIComponent
 public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
+    /// 텍스트 입력(C-106)이 캔버스를 같은 자리에 겹쳐 그리도록 넘기는 캔버스 패널 화면 좌표.
+    @State private var canvasBoardFrame: CGRect = .zero
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -65,7 +67,8 @@ public struct CanvasView: View {
 
                 CanvasContainer(
                     state: store.state,
-                    send: { store.send($0) }
+                    send: { store.send($0) },
+                    onBoardFrameChange: { canvasBoardFrame = $0 }
                 )
                 .ygToastOverlay($toasts)
             }
@@ -125,6 +128,8 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
             case .gallery(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
+            case .text:
+                textToppingFlow
             }
         }
         .fullScreenCover(item: canvasEditDestinationBinding) { destination in
@@ -198,6 +203,32 @@ public struct CanvasView: View {
                 }
             }
         )
+    }
+
+    /// C-001 캔버스를 같은 자리에 그대로 겹쳐 그린다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
+    private var textToppingFlow: some View {
+        TextToppingView(
+            store: TextToppingStore(state: .init()),
+            canvasFrame: canvasBoardFrame,
+            board: CanvasBoard(
+                dateText: store.state.dateText,
+                weekdayText: store.state.weekdayText,
+                contentState: store.state.contentState,
+                canvasContent: store.state.canvasContent,
+                spotlightedToppingID: nil,
+                isDimmed: false,
+                onCalendarTap: {},
+                onSaveTap: {},
+                onToppingTap: { _ in },
+                onSpotlightDismiss: {},
+                onDimTap: {},
+                onToppingImageLoaded: { _ in },
+                onToppingImageLoadFailed: { _ in }
+            )
+            .allowsHitTesting(false),
+            toppingRenderer: toppingRenderer
+        )
+        .presentationBackground(.clear)
     }
 
     private func toppingAddFlow(
