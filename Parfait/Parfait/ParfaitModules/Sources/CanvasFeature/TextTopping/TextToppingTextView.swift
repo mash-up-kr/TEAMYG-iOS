@@ -43,6 +43,14 @@ struct TextToppingTextView: UIViewRepresentable {
         // 줄바꿈 너비를 따로 지정하지 않고 프레임에서 따라가게 한다 — 따로 두면 입력으로 프레임이 바뀔 때
         // 내부 레이아웃이 어긋난 채 그려졌다가 다른 갱신 때 뒤늦게 바로잡혀 글자가 튀어 보였다.
         textView.textContainer.widthTracksTextView = true
+        // 꾸미기용 짧은 글이라 키보드 자동 보정·추천을 끈다.
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.spellCheckingType = .no
+        textView.inlinePredictionType = .no
+        textView.smartQuotesType = .no
+        textView.smartDashesType = .no
+        textView.smartInsertDeleteType = .no
         context.coordinator.attach(to: textView)
         return textView
     }
