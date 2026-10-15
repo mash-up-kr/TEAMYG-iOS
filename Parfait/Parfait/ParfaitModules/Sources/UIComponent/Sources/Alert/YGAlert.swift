@@ -14,7 +14,7 @@ import SwiftUI
 ///
 /// 화면 상단 토스트로 띄울 때는 뷰를 직접 배치하지 말고
 /// ``SwiftUICore/View/ygAlert(isPresented:content:)`` 를 사용한다
-/// (위에서 내려와 노출, 위로 스와이프 or 2.5초 경과 시 닫힘 — Figma 805-4997).
+/// (위에서 내려와 노출, 위로 스와이프해야만 닫힘 — 자동 닫힘 없음).
 public struct YGAlert: View {
     /// 우측 액션 칩 — Figma `Button-Chip-Right` 인스턴스, `YGChip`(trailing) 재사용.
     public struct Action {
