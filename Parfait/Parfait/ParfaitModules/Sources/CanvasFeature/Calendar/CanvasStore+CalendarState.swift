@@ -36,14 +36,6 @@ public struct CalendarDate: Hashable, Comparable, Sendable {
 
     static let dayResetHour = 3
 
-    var timeInterval: DateInterval? {
-        guard let midnight = date,
-              let start = Self.gregorian.date(byAdding: .hour, value: Self.dayResetHour, to: midnight),
-              let end = Self.gregorian.date(byAdding: .day, value: 1, to: start)
-        else { return nil }
-        return DateInterval(start: start, end: end)
-    }
-
     public static func < (lhs: CalendarDate, rhs: CalendarDate) -> Bool {
         (lhs.year, lhs.month, lhs.day) < (rhs.year, rhs.month, rhs.day)
     }

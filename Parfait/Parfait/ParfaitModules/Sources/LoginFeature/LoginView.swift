@@ -69,7 +69,7 @@ public struct LoginView: View {
             .tag(0)
             onboardingPage(
                 image: .imageOnboarding2,
-                title: "오늘 찍은 사진을 친구들과 함께 캔버스에 붙여요"
+                title: "친구들과 함께 남기고 싶은 순간을 캔버스에 붙여요"
             )
             .tag(1)
             onboardingPage(

@@ -198,7 +198,7 @@ public extension CanvasStore {
 
         var descriptionText: String {
             switch self {
-            case .joined: "+ 버튼을 눌러 토핑을 쌓아보세요"
+            case .joined: "+ 버튼을 눌러 캔버스를 꾸며 보세요"
             case .created(_, let inviteCode): "초대코드는 \(inviteCode)이에요"
             }
         }

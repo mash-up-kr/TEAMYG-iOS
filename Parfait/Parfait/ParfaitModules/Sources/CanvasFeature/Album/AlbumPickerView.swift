@@ -98,7 +98,7 @@ public struct AlbumPickerView: View {
     private var emptyView: some View {
         VStack(spacing: .gap1) {
             Image.imageGalleryEmpty
-            Text("오늘 찍은 사진이 없어요\n사진을 찍고 토핑을 추가해 보세요")
+            Text("아직 캔버스가 비어 있어요\n친구들과 함께 남기고 싶은 순간을 캔버스에 붙여 주세요")
                 .suit(.body02Regular)
                 .foregroundStyle(Color.gray300)
                 .multilineTextAlignment(.center)

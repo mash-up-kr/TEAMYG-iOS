@@ -85,6 +85,7 @@ extension ToppingAddStore {
         case settingsTapped
         case analysisCancelled
         case candidateTapped(normalizedPoint: CGPoint)
+        case manualSelectionTapped
         case candidateSelectionBackTapped
         case brushModeSelected(ToppingBrushMode)
         case brushDiameterChanged(Double)

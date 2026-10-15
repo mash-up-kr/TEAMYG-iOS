@@ -11,9 +11,6 @@ public extension Image {
     static let imageOnboarding1 = Image("Image-Onboarding-1", bundle: .module)
     static let imageOnboarding2 = Image("Image-Onboarding-2", bundle: .module)
     static let imageOnboarding3 = Image("Image-Onboarding-3", bundle: .module)
-    static let imageTutorial1 = Image("Image-Tutorial-1", bundle: .module)
-    static let imageTutorial2 = Image("Image-Tutorial-2", bundle: .module)
-    static let imageTutorial3 = Image("Image-Tutorial-3", bundle: .module)
     static let parfaitCherry = Image("Parfait-Cherry", bundle: .module)
     static let parfaitCreamBody = Image("Parfait-Cream-Body", bundle: .module)
     static let parfaitCreamTop = Image("Parfait-Cream-Top", bundle: .module)
@@ -25,9 +22,6 @@ public extension Image {
     static let template04 = Image("Template04", bundle: .module)
     static let template05 = Image("Template05", bundle: .module)
     static let template06 = Image("Template06", bundle: .module)
-    static let tutorial1 = Image("Tutorial-1", bundle: .module)
-    static let tutorial2 = Image("Tutorial-2", bundle: .module)
-    static let tutorial3 = Image("Tutorial-3", bundle: .module)
     static let icAddRound = Image("Ic_Add_Round", bundle: .module)
     static let icArrowLeft = Image("Ic_Arrow_Left", bundle: .module)
     static let icArrowRight = Image("Ic_Arrow_Right", bundle: .module)
@@ -69,9 +63,6 @@ public extension UIImage {
     static var imageOnboarding1: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-1", bundle: .module)) }
     static var imageOnboarding2: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-2", bundle: .module)) }
     static var imageOnboarding3: UIImage { UIImage(resource: ImageResource(name: "Image-Onboarding-3", bundle: .module)) }
-    static var imageTutorial1: UIImage { UIImage(resource: ImageResource(name: "Image-Tutorial-1", bundle: .module)) }
-    static var imageTutorial2: UIImage { UIImage(resource: ImageResource(name: "Image-Tutorial-2", bundle: .module)) }
-    static var imageTutorial3: UIImage { UIImage(resource: ImageResource(name: "Image-Tutorial-3", bundle: .module)) }
     static var parfaitCherry: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cherry", bundle: .module)) }
     static var parfaitCreamBody: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Body", bundle: .module)) }
     static var parfaitCreamTop: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Top", bundle: .module)) }
@@ -83,9 +74,6 @@ public extension UIImage {
     static var template04: UIImage { UIImage(resource: ImageResource(name: "Template04", bundle: .module)) }
     static var template05: UIImage { UIImage(resource: ImageResource(name: "Template05", bundle: .module)) }
     static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
-    static var tutorial1: UIImage { UIImage(resource: ImageResource(name: "Tutorial-1", bundle: .module)) }
-    static var tutorial2: UIImage { UIImage(resource: ImageResource(name: "Tutorial-2", bundle: .module)) }
-    static var tutorial3: UIImage { UIImage(resource: ImageResource(name: "Tutorial-3", bundle: .module)) }
     static var icAddRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Add_Round", bundle: .module)) }
     static var icArrowLeft: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Left", bundle: .module)) }
     static var icArrowRight: UIImage { UIImage(resource: ImageResource(name: "Ic_Arrow_Right", bundle: .module)) }
