@@ -16,8 +16,6 @@ final class TextToppingStore: MVIStore {
     private(set) var state: State
 
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
-    /// 닫히는 동안 키보드가 내려가며 `editingEnded` 가 한 번 더 들어온다 — 닫기 요청은 한 번만 보낸다.
-    @ObservationIgnored private var isDismissRequested = false
 
     init(state: State) {
         self.state = state
@@ -37,6 +35,8 @@ final class TextToppingStore: MVIStore {
             state.canvasSize = canvasSize
             refitFontSize()
         case .textAreaResized(let height):
+            // 닫히며 키보드가 내려가 입력 영역이 커져도 박스를 다시 놓지 않는다 — 페이드아웃 중에 박스가 내려가며 커져 보였다.
+            guard !state.isDismissing else { return }
             state.textAreaHeight = height
             refitFontSize()
         case .colorButtonTapped:
@@ -98,8 +98,8 @@ final class TextToppingStore: MVIStore {
     }
 
     private func requestDismiss() {
-        guard !isDismissRequested else { return }
-        isDismissRequested = true
+        guard !state.isDismissing else { return }
+        state.isDismissing = true
         eventChannel.send(.dismissRequested)
     }
 
@@ -134,6 +134,8 @@ extension TextToppingStore {
         var alignment = TextToppingAlignment.center
         var isColorPopoverPresented = false
         var showsExitPopup = false
+        /// 닫는 중 — 편집을 끄고(키보드 내림) 화면 배치를 고정한다. 닫기 요청은 한 번만 보낸다.
+        var isDismissing = false
         /// 화면 pt. 자동 크기 계산과 배치 좌표의 기준.
         var canvasSize: CGSize = .zero
         /// 캔버스 상단 ~ 툴바 위. 키보드·추천어 줄 높이에 따라 바뀐다 (화면 pt).

@@ -72,6 +72,8 @@ public struct CanvasView: View {
                 )
                 .ygToastOverlay($toasts)
             }
+            // 이 화면엔 입력 필드가 없다 — 텍스트 입력(C-106)이 위에 떠 키보드를 올려도 캔버스가 밀려 줄었다 늘지 않게 한다.
+            .ignoresSafeArea(.keyboard)
 
             loadingOverlay
         }
@@ -205,28 +207,11 @@ public struct CanvasView: View {
         )
     }
 
-    /// C-001 캔버스를 같은 자리에 그대로 겹쳐 그린다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
+    /// C-001 캔버스 자리만 뚫린 채 위에 겹쳐 뜬다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
     private var textToppingFlow: some View {
         TextToppingView(
             store: TextToppingStore(state: .init()),
-            canvasFrame: canvasBoardFrame,
-            board: CanvasBoard(
-                dateText: store.state.dateText,
-                weekdayText: store.state.weekdayText,
-                contentState: store.state.contentState,
-                canvasContent: store.state.canvasContent,
-                spotlightedToppingID: nil,
-                isDimmed: false,
-                onCalendarTap: {},
-                onSaveTap: {},
-                onToppingTap: { _ in },
-                onSpotlightDismiss: {},
-                onDimTap: {},
-                onToppingImageLoaded: { _ in },
-                onToppingImageLoadFailed: { _ in }
-            )
-            .allowsHitTesting(false),
-            toppingRenderer: toppingRenderer
+            canvasFrame: canvasBoardFrame
         )
         .presentationBackground(.clear)
     }

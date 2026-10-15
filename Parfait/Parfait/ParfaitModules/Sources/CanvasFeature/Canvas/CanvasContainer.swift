@@ -54,6 +54,9 @@ struct CanvasContainer: View {
                                     onCameraOptionTap: { send(.cameraOptionTapped) },
                                     onGalleryOptionTap: { send(.galleryOptionTapped) },
                                     onTextOptionTap: {
+                                        // 메뉴는 C-106 이 페이드인하는 동안 캔버스 위에서 같이 페이드아웃한다 — 한 번에 접으면
+                                        // 메뉴 딤이 꺼져 밝아졌다가 C-106 딤으로 다시 어두워지며 번쩍였다.
+                                        withAnimation(.easeInOut(duration: 0.2)) { send(.menuDimTapped) }
                                         // 텍스트는 같은 캔버스 위에 바로 쓰는 동작이라 새 화면처럼 밀어 올리지 않는다 — C-106 이 직접 페이드인한다.
                                         var transaction = Transaction()
                                         transaction.disablesAnimations = true
@@ -151,7 +154,7 @@ struct CanvasContainer: View {
     }
 }
 
-struct CanvasBoard: View {
+private struct CanvasBoard: View {
     let dateText: String
     let weekdayText: String
     let contentState: CanvasStore.ContentState
