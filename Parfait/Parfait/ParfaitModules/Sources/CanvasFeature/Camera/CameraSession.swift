@@ -25,6 +25,8 @@ actor CameraSession {
     private var flashMode: CameraFlashMode = .off
     /// 지금까지 처리한 켜기/끄기 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 요청이므로 버린다.
     private var latestGeneration = 0
+    /// 지금까지 적용한 줌 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 배율이므로 버린다.
+    private var latestZoomRequest = 0
 
     init() {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
@@ -96,7 +98,9 @@ actor CameraSession {
     }
 
     /// 장치가 허용하는 범위로 잘라 적용한다. 미리보기·저장 프레임이 함께 확대된다.
-    func setZoomFactor(_ zoomFactor: CGFloat) {
+    func setZoomFactor(_ zoomFactor: CGFloat, request: Int) {
+        guard request > latestZoomRequest else { return }
+        latestZoomRequest = request
         guard let device = videoInput?.device else { return }
         let range = CameraFlowState.zoomFactorRange
         let minimumZoomFactor = max(device.minAvailableVideoZoomFactor, range.lowerBound)

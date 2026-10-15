@@ -19,6 +19,8 @@ final class CameraFlow {
     @ObservationIgnored private var switchTask: Task<Void, Never>?
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
+    /// 줌 요청 번호. 켜기/끄기 `generation` 과 섞으면 줌이 대기 중인 켜기 요청을 무효로 만들어 따로 센다.
+    @ObservationIgnored private var zoomRequest = 0
     @ObservationIgnored private let handle: @MainActor (CameraFlowEvent) -> Void
 
     init(onEvent handle: @escaping @MainActor (CameraFlowEvent) -> Void) {
@@ -72,8 +74,10 @@ final class CameraFlow {
         let range = CameraFlowState.zoomFactorRange
         let clampedZoomFactor = min(max(zoomFactor, range.lowerBound), range.upperBound)
         state.zoomFactor = clampedZoomFactor
-        Task { [session] in
-            await session.setZoomFactor(clampedZoomFactor)
+        zoomRequest += 1
+        // 핀치마다 Task 가 생기는데 actor 도착 순서는 보장되지 않는다 — 번호로 늦게 온 배율을 버린다.
+        Task { [session, zoomRequest] in
+            await session.setZoomFactor(clampedZoomFactor, request: zoomRequest)
         }
     }
 
