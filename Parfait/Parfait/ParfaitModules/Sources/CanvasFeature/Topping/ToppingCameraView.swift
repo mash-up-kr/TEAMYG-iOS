@@ -20,22 +20,26 @@ struct ToppingCameraView: View {
     let onFlashTap: () -> Void
     let onShutterTap: (ViewFinderRegion?) -> Void
     let onSwitchCameraTap: () -> Void
+    let zoomFactor: CGFloat
+    let onZoomChange: (CGFloat) -> Void
     var onCloseTap: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
+    @State private var pinchStartZoomFactor: CGFloat?
 
     var body: some View {
         ZStack {
+            // 측정은 ignoresSafeArea 안쪽에서 — 바깥에 두면 safe area 를 뺀 크기가 잡혀 뷰파인더 크롭이 어긋난다.
             CameraPreviewView(previewSource: previewSource)
-                .ignoresSafeArea()
                 .onGeometryChange(for: CGRect.self) { geometry in
                     geometry.frame(in: .global)
                 } action: { frame in
                     previewFrame = frame
                 }
+                .ignoresSafeArea()
 
             dimOverlay
 
@@ -55,6 +59,19 @@ struct ToppingCameraView: View {
             .padding(.horizontal, .padding7)
             .safeAreaPadding(.top, .padding6)
         }
+        .simultaneousGesture(pinchToZoom)
+    }
+
+    private var pinchToZoom: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let startZoomFactor = pinchStartZoomFactor ?? zoomFactor
+                pinchStartZoomFactor = startZoomFactor
+                onZoomChange(startZoomFactor * value.magnification)
+            }
+            .onEnded { _ in
+                pinchStartZoomFactor = nil
+            }
     }
 
     @ViewBuilder

@@ -12,6 +12,10 @@ struct CameraFlowState: Equatable, Sendable {
     var phase: CameraPhase = .idle
     var flashMode: CameraFlashMode = .off
     var position: CameraPosition = .back
+    /// 핀치 시작 배율을 잡는 기준. 실제 적용 배율은 세션이 장치 범위로 한 번 더 자른다.
+    var zoomFactor: CGFloat = 1
+    /// 광각 렌즈 디지털 줌 범위. 5배를 넘기면 화질이 급격히 무너진다.
+    static let zoomFactorRange: ClosedRange<CGFloat> = 1...5
     var capturePhase: PhotoCapturePhase = .idle
     var capturedViewFinderRegion: ViewFinderRegion?
     var isSwitching = false

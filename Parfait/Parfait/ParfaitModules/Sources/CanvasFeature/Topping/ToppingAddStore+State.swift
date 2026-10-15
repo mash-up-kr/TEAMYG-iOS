@@ -75,6 +75,7 @@ extension ToppingAddStore {
         case toastDismissed
         case flashTapped
         case cameraPositionTapped
+        case cameraZoomChanged(CGFloat)
         case shutterTapped(viewFinderRegion: ViewFinderRegion?)
         case retakeTapped
         case photoConfirmed
@@ -84,6 +85,7 @@ extension ToppingAddStore {
         case settingsTapped
         case analysisCancelled
         case candidateTapped(normalizedPoint: CGPoint)
+        case manualSelectionTapped
         case candidateSelectionBackTapped
         case brushModeSelected(ToppingBrushMode)
         case brushDiameterChanged(Double)

@@ -16,6 +16,7 @@ public struct AlbumView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @State private var toasts: [YGToastItem] = []
 
     /// 사진 선택 화면 Store 팩토리 — `isLimited` 는 권한이 풀린 뒤에야 아는 런타임 값이라
     /// composition root 가 store 를 미리 만들지 못하고 클로저로 주입한다.
@@ -40,15 +41,9 @@ public struct AlbumView: View {
             Group {
                 switch store.state.permission {
                 case .fullAccess:
-                    AlbumPickerView(
-                        store: makeAlbumPickerStore(false),
-                        showsSelectionGuide: showsSelectionGuide
-                    )
+                    AlbumPickerView(store: makeAlbumPickerStore(false))
                 case .limited:
-                    AlbumPickerView(
-                        store: makeAlbumPickerStore(true),
-                        showsSelectionGuide: showsSelectionGuide
-                    )
+                    AlbumPickerView(store: makeAlbumPickerStore(true))
                 case .denied:
                     YGErrorView(
                         title: "갤러리 권한이 없어요",
@@ -70,8 +65,17 @@ public struct AlbumView: View {
                 .padding(.top, .padding6)
                 .padding(.trailing, .padding7)
         }
+        // 닫기 버튼 overlay 보다 바깥에 붙여야 토스트가 버튼 위 레이어에 그려진다.
+        .ygToastOverlay($toasts)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { store.send(.appeared) }
+        // 사진 선택 화면이 (재)노출될 때마다 안내 — 설정 복귀로 limited↔fullAccess 가 바뀐 경우 포함.
+        .onChange(of: store.state.permission) { _, permission in
+            guard showsSelectionGuide, permission == .fullAccess || permission == .limited else { return }
+            toasts.append(
+                YGToastItem(kind: .warning, message: "대상이 배경과 선명하게 구분될수록 깔끔하게 선택돼요")
+            )
+        }
         .onDisappear { store.send(.disappeared) }
         .onChange(of: scenePhase) { _, newPhase in
             // 설정 앱에서 권한 바꾸고 복귀하는 경로.
