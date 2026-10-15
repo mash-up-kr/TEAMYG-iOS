@@ -47,7 +47,6 @@ final class CanvasEditStore: MVIStore {
         case .canvasRefreshTicked:
             refreshCanvas()
         case .toppingEditScreenAppeared:
-            guard dependencies.isToppingEdit else { return }
             dependencies.logAnalyticsEvent(.screenView(.canvasTopping))
         case .backgroundEditScreenAppeared:
             dependencies.logAnalyticsEvent(.screenView(.canvasBackground))
