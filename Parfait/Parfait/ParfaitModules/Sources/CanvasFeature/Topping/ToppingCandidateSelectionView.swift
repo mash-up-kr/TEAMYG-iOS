@@ -49,7 +49,7 @@ struct ToppingCandidateSelectionView: View {
                 .padding(.vertical, .padding6)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.backClose, onBack: onBackTap, onClose: onCloseTap)
+            YGFloatingBar(.backTitleClose("대상 선택"), onBack: onBackTap, onClose: onCloseTap)
         }
         // 첫 렌더 이후에 켜야 위에서 내려오는 등장 모션이 난다.
         .onAppear { isGuideAlertPresented = true }
