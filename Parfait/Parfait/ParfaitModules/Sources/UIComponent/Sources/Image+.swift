@@ -56,9 +56,6 @@ public extension Image {
     static let template04 = Image("Template04", bundle: .module)
     static let template05 = Image("Template05", bundle: .module)
     static let template06 = Image("Template06", bundle: .module)
-    static let tutorial1 = Image("Tutorial-1", bundle: .module)
-    static let tutorial2 = Image("Tutorial-2", bundle: .module)
-    static let tutorial3 = Image("Tutorial-3", bundle: .module)
 }
 
 public extension UIImage {
@@ -115,7 +112,4 @@ public extension UIImage {
     static var template04: UIImage { UIImage(resource: ImageResource(name: "Template04", bundle: .module)) }
     static var template05: UIImage { UIImage(resource: ImageResource(name: "Template05", bundle: .module)) }
     static var template06: UIImage { UIImage(resource: ImageResource(name: "Template06", bundle: .module)) }
-    static var tutorial1: UIImage { UIImage(resource: ImageResource(name: "Tutorial-1", bundle: .module)) }
-    static var tutorial2: UIImage { UIImage(resource: ImageResource(name: "Tutorial-2", bundle: .module)) }
-    static var tutorial3: UIImage { UIImage(resource: ImageResource(name: "Tutorial-3", bundle: .module)) }
 }
