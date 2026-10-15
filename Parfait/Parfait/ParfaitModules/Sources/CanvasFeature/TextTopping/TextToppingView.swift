@@ -10,10 +10,11 @@ import UIComponent
 
 /// C-106 / C-106-Arrange.
 ///
-/// 새 화면처럼 보이지 않게 C-001 캔버스(`board`)를 **C-001 과 같은 화면 좌표**(`canvasFrame`)에 그대로 겹쳐 그리고,
+/// 새 화면처럼 보이지 않게 배경에서 C-001 캔버스 자리(`canvasFrame`)만 뚫어 **뒤에 깔린 진짜 캔버스**가 그대로 보이게 하고,
 /// 화면 전체를 페이드로 띄우고 내린다 — 캔버스는 제자리에 있고 헤더·딤·키보드만 바뀌는 것처럼 보인다.
-/// 캔버스는 키보드에 밀리지 않고, 툴바만 키보드 위에 붙는다.
-struct TextToppingView<Board: View>: View {
+/// 캔버스를 여기서 다시 그리면 배경·토핑 이미지를 새로 불러오는 동안 비거나 테두리가 달라 페이드 중에 잔상이 보였다.
+/// 캔버스는 키보드에 밀리지 않고(C-001 이 키보드 안전 영역을 무시한다), 툴바만 키보드 위에 붙는다.
+struct TextToppingView: View {
     private static var fadeAnimation: Animation { .easeInOut(duration: 0.2) }
 
     @State private var store: TextToppingStore
@@ -24,22 +25,12 @@ struct TextToppingView<Board: View>: View {
     @State private var toolbarMinY: CGFloat?
     @State private var isShown = false
     @Environment(\.dismiss) private var dismiss
-    /// C-001 캔버스 패널의 화면 좌표 — **열릴 때 값으로 고정**한다. 키보드가 올라오면 뒤에 깔린 C-001 도
-    /// 키보드만큼 줄어들어 캔버스를 작게 다시 재는데, 그 값을 따라가면 C-106 캔버스도 같이 줄어든다.
+    /// C-001 캔버스 패널의 화면 좌표 — 열릴 때 값으로 고정한다.
     @State private var canvasFrame: CGRect
-    private let board: Board
-    private let toppingRenderer: CanvasToppingRenderer
 
-    init(
-        store: TextToppingStore,
-        canvasFrame: CGRect,
-        board: Board,
-        toppingRenderer: CanvasToppingRenderer
-    ) {
+    init(store: TextToppingStore, canvasFrame: CGRect) {
         _store = State(initialValue: store)
         _canvasFrame = State(initialValue: canvasFrame)
-        self.board = board
-        self.toppingRenderer = toppingRenderer
     }
 
     private var state: TextToppingStore.State { store.state }
@@ -50,8 +41,14 @@ struct TextToppingView<Board: View>: View {
             // 안전 영역을 모두 무시해 이 층의 좌표가 곧 화면 좌표가 된다 — `canvasFrame` 을 그대로 쓴다.
             ZStack(alignment: .topLeading) {
                 CanvasDotGridBackground()
+                    .clipShape(ScreenExcludingCanvasShape(canvasFrame: canvasFrame), style: FillStyle(eoFill: true))
 
-                canvasLayer
+                if !isInput {
+                    CanvasPanelShape()
+                        .fill(Color.black25)
+                        .frame(width: canvasFrame.width, height: canvasFrame.height)
+                        .position(x: canvasFrame.midX, y: canvasFrame.midY)
+                }
 
                 if isInput {
                     // 박스 밖 탭 — 텍스트 박스와 툴바를 뺀 모든 곳. 닫기만 하고 아래로 넘기지 않는다.
@@ -78,7 +75,8 @@ struct TextToppingView<Board: View>: View {
             }
         }
         .opacity(isShown ? 1 : 0)
-        .onAppear {
+        // `onAppear` 에서 올리면 첫 프레임이 그려지기 전이라 페이드 없이 한 번에 떴다 — 첫 프레임 뒤에 시작한다.
+        .task {
             withAnimation(Self.fadeAnimation) { isShown = true }
         }
         .onChange(of: canvasFrame.size, initial: true) { _, size in
@@ -87,7 +85,6 @@ struct TextToppingView<Board: View>: View {
         .onChange(of: textAreaHeight, initial: true) { _, height in
             store.send(.textAreaResized(height))
         }
-        .environment(\.canvasToppingRenderer, toppingRenderer)
         .ygPopup(
             isPresented: store.binding(\.showsExitPopup, TextToppingStore.Intent.exitPopupVisibilityChanged),
             title: "텍스트 작성을 그만둘까요?",
@@ -108,7 +105,6 @@ struct TextToppingView<Board: View>: View {
 
     /// 들어올 때와 같이 페이드로 내리고, 시트 내림 애니메이션 없이 닫는다.
     private func fadeOutAndDismiss() {
-        dismissKeyboard()
         withAnimation(Self.fadeAnimation) {
             isShown = false
         } completion: {
@@ -145,20 +141,6 @@ struct TextToppingView<Board: View>: View {
         }
     }
 
-    // MARK: - 캔버스
-
-    private var canvasLayer: some View {
-        board
-            .overlay {
-                if !isInput {
-                    CanvasPanelShape()
-                        .fill(Color.black25)
-                }
-            }
-            .frame(width: canvasFrame.width, height: canvasFrame.height)
-            .position(x: canvasFrame.midX, y: canvasFrame.midY)
-    }
-
     // MARK: - 텍스트
 
     private var textLayer: some View {
@@ -183,7 +165,8 @@ struct TextToppingView<Board: View>: View {
                 color: state.color,
                 type: state.type,
                 alignment: state.alignment,
-                isEditing: isInput,
+                // 키보드는 이 값으로만 올리고 내린다 — 닫으며 따로 내리면 다음 뷰 갱신에서 다시 올라왔다.
+                isEditing: isInput && !state.isDismissing,
                 draft: $draft,
                 onTextChange: { store.send(.textChanged($0)) },
                 onEditingEnd: { store.send(.editingEnded) },
@@ -272,5 +255,20 @@ struct TextToppingView<Board: View>: View {
                 toolbarMinY = minY
             }
         }
+    }
+}
+
+/// 화면 + 캔버스 패널 두 겹 — even-odd 로 채우면 캔버스 자리만 뚫리고, 그 구멍으로 뒤의 C-001 캔버스가 보인다.
+private struct ScreenExcludingCanvasShape: Shape {
+    let canvasFrame: CGRect
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path(rect)
+        // `CanvasPanelShape` 는 원점 (0, 0) 기준으로 그린다 — 제 크기로 그린 뒤 캔버스 자리로 옮긴다.
+        let panelPath = CanvasPanelShape()
+            .path(in: CGRect(origin: .zero, size: canvasFrame.size))
+            .offsetBy(dx: canvasFrame.minX, dy: canvasFrame.minY)
+        path.addPath(panelPath)
+        return path
     }
 }
