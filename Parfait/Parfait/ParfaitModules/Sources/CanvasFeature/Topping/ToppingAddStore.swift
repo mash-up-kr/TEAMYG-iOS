@@ -45,6 +45,8 @@ final class ToppingAddStore: MVIStore {
     private var saveTask: Task<Void, Never>?
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasRefreshTask: Task<Void, Never>?
+    /// 마지막으로 보낸 screen_view — 같은 단위 안의 화면 전환(촬영 → 촬영 확인 등)은 다시 보내지 않는다.
+    @ObservationIgnored private var loggedScreenName: AnalyticsEvent.ScreenName?
 
     init(
         canvasDate: CalendarDate,
@@ -96,22 +98,29 @@ final class ToppingAddStore: MVIStore {
             camera.suspend()
         case .canvasRefreshTicked:
             refreshCanvasContent()
+        case .screenChanged:
+            logScreenViewIfChanged()
         case .toastDismissed:
             state.showsToast = false
         case .flashTapped:
             camera.toggleFlash()
         case .cameraPositionTapped:
             camera.switchCamera()
+        case .cameraZoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
         case .shutterTapped(let viewFinderRegion):
             camera.capturePhoto(viewFinderRegion: viewFinderRegion)
         case .retakeTapped:
             guard camera.retake() else { break }
+            dependencies.logAnalyticsEvent(.canvasCameraRetakeTapped)
             state.screen = .camera
         case .photoConfirmed:
             proceedWithCapturedPhoto()
         case .galleryPhotoConfirmed(let assetIdentifier):
+            dependencies.logAnalyticsEvent(.canvasCameraPhotoSelected(source: .album))
             confirmGalleryPhoto(assetIdentifier: assetIdentifier)
         case .recentUploadConfirmed(let upload):
+            dependencies.logAnalyticsEvent(.canvasCameraPhotoSelected(source: .recent))
             openRecentUpload(upload)
         case .cameraRetryTapped:
             camera.prepare()
@@ -122,6 +131,8 @@ final class ToppingAddStore: MVIStore {
             eventChannel.send(.dismissRequested)
         case .candidateTapped(let normalizedPoint):
             extractCandidate(at: normalizedPoint)
+        case .manualSelectionTapped:
+            selectAreaManually()
         case .candidateSelectionBackTapped:
             returnToPhotoConfirm()
         case .brushModeSelected(let mode):
@@ -151,6 +162,7 @@ final class ToppingAddStore: MVIStore {
             state.border.color = color
             renderBorderSilhouette()
         case .borderPanelExpandTapped:
+            dependencies.logAnalyticsEvent(.canvasEditBorderTapped)
             state.isBorderPanelExpanded = true
         case .borderPanelClosed:
             state.isBorderPanelExpanded = false
@@ -161,6 +173,12 @@ final class ToppingAddStore: MVIStore {
         case .placementBackTapped:
             leavePlacement()
         case .placementConfirmed:
+            dependencies.logAnalyticsEvent(
+                .canvasEditStackTapped(
+                    groupID: String(dependencies.groupID),
+                    isBorderOn: state.border.isVisible
+                )
+            )
             saveTopping()
         case .closeTapped:
             requestQuit()
@@ -188,6 +206,14 @@ final class ToppingAddStore: MVIStore {
         default:
             eventChannel.send(.dismissRequested)
         }
+    }
+
+    /// 촬영·사진 선택·대상 감지(C101·C102·C104)는 canvas_camera, 배치·테두리(C105)는 canvas_edit.
+    private func logScreenViewIfChanged() {
+        let screenName: AnalyticsEvent.ScreenName = state.screen == .placement ? .canvasEdit : .canvasCamera
+        guard screenName != loggedScreenName else { return }
+        loggedScreenName = screenName
+        dependencies.logAnalyticsEvent(.screenView(screenName))
     }
 
     private func leaveAreaSelection() {
@@ -269,6 +295,7 @@ final class ToppingAddStore: MVIStore {
                 try Task.checkCancellation()
                 let analysis = try await objectExtractor.analyze(source)
                 guard let self, !Task.isCancelled else { return }
+                dependencies.logAnalyticsEvent(.canvasCameraDetectionCompleted(success: true))
                 state.analysis = analysis
                 state.screen = .candidateSelection
                 camera.releaseFreezeFrame()
@@ -276,6 +303,7 @@ final class ToppingAddStore: MVIStore {
                 return
             } catch {
                 guard let self, !Task.isCancelled else { return }
+                dependencies.logAnalyticsEvent(.canvasCameraDetectionCompleted(success: false))
                 openAreaSelectionWithoutAnalysis()
             }
         }
@@ -340,6 +368,7 @@ extension ToppingAddStore {
         let recentUploadsRepository: any RecentUploadsRepository
         /// 저장이 끝나 캔버스로 돌아가야 할 때 호출한다.
         let onSaved: @MainActor () -> Void
+        let logAnalyticsEvent: AnalyticsEventLogger
 
         init(
             groupID: Int,
@@ -347,7 +376,8 @@ extension ToppingAddStore {
             canvasUseCase: any CanvasUseCase,
             toppingUseCase: any ToppingUseCase,
             recentUploadsRepository: any RecentUploadsRepository,
-            onSaved: @escaping @MainActor () -> Void
+            onSaved: @escaping @MainActor () -> Void,
+            logAnalyticsEvent: @escaping AnalyticsEventLogger
         ) {
             self.groupID = groupID
             self.parfaitID = parfaitID
@@ -355,6 +385,7 @@ extension ToppingAddStore {
             self.toppingUseCase = toppingUseCase
             self.recentUploadsRepository = recentUploadsRepository
             self.onSaved = onSaved
+            self.logAnalyticsEvent = logAnalyticsEvent
         }
     }
 
@@ -406,7 +437,13 @@ private extension ToppingAddStore {
         }
     }
 
-    func openAreaSelectionWithoutAnalysis() {
+    /// 원하는 후보가 없을 때 — 감지 실패가 아니라 사용자의 선택이므로 실패 토스트는 띄우지 않는다.
+    func selectAreaManually() {
+        guard state.screen == .candidateSelection, state.extractionState == .idle else { return }
+        openAreaSelectionWithoutAnalysis(reportsDetectionFailure: false)
+    }
+
+    func openAreaSelectionWithoutAnalysis(reportsDetectionFailure: Bool = true) {
         guard let lastAnalysisSource else {
             failPhotoLoading()
             return
@@ -429,7 +466,9 @@ private extension ToppingAddStore {
                 state.extractionState = .idle
                 state.screen = .areaSelection
                 camera.releaseFreezeFrame()
-                eventChannel.send(.detectionFailed)
+                if reportsDetectionFailure {
+                    eventChannel.send(.detectionFailed)
+                }
             } catch is CancellationError {
                 return
             } catch {

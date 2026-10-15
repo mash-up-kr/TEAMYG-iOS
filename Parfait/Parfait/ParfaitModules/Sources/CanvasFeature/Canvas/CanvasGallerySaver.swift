@@ -8,7 +8,7 @@
 import Photos
 import UIKit
 
-/// 합성한 캔버스를 기기 사진 앨범에 저장한다 — C-001-Save-Preview 의 `갤러리에 저장`.
+/// 합성한 캔버스를 기기 사진 앨범에 저장한다 — C-001-Save-Preview 의 `이미지로 저장`.
 enum CanvasGallerySaver {
     static func save(_ image: UIImage) async -> Bool {
         await addToLibrary {

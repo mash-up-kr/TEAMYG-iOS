@@ -19,6 +19,8 @@ final class CameraFlow {
     @ObservationIgnored private var switchTask: Task<Void, Never>?
     @ObservationIgnored private var captureTask: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
+    /// 줌 요청 번호. 켜기/끄기 `generation` 과 섞으면 줌이 대기 중인 켜기 요청을 무효로 만들어 따로 센다.
+    @ObservationIgnored private var zoomRequest = 0
     @ObservationIgnored private let handle: @MainActor (CameraFlowEvent) -> Void
 
     init(onEvent handle: @escaping @MainActor (CameraFlowEvent) -> Void) {
@@ -67,6 +69,18 @@ final class CameraFlow {
         }
     }
 
+    func zoom(to zoomFactor: CGFloat) {
+        guard state.isReady else { return }
+        let range = CameraFlowState.zoomFactorRange
+        let clampedZoomFactor = min(max(zoomFactor, range.lowerBound), range.upperBound)
+        state.zoomFactor = clampedZoomFactor
+        zoomRequest += 1
+        // 핀치마다 Task 가 생기는데 actor 도착 순서는 보장되지 않는다 — 번호로 늦게 온 배율을 버린다.
+        Task { [session, zoomRequest] in
+            await session.setZoomFactor(clampedZoomFactor, request: zoomRequest)
+        }
+    }
+
     func switchCamera() {
         guard state.isReady else { return }
         state.isSwitching = true
@@ -78,6 +92,7 @@ final class CameraFlow {
             guard let switchedPosition else { return }
 
             state.position = switchedPosition
+            state.zoomFactor = 1
             if switchedPosition == .front {
                 state.flashMode = .off
             }
@@ -92,16 +107,17 @@ final class CameraFlow {
         state.capturePhase = .processing(previewFrame: nil)
 
         captureTask = Task { [weak self, session] in
-            async let pendingPhotoData = session.capturePhoto()
-            let previewFrame = await session.latestPreviewFrame()
-
+            // 사진 출력으로 새로 찍지 않고 셔터 순간의 프레임을 그대로 쓴다 — 누른 뒤 움직여도 보던 장면이 저장된다.
+            let frame = await session.currentFrame()
             guard let self, isLatestRequest(captureGeneration) else { return }
+
+            let previewFrame = frame?.freezeFrame
             if let previewFrame {
                 state.capturePhase = .processing(previewFrame: previewFrame)
                 handle(.freezeFrameReady)
             }
 
-            let photoData = await pendingPhotoData
+            let photoData = await frame?.jpegData()
             guard isLatestRequest(captureGeneration) else { return }
 
             guard let photoData else {

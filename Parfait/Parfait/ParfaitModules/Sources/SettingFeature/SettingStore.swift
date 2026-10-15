@@ -6,6 +6,7 @@
 //
 
 import AuthDomain
+import Common
 import MemberDomain
 import SwiftUI
 import UIComponent
@@ -16,6 +17,7 @@ public final class SettingStore: MVIStore {
 
     private let memberUseCase: any MemberUseCase
     private let authUseCase: any AuthUseCase
+    private let logAnalyticsEvent: AnalyticsEventLogger
     /// 진행 중 작업 핸들 — 재진입 시 중복 실행 방지 (mvi.md)
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var actionTask: Task<Void, Never>?
@@ -23,16 +25,19 @@ public final class SettingStore: MVIStore {
     public init(
         memberUseCase: any MemberUseCase,
         authUseCase: any AuthUseCase,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger,
         state: State = State()
     ) {
         self.memberUseCase = memberUseCase
         self.authUseCase = authUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
         self.state = state
     }
 
     public func send(_ intent: Intent) {
         switch intent {
         case .appeared:
+            logAnalyticsEvent(.screenView(.appSetting))
             beginLoad()
         case .logoutTapped:
             guard actionTask == nil else { return }
@@ -74,7 +79,7 @@ public final class SettingStore: MVIStore {
                 state.nickname = account.nickname
                 state.loginProvider = account.provider
             } catch {
-                // 에러 UI 정책 미정 — 로그만 남긴다 (docs/server-connection.md)
+                // 에러 UI 정책 미정 — 로그만 남긴다
                 print("내 계정 조회 실패: \(error)")
             }
             // 약관 내용은 바뀌지 않으므로 한 번만 조회한다.

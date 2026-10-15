@@ -10,13 +10,12 @@ import Routing
 import SwiftUI
 import UIComponent
 
+// swiftlint:disable:next type_body_length
 public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    /// 캔버스 최초 진입 1회만 튜토리얼을 덮는다. 마지막 장 "시작하기" 를 누르면 다시 안 뜬다.
-    @AppStorage(CanvasTutorialView.hasSeenDefaultsKey) private var hasSeenTutorial = false
 
     /// 사이드메뉴(S-101)로 나가는 통로. 피처 밖 화면이라 `AppRoute` 로 간다.
     private let router: any Router
@@ -72,10 +71,6 @@ public struct CanvasView: View {
             }
 
             loadingOverlay
-
-            if !hasSeenTutorial {
-                CanvasTutorialView { hasSeenTutorial = true }
-            }
         }
         .task {
             store.send(.screenAppeared)
@@ -101,7 +96,7 @@ public struct CanvasView: View {
                     )
                 case .canvasEmpty:
                     toasts.append(
-                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요, 토핑을 올려 채워보세요")
+                        YGToastItem(kind: .warning, message: "아직 캔버스가 비어 있어요")
                     )
                 case .canvasLoadFailed:
                     toasts.append(
@@ -117,6 +112,9 @@ public struct CanvasView: View {
         .onChange(of: scenePhase) { _, newScenePhase in
             guard newScenePhase != .inactive else { return }
             store.send(newScenePhase == .active ? .sceneBecameActive : .sceneEnteredBackground)
+        }
+        .onChange(of: store.state.analyticsScreenName) {
+            store.send(.screenChanged)
         }
         .onDisappear {
             store.send(.screenDisappeared)
@@ -184,7 +182,8 @@ public struct CanvasView: View {
                 dependencies: .init(
                     canvasContent: savePreview.canvasContent,
                     canvasImageExporter: store.canvasImageExporter,
-                    onClose: { store.send(.savePreviewClosed($0)) }
+                    onClose: { store.send(.savePreviewClosed($0)) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )
         )
@@ -216,7 +215,8 @@ public struct CanvasView: View {
                     canvasUseCase: store.canvasUseCase,
                     toppingUseCase: toppingUseCase,
                     recentUploadsRepository: recentUploadsRepository,
-                    onSaved: { store.send(.toppingSaved) }
+                    onSaved: { store.send(.toppingSaved) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 ),
                 makeAlbumPickerStore: makeAlbumPickerStore
             ),
@@ -252,7 +252,9 @@ public struct CanvasView: View {
                     toppingUseCase: toppingUseCase,
                     imageUploadRepository: imageUploadRepository,
                     onDismiss: { store.send(.canvasEditFlowDismissed) },
-                    onSaved: { store.send(.canvasEditSaved) }
+                    onSaved: { store.send(.canvasEditSaved) },
+                    isToppingEdit: destination.selectedToppingID != nil,
+                    logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )
 

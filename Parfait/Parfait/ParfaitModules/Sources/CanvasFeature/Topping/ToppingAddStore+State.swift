@@ -66,6 +66,8 @@ extension ToppingAddStore {
 
     enum Intent {
         case screenAppeared
+        /// 화면(`state.screen`)이 바뀜 — screen_view 단위가 달라졌을 때만 보낸다.
+        case screenChanged
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground
@@ -73,6 +75,7 @@ extension ToppingAddStore {
         case toastDismissed
         case flashTapped
         case cameraPositionTapped
+        case cameraZoomChanged(CGFloat)
         case shutterTapped(viewFinderRegion: ViewFinderRegion?)
         case retakeTapped
         case photoConfirmed
@@ -82,6 +85,7 @@ extension ToppingAddStore {
         case settingsTapped
         case analysisCancelled
         case candidateTapped(normalizedPoint: CGPoint)
+        case manualSelectionTapped
         case candidateSelectionBackTapped
         case brushModeSelected(ToppingBrushMode)
         case brushDiameterChanged(Double)

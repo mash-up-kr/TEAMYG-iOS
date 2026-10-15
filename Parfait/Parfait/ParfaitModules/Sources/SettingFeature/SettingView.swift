@@ -147,6 +147,7 @@ public struct SettingView: View {
             store: SettingStore(
                 memberUseCase: PreviewMemberUseCase(),
                 authUseCase: PreviewAuthUseCase(),
+                logAnalyticsEvent: { _ in },
                 state: .init(
                     nickname: "아니야나그런데기니야",
                     loginProvider: "Kakao",
@@ -156,7 +157,8 @@ public struct SettingView: View {
             makeAccountInfoStore: { nickname in
                 AccountInfoStore(
                     state: .init(nickname: nickname),
-                    memberUseCase: PreviewMemberUseCase()
+                    memberUseCase: PreviewMemberUseCase(),
+                    logAnalyticsEvent: { _ in }
                 )
             }
         )

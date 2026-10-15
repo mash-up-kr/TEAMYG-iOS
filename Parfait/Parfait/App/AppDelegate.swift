@@ -88,7 +88,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         Messaging.messaging().appDidReceiveMessage(userInfo)
         YGLogger.log("푸시 탭 payload: \(userInfo)")
-        if let route = PushPayload(userInfo: userInfo).appRoute {
+        let payload = PushPayload(userInfo: userInfo)
+        // 스펙에 없는 type 은 보내지 않는다 — 리포트에 정의 안 된 값이 섞이지 않게.
+        if let pushType = payload.type.flatMap(AnalyticsEvent.PushType.init(rawValue:)) {
+            AppDependencies.logAnalyticsEvent(.appPushOpened(type: pushType))
+        }
+        if let route = payload.appRoute {
             notificationRouteContinuation.yield(route)
         }
     }

@@ -43,6 +43,10 @@ struct ToppingAddFlowView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
+        // 한 플로우 안에서 화면이 바뀌므로 onAppear 대신 화면이 바뀔 때마다 알린다.
+        .onChange(of: store.state.screen, initial: true) {
+            store.send(.screenChanged)
+        }
         // 후보 추출·빈 누끼 생성 같은 짧은 작업은 전용 로딩 화면 대신 현재 화면 위 오버레이로.
         .ygLoading(store.state.extractionState == .extracting)
         .ygPopup(
@@ -71,7 +75,7 @@ struct ToppingAddFlowView: View {
                 switch event {
                 case .saveFailed:
                     toasts.append(
-                        YGToastItem(kind: .error, message: "토핑을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
+                        YGToastItem(kind: .error, message: "사진을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
                 case .detectionFailed:
                     areaSelectionToasts = [
@@ -119,7 +123,9 @@ struct ToppingAddFlowView: View {
                     onToastDismissed: { store.send(.toastDismissed) },
                     onFlashTap: { store.send(.flashTapped) },
                     onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                    onSwitchCameraTap: { store.send(.cameraPositionTapped) }
+                    onSwitchCameraTap: { store.send(.cameraPositionTapped) },
+                    zoomFactor: store.cameraState.zoomFactor,
+                    onZoomChange: { store.send(.cameraZoomChanged($0)) }
                 )
             } confirmation: {
                 ToppingCameraConfirmationView(
@@ -183,7 +189,8 @@ struct ToppingAddFlowView: View {
                     candidates: analysis.candidates,
                     onBackTap: { store.send(.candidateSelectionBackTapped) },
                     onCloseTap: { store.send(.closeTapped) },
-                    onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) }
+                    onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) },
+                    onManualSelectionTap: { store.send(.manualSelectionTapped) }
                 )
             }
 

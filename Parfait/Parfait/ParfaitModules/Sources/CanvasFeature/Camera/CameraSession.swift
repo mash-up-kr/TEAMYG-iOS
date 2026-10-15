@@ -12,19 +12,21 @@ actor CameraSession {
     let previewSource: any CameraPreviewSource
 
     private let captureSession = AVCaptureSession()
+    /// 촬영에는 쓰지 않는다 — 회전·미러링 기준 커넥션으로만 둔다. 사진은 셔터 순간의 프레임을 그대로 쓴다.
     private let photoOutput = AVCapturePhotoOutput()
     private let videoDataOutput = AVCaptureVideoDataOutput()
     private let previewFrameReceiver = CameraPreviewFrameReceiver()
     private let previewFrameQueue = DispatchQueue(label: "com.parfait.camera.preview-frame")
     private var videoInput: AVCaptureDeviceInput?
     private var cameraPosition: CameraPosition = .back
-    private var photoCaptureDelegate: CameraPhotoCaptureDelegate?
     private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     private var rotationObservers: [NSKeyValueObservation] = []
     private var isConfigured = false
     private var flashMode: CameraFlashMode = .off
     /// 지금까지 처리한 켜기/끄기 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 요청이므로 버린다.
     private var latestGeneration = 0
+    /// 지금까지 적용한 줌 요청 중 가장 최신 번호. 이보다 낮은 번호는 늦게 도착한 배율이므로 버린다.
+    private var latestZoomRequest = 0
 
     init() {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
@@ -56,7 +58,6 @@ actor CameraSession {
             captureSession.stopRunning()
         }
         previewFrameReceiver.pauseAndClear()
-        cancelPendingPhotoCapture()
     }
 
     func setFlashMode(_ requestedFlashMode: CameraFlashMode) {
@@ -85,7 +86,6 @@ actor CameraSession {
         }
 
         captureSession.addInput(nextInput)
-        applyMaxPhotoDimensions(for: nextInput.device)
         videoInput = nextInput
         cameraPosition = nextPosition
         captureSession.commitConfiguration()
@@ -97,40 +97,26 @@ actor CameraSession {
         return nextPosition
     }
 
-    func latestPreviewFrame() -> CameraPreviewFrame? {
-        previewFrameReceiver.latestFrame()
+    /// 장치가 허용하는 범위로 잘라 적용한다. 미리보기·저장 프레임이 함께 확대된다.
+    func setZoomFactor(_ zoomFactor: CGFloat, request: Int) {
+        guard request > latestZoomRequest else { return }
+        latestZoomRequest = request
+        guard let device = videoInput?.device else { return }
+        let range = CameraFlowState.zoomFactorRange
+        let minimumZoomFactor = max(device.minAvailableVideoZoomFactor, range.lowerBound)
+        let maximumZoomFactor = min(device.maxAvailableVideoZoomFactor, range.upperBound)
+        applyZoomFactor(min(max(zoomFactor, minimumZoomFactor), maximumZoomFactor), to: device)
     }
 
-    func capturePhoto() async -> Data? {
-        guard photoCaptureDelegate == nil else { return nil }
-
-        let settings = makePhotoSettings()
-        let captureDelegate = CameraPhotoCaptureDelegate()
-        photoCaptureDelegate = captureDelegate
-
-        let photoData = await withCheckedContinuation { continuation in
-            captureDelegate.setCompletion { continuation.resume(returning: $0) }
-            photoOutput.capturePhoto(with: settings, delegate: captureDelegate)
-        }
-
-        if photoCaptureDelegate === captureDelegate {
-            photoCaptureDelegate = nil
-        }
-        return photoData
+    /// 셔터 순간의 프레임. 사진 출력(AVCapturePhotoOutput)은 요청 뒤 프레임을 찍어 지연이 생기므로 쓰지 않는다.
+    func currentFrame() -> CameraPreviewFrame? {
+        previewFrameReceiver.latestFrame()
     }
 
     private func acceptsRequest(_ generation: Int) -> Bool {
         guard generation >= latestGeneration else { return false }
         latestGeneration = generation
         return true
-    }
-
-    private func makePhotoSettings() -> AVCapturePhotoSettings {
-        let settings = AVCapturePhotoSettings()
-        settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
-        settings.photoQualityPrioritization = .speed
-        settings.flashMode = .off
-        return settings
     }
 
     private func applyTorch(_ requestedFlashMode: CameraFlashMode) {
@@ -166,18 +152,9 @@ actor CameraSession {
         captureSession.addInput(input)
         captureSession.addOutput(photoOutput)
         captureSession.addOutput(videoDataOutput)
-        applyMaxPhotoDimensions(for: input.device)
         videoInput = input
         isConfigured = true
         return true
-    }
-
-    private func applyMaxPhotoDimensions(for device: AVCaptureDevice) {
-        let largestDimensions = device.activeFormat.supportedMaxPhotoDimensions.max {
-            Int($0.width) * Int($0.height) < Int($1.width) * Int($1.height)
-        }
-        guard let largestDimensions else { return }
-        photoOutput.maxPhotoDimensions = largestDimensions
     }
 
     private func makeVideoInput(position: CameraPosition) -> AVCaptureDeviceInput? {
@@ -186,11 +163,27 @@ actor CameraSession {
             for: .video,
             position: position.avFoundationPosition
         ) else { return nil }
+        // 장치 객체는 앱 전역에서 공유돼 이전 화면의 줌이 남아 있다. 상태(1배)와 맞춰 둔다.
+        applyZoomFactor(1, to: device)
         return try? AVCaptureDeviceInput(device: device)
+    }
+
+    private func applyZoomFactor(_ zoomFactor: CGFloat, to device: AVCaptureDevice) {
+        do {
+            try device.lockForConfiguration()
+        } catch {
+            return
+        }
+        device.videoZoomFactor = zoomFactor
+        device.unlockForConfiguration()
     }
 
     private func configureVideoDataOutput() {
         videoDataOutput.alwaysDiscardsLateVideoFrames = true
+        // .photo 프리셋은 기본으로 화면 크기만 한 프리뷰용 버퍼를 준다. 이 프레임이 곧 저장 사진이라 원본 해상도로 받는다.
+        // ponytail: 매 프레임이 풀해상도라 메모리·발열 부담이 있다. 문제되면 videoSettings 에 폭·높이를 명시해 낮출 것.
+        videoDataOutput.automaticallyConfiguresOutputBufferDimensions = false
+        videoDataOutput.deliversPreviewSizedOutputBuffers = false
         videoDataOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
         ]
@@ -243,11 +236,5 @@ actor CameraSession {
                 videoConnection.isVideoMirrored = photoConnection.isVideoMirrored
             }
         }
-    }
-
-    private func cancelPendingPhotoCapture() {
-        guard let pendingDelegate = photoCaptureDelegate else { return }
-        photoCaptureDelegate = nil
-        pendingDelegate.cancel()
     }
 }

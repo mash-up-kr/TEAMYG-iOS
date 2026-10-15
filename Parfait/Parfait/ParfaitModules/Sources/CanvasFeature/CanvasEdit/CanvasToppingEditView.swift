@@ -57,6 +57,7 @@ struct CanvasToppingEditView: View {
             primaryTitle: "계속 편집",
             secondaryAction: { store.send(.discardTapped) }
         )
+        .onAppear { store.send(.toppingEditScreenAppeared) }
         .task {
             for await event in store.eventStream() {
                 switch event {

@@ -41,6 +41,7 @@ public struct AccountInfoView: View {
                     .padding(.vertical, .padding7)
             }
         }
+        .onAppear { store.send(.screenAppeared) }
         .task {
             for await event in store.events {
                 switch event {
@@ -56,7 +57,8 @@ public struct AccountInfoView: View {
     AccountInfoView(
         store: AccountInfoStore(
             state: .init(nickname: "대충지은랜덤닉네임"),
-            memberUseCase: PreviewMemberUseCase()
+            memberUseCase: PreviewMemberUseCase(),
+            logAnalyticsEvent: { _ in }
         )
     )
 }

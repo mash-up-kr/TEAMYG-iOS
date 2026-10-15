@@ -16,6 +16,8 @@ import UIComponent
 struct CanvasSavePreviewView: View {
     /// 디자인 시안의 저장본 높이. 남는 공간을 채우지 않고 이 크기로 고정해 위아래 여백을 남긴다.
     private static let imageHeight: CGFloat = 352
+    /// 이번 배포에서 `영상으로 저장` 버튼을 숨긴다. 기능 코드는 그대로 두고 다음 배포에서 `true` 로 되돌린다.
+    private static let isVideoSaveEnabled = false
 
     @State private var store: CanvasSavePreviewStore
 
@@ -39,10 +41,12 @@ struct CanvasSavePreviewView: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: .gap4) {
-                    YGButton("영상으로 저장", variant: .mediumSecondary, fillsWidth: true) {
-                        store.send(.saveVideoTapped)
+                    if Self.isVideoSaveEnabled {
+                        YGButton("영상으로 저장", variant: .mediumSecondary, fillsWidth: true) {
+                            store.send(.saveVideoTapped)
+                        }
                     }
-                    YGButton("갤러리에 저장", variant: .mediumPrimary, fillsWidth: true) {
+                    YGButton("이미지로 저장", variant: .mediumPrimary, fillsWidth: Self.isVideoSaveEnabled) {
                         store.send(.saveTapped)
                     }
                 }
@@ -116,7 +120,8 @@ struct CanvasSavePreviewView: View {
                     toppingRenderer: CanvasToppingRenderer(imageProvider: ImageProvider()),
                     imageProvider: ImageProvider()
                 ),
-                onClose: { _ in }
+                onClose: { _ in },
+                logAnalyticsEvent: { _ in }
             )
         )
     )
@@ -132,7 +137,8 @@ struct CanvasSavePreviewView: View {
                     toppingRenderer: CanvasToppingRenderer(imageProvider: ImageProvider()),
                     imageProvider: ImageProvider()
                 ),
-                onClose: { _ in }
+                onClose: { _ in },
+                logAnalyticsEvent: { _ in }
             )
         )
     )

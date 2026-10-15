@@ -84,6 +84,8 @@ struct BackgroundImagePickerView: View {
                     onFlashTap: { store.send(.flashTapped) },
                     onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
                     onSwitchCameraTap: { store.send(.cameraPositionTapped) },
+                    zoomFactor: store.cameraState.zoomFactor,
+                    onZoomChange: { store.send(.cameraZoomChanged($0)) },
                     onCloseTap: { store.send(.closeTapped) }
                 )
             } confirmation: {

@@ -12,6 +12,7 @@ import CanvasDomain
 import CanvasFeature
 import Common
 import Core
+import FirebaseAnalytics
 import FirebaseMessaging
 import Foundation
 import GroupData
@@ -36,6 +37,27 @@ struct AppDependencies {
     private let imageProvider = ImageProvider()
     /// `YGImageView` 환경에 얹는 로더 — UIComponent 가 Core 를 모르므로 여기서 클로저로 감싼다.
     let ygImageLoader: YGImageLoader
+    /// 사용자 이벤트 전송 — 피처는 Firebase 를 모르므로 환경(`logAnalyticsEvent`)으로 얹는다.
+    /// 푸시 진입처럼 의존성 그래프 밖(AppDelegate)에서도 쓰므로 static.
+    /// `nonisolated` — 앱 타깃 기본 격리(MainActor)를 타면 클로저가 MainActor 로 추론돼 `@Sendable` 변환 경고가 난다.
+    /// `Analytics.logEvent` 는 스레드 안전하므로 격리가 필요 없다.
+    nonisolated static let logAnalyticsEvent: AnalyticsEventLogger = { event in
+        switch event {
+        case let .screenView(screenName):
+            // 예약 이벤트는 SDK 상수로 보낸다 — Common 은 Firebase 를 모른다.
+            // screen_class 를 비우면 SDK 가 UIHostingController 제네릭 타입명(100자 초과)으로 채우고,
+            // 길이 초과로 화면 정보(screen_name 포함)를 통째로 버린다 → 직접 넣는다.
+            Analytics.logEvent(
+                AnalyticsEventScreenView,
+                parameters: [
+                    AnalyticsParameterScreenName: screenName.rawValue,
+                    AnalyticsParameterScreenClass: screenName.rawValue
+                ]
+            )
+        default:
+            Analytics.logEvent(event.name, parameters: event.parameters)
+        }
+    }
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
 
@@ -77,11 +99,17 @@ struct AppDependencies {
     }
 
     func makeGroupStore() -> GroupStore {
-        GroupStore(groupUseCase: makeGroupUseCase())
+        GroupStore(
+            groupUseCase: makeGroupUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
     }
 
     func makeInviteCodeStore() -> InviteCodeStore {
-        InviteCodeStore(groupUseCase: makeGroupUseCase())
+        InviteCodeStore(
+            groupUseCase: makeGroupUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
     }
 
     func makeJoinGroupNicknameStore(group: JoinedGroup) -> JoinGroupNicknameStore {
@@ -89,7 +117,11 @@ struct AppDependencies {
     }
 
     func makeCreateGroupStore() -> CreateGroupStore {
-        CreateGroupStore(groupUseCase: makeGroupUseCase(), memberUseCase: makeMemberUseCase())
+        CreateGroupStore(
+            groupUseCase: makeGroupUseCase(),
+            memberUseCase: makeMemberUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
     }
 
     private func makeGroupUseCase() -> GroupUseCaseImpl {
@@ -100,7 +132,8 @@ struct AppDependencies {
         GroupSideMenuStore(
             groupID: groupID,
             groupName: groupName,
-            groupUseCase: makeGroupUseCase()
+            groupUseCase: makeGroupUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
         )
     }
 
@@ -119,6 +152,7 @@ struct AppDependencies {
         SettingStore(
             memberUseCase: makeMemberUseCase(),
             authUseCase: makeAuthUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent,
             state: .init(appVersion: installedAppVersion())
         )
     }
@@ -131,7 +165,11 @@ struct AppDependencies {
     }
 
     func makeAccountInfoStore(nickname: String) -> AccountInfoStore {
-        AccountInfoStore(state: .init(nickname: nickname), memberUseCase: makeMemberUseCase())
+        AccountInfoStore(
+            state: .init(nickname: nickname),
+            memberUseCase: makeMemberUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
     }
 
     /// 기기(FCM) 토큰 등록/갱신 — 세션이 생기는 시점(자동로그인·로그인·재로그인)에 App 루트가 호출한다.
@@ -175,7 +213,8 @@ struct AppDependencies {
                 canvasImageExporter: CanvasImageExporter(
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
-                )
+                ),
+                logAnalyticsEvent: Self.logAnalyticsEvent
             )
         )
     }

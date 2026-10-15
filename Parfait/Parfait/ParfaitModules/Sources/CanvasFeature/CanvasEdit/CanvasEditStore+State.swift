@@ -6,6 +6,7 @@
 //
 
 import CanvasDomain
+import Common
 import Foundation
 
 extension CanvasEditStore {
@@ -131,6 +132,9 @@ extension CanvasEditStore {
         let imageUploadRepository: any ImageUploadRepository
         let onDismiss: @MainActor @Sendable () -> Void
         let onSaved: @MainActor @Sendable () -> Void
+        /// 토핑 편집 화면으로 열렸는지 — 배경 편집과 Store 를 같이 써서 토핑 편집 전용 이벤트를 가른다.
+        let isToppingEdit: Bool
+        let logAnalyticsEvent: AnalyticsEventLogger
     }
 
     /// 저장 진행 상태. **실패는 여기 담지 않는다** — 일회성 알림이라 이벤트 채널로 보낸다
@@ -147,6 +151,10 @@ extension CanvasEditStore {
 
     enum Intent {
         case screenAppeared
+        /// 토핑 편집 화면 진입 — screen_view 전용. `screenAppeared` 는 캔버스 주기 갱신까지 켜므로 따로 둔다.
+        case toppingEditScreenAppeared
+        /// 배경 편집 화면 진입 — screen_view 전용
+        case backgroundEditScreenAppeared
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground

@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/15/26.
 //
 
+import Common
 import GroupDomain
 import SwiftUI
 import UIComponent
@@ -17,13 +18,17 @@ public final class InviteCodeStore: MVIStore {
 
     private let groupUseCase: any GroupUseCase
     @ObservationIgnored private var joinTask: Task<Void, Never>?
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(groupUseCase: any GroupUseCase) {
+    public init(groupUseCase: any GroupUseCase, logAnalyticsEvent: @escaping AnalyticsEventLogger) {
         self.groupUseCase = groupUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
     public func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared:
+            logAnalyticsEvent(.screenView(.groupJoin))
         case .inviteCodeChanged(let inviteCode):
             state.inviteCode = String(
                 Self.normalizedInviteCode(from: inviteCode).prefix(Self.inviteCodeLength)
@@ -33,10 +38,12 @@ public final class InviteCodeStore: MVIStore {
             state.inviteCode = ""
             state.phase = .idle
         case .pasted(let pastedString):
+            logAnalyticsEvent(.groupListInviteCodePasted)
             applyPastedString(pastedString)
         case .confirmTapped:
             beginJoinRequest()
         case .joinSucceeded(let joinedGroup):
+            logAnalyticsEvent(.groupListJoined)
             state.phase = .idle
             state.joinedGroup = joinedGroup
         case .joinFailed(let joinError):
@@ -122,6 +129,7 @@ public final class InviteCodeStore: MVIStore {
     }
 
     public enum Intent {
+        case screenAppeared
         case inviteCodeChanged(String)
         case inviteCodeFieldTapped
         /// 클립보드 붙여넣기 버튼으로 받은 원본 문자열 — 형식 검증·추출은 Store 가 한다.

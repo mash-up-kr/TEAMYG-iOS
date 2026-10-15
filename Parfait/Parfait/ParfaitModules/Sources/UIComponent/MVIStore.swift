@@ -1,5 +1,4 @@
 //  Feature 공용 MVI 계약 + 단방향 바인딩 헬퍼. (mvi.md)
-//  단일 앱 타깃의 Parfait/Parfait/MVIStore.swift 에서 이리로 이동(원본 ponytail 메모대로).
 import SwiftUI
 
 /// MVI Store 계약: 읽기 전용 `state` 스냅샷 + 유일한 변이 입구 `send`.

@@ -19,15 +19,24 @@ public final class GroupSideMenuStore: MVIStore {
     @ObservationIgnored private var nicknameTask: Task<Void, Never>?
     /// 나가기·신고 공용 — 둘 다 성공하면 화면을 떠나므로 동시에 하나만 돈다.
     @ObservationIgnored private var exitTask: Task<Void, Never>?
+    private let logAnalyticsEvent: AnalyticsEventLogger
 
-    public init(groupID: String, groupName: String, groupUseCase: any GroupUseCase) {
+    public init(
+        groupID: String,
+        groupName: String,
+        groupUseCase: any GroupUseCase,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger
+    ) {
         state = State(groupID: groupID, groupName: groupName)
         self.groupUseCase = groupUseCase
+        self.logAnalyticsEvent = logAnalyticsEvent
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     public func send(_ intent: Intent) {
         switch intent {
         case .screenAppeared:
+            logAnalyticsEvent(.screenView(.groupMenu))
             beginLoad()
         case .detailLoadFinished(let detail):
             applyLoadResult(detail)
@@ -37,6 +46,8 @@ public final class GroupSideMenuStore: MVIStore {
             beginNicknameChange()
         case .nicknameChangeFinished(let savedNickname):
             applyNicknameChangeResult(savedNickname)
+        case .inviteCodeCopied:
+            logAnalyticsEvent(.groupMenuInviteCodeCopied)
         case .exitPopupVisibilityChanged(let exitAction, let isPresented):
             setExitPopupVisibility(exitAction, isPresented: isPresented)
         case .exitConfirmed(let exitAction):
@@ -44,6 +55,9 @@ public final class GroupSideMenuStore: MVIStore {
             beginExit(exitAction)
         case .exitFinished(let exitAction):
             // 실패(nil)는 화면에 머무른다 — 안내 디자인 미정(API 도 미정)이라 다시 시도만 열어 둔다.
+            if exitAction == .leave {
+                logAnalyticsEvent(.groupMenuLeft)
+            }
             state.completedExit = exitAction
         case .screenDisappeared:
             cancelAllTasks()
@@ -125,6 +139,7 @@ public final class GroupSideMenuStore: MVIStore {
         state.isSavingNickname = false
         // 실패(nil) 안내 디자인 미정(API 도 미정) — 입력은 그대로 두고 다시 제출할 수 있게만 한다.
         guard let savedNickname, case .loaded(let detail) = state.phase else { return }
+        logAnalyticsEvent(.groupMenuNicknameChanged)
         state.phase = .loaded(detail.updatingMyNickname(savedNickname))
     }
 
@@ -260,6 +275,8 @@ public final class GroupSideMenuStore: MVIStore {
         case nicknameSubmitted
         /// `requestNicknameChange` 완료 결과 — Store 내부에서만 보낸다. `nil` 이면 변경 실패.
         case nicknameChangeFinished(savedNickname: String?)
+        /// 초대 카드의 복사 버튼 — 복사 자체는 카드(`YGInviteCard`)가 한다.
+        case inviteCodeCopied
         /// 나가기/신고/수정 취소 확인 팝업의 표시 여부 — 진입 탭(true)과 그만두기·닫힘(false)이 모두 여기로 온다.
         case exitPopupVisibilityChanged(ExitAction, Bool)
         case exitConfirmed(ExitAction)

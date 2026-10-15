@@ -80,6 +80,7 @@ struct CanvasBackgroundEditView: View {
             isSaving: store.state.saveState == .saving,
             send: { store.send($0) }
         )
+        .onAppear { store.send(.backgroundEditScreenAppeared) }
         .ygPopup(
             isPresented: store.binding(\.showsExitPopup, CanvasEditStore.Intent.exitPopupVisibilityChanged),
             title: "배경 변경을 그만둘까요?",

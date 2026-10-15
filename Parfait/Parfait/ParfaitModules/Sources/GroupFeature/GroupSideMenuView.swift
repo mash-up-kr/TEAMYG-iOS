@@ -120,7 +120,9 @@ public struct GroupSideMenuView: View {
             VStack(alignment: .leading, spacing: Self.sectionGap) {
                 nicknameField
                 memberList(detail)
-                YGInviteCard(code: detail.inviteCode, status: inviteCardStatus(detail))
+                YGInviteCard(code: detail.inviteCode, status: inviteCardStatus(detail)) {
+                    store.send(.inviteCodeCopied)
+                }
                 dangerZone
             }
             .padding(.horizontal, Self.horizontalInset)
@@ -227,7 +229,8 @@ private func previewSideMenuStore(
     let store = GroupSideMenuStore(
         groupID: "preview-group",
         groupName: "그룹이름",
-        groupUseCase: PreviewGroupUseCase(detail: detail)
+        groupUseCase: PreviewGroupUseCase(detail: detail),
+        logAnalyticsEvent: { _ in }
     )
     configure(store)
     return store
