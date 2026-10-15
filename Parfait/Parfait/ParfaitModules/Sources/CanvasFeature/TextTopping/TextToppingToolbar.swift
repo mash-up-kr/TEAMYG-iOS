@@ -55,7 +55,12 @@ struct TextToppingToolbar: View {
         .buttonStyle(.plain)
         .padding(.horizontal, .padding7)
         .frame(height: Self.height)
-        .background(.white75)
+        .background {
+            // iOS 26 글라스 키보드는 위 모서리가 둥글고 화면 가장자리에서 떨어져 있어 툴바와 키보드 사이에 틈이 보인다.
+            // 배경만 키보드 뒤까지 내려 그 틈을 메운다 — 툴바 프레임(높이·위치)은 그대로.
+            Color.white75
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
     }
 
     /// Figma `Button-Text-Type` 모양(36×36, 모서리 8, 안쪽 1pt 테두리)에 지금 고른 색을 캔버스 텍스트와
