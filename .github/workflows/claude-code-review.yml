@@ -61,7 +61,7 @@ jobs:
             ## 체크포인트 (위에서부터 중요. 사람이 쓴 모든 줄을 읽어라)
             1. 설계(Design) — 가장 중요. 이 변경이 이 레이어/모듈에 속하는가? 의존성 규칙(Feature→Domain←Data)을
                지키는가? DTO/Entity 경계 누수, View/Reducer에 비즈니스 로직 오배치, UseCase 우회가 없는가?
-               (.claude/docs/clean-architecture.md 기준)
+               (docs/architecture.md 기준)
             2. 기능(Functionality) — 의도대로 동작하는가? 엣지케이스·동시성·옵셔널/강제언래핑·사용자 영향.
             3. 복잡도(Complexity) — 필요 이상으로 복잡한가? 추측성 미래를 위한 과설계(단일 호출자 protocol,
                불필요한 추상화)인가?

@@ -5,7 +5,7 @@
 //  Created by 김남수 on 10/12/26.
 //
 
-/// 사용자 액션 이벤트 목록. 원본 → `docs/superpowers/specs/2026-10-06-user-events-design.md`
+/// 사용자 액션 이벤트 목록.
 ///
 /// - 이름 규칙: `<기능>_<화면>_<동작>` (snake_case, 동작은 과거형)
 /// - 파라미터 값은 전부 String (Firebase 는 Bool 미지원 → `"true"`/`"false"`)
