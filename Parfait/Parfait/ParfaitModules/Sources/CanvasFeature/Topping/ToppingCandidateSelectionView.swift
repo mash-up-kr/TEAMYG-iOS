@@ -15,10 +15,12 @@ struct ToppingCandidateSelectionView: View {
     let onBackTap: () -> Void
     let onCloseTap: () -> Void
     let onCandidateTap: (CGPoint) -> Void
+    let onManualSelectionTap: () -> Void
 
     @Environment(\.displayScale) private var displayScale
     @State private var displayImage: CGImage?
     @State private var imageAreaSize: CGSize = .zero
+    @State private var isGuideAlertPresented = false
 
     var body: some View {
         ZStack {
@@ -35,8 +37,13 @@ struct ToppingCandidateSelectionView: View {
                 }
                 .overlay { candidateOverlay }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .top) {
-                    guideBanner
+                // 이미지 영역 상단 경계에서 내려온다 (기존 안내 배너 자리).
+                .ygAlert(isPresented: $isGuideAlertPresented) {
+                    YGAlert(
+                        title: "대상을 직접 선택할 수 있어요",
+                        subtitle: "원하는 대상이 없다면 직접 편집해요",
+                        action: .init("직접 선택", handler: onManualSelectionTap)
+                    )
                 }
                 .padding(.horizontal, .padding7)
                 .padding(.vertical, .padding6)
@@ -44,6 +51,8 @@ struct ToppingCandidateSelectionView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             YGFloatingBar(.backClose, onBack: onBackTap, onClose: onCloseTap)
         }
+        // 첫 렌더 이후에 켜야 위에서 내려오는 등장 모션이 난다.
+        .onAppear { isGuideAlertPresented = true }
         // 분석용 원본은 화면보다 훨씬 커서 그대로 그리면 그 크기의 백킹 스토어를 잡는다.
         .task(id: displayLongEdge) {
             guard displayLongEdge > 0 else { return }
@@ -73,24 +82,6 @@ struct ToppingCandidateSelectionView: View {
         let downscaledImage = image.downscaled(longEdge: longEdge)
         try Task.checkCancellation()
         return downscaledImage
-    }
-
-    private var guideBanner: some View {
-        HStack(spacing: .gap2) {
-            Image.icWarningRound
-                .renderingMode(.template)
-                .resizable()
-                .frame(width: 28, height: 28)
-                .foregroundStyle(.soda500)
-
-            Text("캔버스에 올릴 대상을 하나 선택해 주세요")
-                .suit(.body02Regular)
-                .foregroundStyle(.whiteFixed)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, .padding5)
-        .padding(.vertical, .padding3)
-        .background(.black75)
     }
 
     private var candidateOverlay: some View {

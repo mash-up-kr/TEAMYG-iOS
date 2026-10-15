@@ -189,7 +189,8 @@ struct ToppingAddFlowView: View {
                     candidates: analysis.candidates,
                     onBackTap: { store.send(.candidateSelectionBackTapped) },
                     onCloseTap: { store.send(.closeTapped) },
-                    onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) }
+                    onCandidateTap: { store.send(.candidateTapped(normalizedPoint: $0)) },
+                    onManualSelectionTap: { store.send(.manualSelectionTapped) }
                 )
             }
 

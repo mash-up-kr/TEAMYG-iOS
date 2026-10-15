@@ -131,6 +131,8 @@ final class ToppingAddStore: MVIStore {
             eventChannel.send(.dismissRequested)
         case .candidateTapped(let normalizedPoint):
             extractCandidate(at: normalizedPoint)
+        case .manualSelectionTapped:
+            selectAreaManually()
         case .candidateSelectionBackTapped:
             returnToPhotoConfirm()
         case .brushModeSelected(let mode):
@@ -435,7 +437,13 @@ private extension ToppingAddStore {
         }
     }
 
-    func openAreaSelectionWithoutAnalysis() {
+    /// 원하는 후보가 없을 때 — 감지 실패가 아니라 사용자의 선택이므로 실패 토스트는 띄우지 않는다.
+    func selectAreaManually() {
+        guard state.screen == .candidateSelection, state.extractionState == .idle else { return }
+        openAreaSelectionWithoutAnalysis(reportsDetectionFailure: false)
+    }
+
+    func openAreaSelectionWithoutAnalysis(reportsDetectionFailure: Bool = true) {
         guard let lastAnalysisSource else {
             failPhotoLoading()
             return
@@ -458,7 +466,9 @@ private extension ToppingAddStore {
                 state.extractionState = .idle
                 state.screen = .areaSelection
                 camera.releaseFreezeFrame()
-                eventChannel.send(.detectionFailed)
+                if reportsDetectionFailure {
+                    eventChannel.send(.detectionFailed)
+                }
             } catch is CancellationError {
                 return
             } catch {
