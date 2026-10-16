@@ -15,11 +15,6 @@ struct CanvasNudgeBar: View {
         let handler: () -> Void
     }
 
-    /// 노출 유지 시간 — 이 시간이 지나면 자동으로 내려간다.
-    static let displayDuration: Duration = .seconds(3)
-    /// 위에서 내려오는 등장, 위로 올라가는 퇴장 슬라이드.
-    static let slideAnimation: Animation = .easeInOut(duration: 0.3)
-
     let titleText: String
     let descriptionText: String
     var action: Action?
@@ -35,7 +30,9 @@ struct CanvasNudgeBar: View {
         .padding(.horizontal, .padding7)
         .padding(.vertical, .padding5)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background { Color.black75.allowsHitTesting(false) }
+        .background(.black75)
+        // 바 전체가 터치를 받아야 위로 스와이프 닫기가 아래 스크롤뷰에 뺏기지 않는다.
+        .contentShape(.rect)
     }
 
     private var message: some View {
@@ -50,7 +47,6 @@ struct CanvasNudgeBar: View {
         }
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .allowsHitTesting(false)
     }
 
     private func actionButton(_ action: Action) -> some View {
