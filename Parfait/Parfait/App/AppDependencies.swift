@@ -105,10 +105,11 @@ struct AppDependencies {
         )
     }
 
-    func makeInviteCodeStore() -> InviteCodeStore {
+    func makeInviteCodeStore(prefilledCode: String) -> InviteCodeStore {
         InviteCodeStore(
             groupUseCase: makeGroupUseCase(),
-            logAnalyticsEvent: Self.logAnalyticsEvent
+            logAnalyticsEvent: Self.logAnalyticsEvent,
+            prefilledCode: prefilledCode
         )
     }
 

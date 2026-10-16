@@ -15,7 +15,7 @@ public struct GroupView: View {
     @State private var store: GroupStore
     /// 캔버스(C-001)·설정(S-001)으로 나가는 통로. 피처 밖 화면이라 `GroupRoute` 가 아니라 `AppRoute` 로 간다.
     private let router: any Router
-    private let makeInviteCodeStore: () -> InviteCodeStore
+    private let makeInviteCodeStore: (String) -> InviteCodeStore
     private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
     @Environment(\.scenePhase) private var scenePhase
@@ -40,7 +40,7 @@ public struct GroupView: View {
     public init(
         store: GroupStore,
         router: any Router,
-        makeInviteCodeStore: @escaping () -> InviteCodeStore,
+        makeInviteCodeStore: @escaping (String) -> InviteCodeStore,
         makeJoinGroupNicknameStore: @escaping (JoinedGroup) -> JoinGroupNicknameStore,
         makeCreateGroupStore: @escaping () -> CreateGroupStore
     ) {
@@ -67,12 +67,14 @@ public struct GroupView: View {
         .ygLoading(store.state.phase == .idle || store.state.phase == .loading)
         .navigationDestination(for: GroupRoute.self) { route in
             switch route {
-            case .inviteCode:
+            case .inviteCode(let prefilledCode):
                 InviteCodeView(
-                    store: makeInviteCodeStore(),
+                    store: makeInviteCodeStore(prefilledCode),
                     makeJoinGroupNicknameStore: makeJoinGroupNicknameStore,
                     onJoined: { replaceTopWithCanvas(groupID: $0, entry: .joined) }
                 )
+                // 초대 링크를 연달아 타면 같은 깊이에서 코드만 바뀐다 — identity 를 갈아야 새 코드로 스토어를 다시 만든다.
+                .id(route)
             case .createGroup:
                 CreateGroupView(store: makeCreateGroupStore()) { createdGroup in
                     replaceTopWithCanvas(

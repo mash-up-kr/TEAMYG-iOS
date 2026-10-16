@@ -11,10 +11,10 @@ import UIComponent
 /// YGAlert 인터랙티브 데모.
 /// `.ygAlert(item:)` 는 선언 순서와 무관하게 같은 계층의 YGTopBar 를 찾아
 /// 그 아래 레이어에서 알림을 내린다.
-/// 닫기: 위로 스와이프 or 2.5초 경과 (Figma 805-4997 닫기 정책).
+/// 닫기: 위로 스와이프만 (자동 닫힘 없음).
 struct YGAlertDemoView: View {
     private struct AlertConfiguration: Equatable {
-        let id = UUID() // 프레젠테이션마다 고유 → 같은 시나리오 재탭도 타이머가 다시 시작
+        let id = UUID() // 프레젠테이션마다 고유 → 같은 시나리오 재탭도 내용이 갱신
         var title: String
         var subtitle: String
         var titleColor: Color = .cherry200
@@ -47,9 +47,9 @@ struct YGAlertDemoView: View {
 
             Section("상태") {
                 Text("액션 탭 횟수: \(actionTapCount)")
-                Text("닫기: 위로 스와이프 or 2.5초 경과")
+                Text("닫기: 위로 스와이프만 (자동 닫힘 없음)")
                     .foregroundStyle(.gray400)
-                Text("표시 중 다른 시나리오를 누르면 내용이 바뀌고 2.5초를 다시 기다린다")
+                Text("표시 중 다른 시나리오를 누르면 내용이 바뀐다")
                     .foregroundStyle(.gray400)
             }
         }
