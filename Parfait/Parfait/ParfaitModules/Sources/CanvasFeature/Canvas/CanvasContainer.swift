@@ -12,8 +12,8 @@ struct CanvasContainer: View {
     let state: CanvasStore.State
     let send: (CanvasStore.Intent) -> Void
 
-    /// 상단 안내는 노출 후 일정 시간이 지나면 내린다 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
-    @State private var isNudgeExpired = false
+    /// 상단 안내를 위로 스와이프해 닫았는지 — 표시 수명은 뷰의 관심사라 Store 에 두지 않는다.
+    @State private var isNudgeDismissed = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -61,8 +61,8 @@ struct CanvasContainer: View {
                 .scrollBounceBehavior(.always)
                 .refreshable { send(.refreshRequested) }
             }
-
-            nudgeLayer
+            // 캘린더 레이어보다 아래에 두려고 ZStack 이 아니라 보드 쪽에 단다.
+            .ygAlert(isPresented: isNudgePresented) { nudge }
 
             if state.calendar.presentation != .closed {
                 calendarLayer
@@ -70,38 +70,28 @@ struct CanvasContainer: View {
         }
     }
 
-    /// Store 조건과 뷰 로컬 만료를 합친 최종 노출 여부 — 슬라이드 애니메이션 트리거.
-    private var isNudgeShown: Bool {
-        (state.entryNudge != nil || state.pastParfaitNudge != nil) && !isNudgeExpired
-    }
-
-    /// 상단 안내 — 위에서 내려와 3초 머물다 위로 올라간다. 진입 안내가 SY-001-New 안내보다 먼저다.
-    private var nudgeLayer: some View {
-        ZStack(alignment: .top) {
-            if isNudgeExpired {
-                EmptyView()
-            } else if let entryNudge = state.entryNudge {
-                nudgeSlot { CanvasEntryNudge(nudge: entryNudge) }
-            } else if let pastParfaitNudge = state.pastParfaitNudge {
-                nudgeSlot {
-                    CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
-                        send(.pastParfaitNudgeTapped)
-                    }
-                }
+    /// 상단 안내 — YGAlert 닫기 정책을 따른다 (위로 스와이프해야만 닫힘, 자동 닫힘 없음).
+    /// 진입 안내가 SY-001-New 안내보다 먼저다.
+    private var isNudgePresented: Binding<Bool> {
+        Binding(
+            get: { (state.entryNudge != nil || state.pastParfaitNudge != nil) && !isNudgeDismissed },
+            set: { isPresented in
+                if !isPresented { isNudgeDismissed = true }
             }
-        }
-        .animation(CanvasNudgeBar.slideAnimation, value: isNudgeShown)
+        )
     }
 
-    private func nudgeSlot(@ViewBuilder _ nudge: () -> some View) -> some View {
-        nudge()
+    @ViewBuilder
+    private var nudge: some View {
+        if let entryNudge = state.entryNudge {
+            CanvasEntryNudge(nudge: entryNudge)
+                .padding(.top, .padding6)
+        } else if let pastParfaitNudge = state.pastParfaitNudge {
+            CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
+                send(.pastParfaitNudgeTapped)
+            }
             .padding(.top, .padding6)
-            .transition(.move(edge: .top))
-            .task {
-                // 시간이 다 되기 전에 뷰가 내려가면(과거 이동 등) 취소된다 — 그때는 만료로 치지 않는다.
-                guard (try? await Task.sleep(for: CanvasNudgeBar.displayDuration)) != nil else { return }
-                isNudgeExpired = true
-            }
+        }
     }
 
     @ViewBuilder

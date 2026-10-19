@@ -3,6 +3,8 @@
 //  ※ App 만은 모듈로 빼지 않고 앱 타깃에 직접 둔다 — 앱 타깃이 이미 최외곽 레이어.
 import SwiftUI
 import Routing
+import AuthData
+import Common
 import LoginFeature
 import GroupFeature
 import CanvasFeature
@@ -22,8 +24,23 @@ struct RootView: View {
     @State private var toasts: [YGToastItem] = []
     /// 스플래시(로고 애니메이션) 재생 중 — 끝나면 실제 시작 화면으로 교체한다.
     @State private var isPlayingSplash = true
+    /// 초대 링크로 받은 코드 — 그룹 화면이 루트가 될 때(로그인 후 포함)까지 들고 있다가 연다.
+    @State private var pendingInviteCode: String?
 
     var body: some View {
+        // 스플래시 중(콜드 스타트) 들어온 링크도 받도록 분기 바깥에 단다.
+        startFlow
+                .onOpenURL { url in
+                // 핸들러를 하나로 둔다 — 카카오 로그인 콜백이 아니면 초대 링크로 본다.
+                guard !KakaoAuthConfigurator.handleOpenURL(url),
+                      let inviteCode = self.inviteCode(from: url) else { return }
+                AppDependencies.logAnalyticsEvent(.appLinkOpened(destination: .groupInvite))
+                pendingInviteCode = inviteCode
+            }
+    }
+
+    @ViewBuilder
+    private var startFlow: some View {
         if isPlayingSplash {
             SplashView { isPlayingSplash = false }
                 .task {
@@ -40,6 +57,10 @@ struct RootView: View {
     private var mainFlow: some View {
         NavigationStack(path: $router.path) {
             destination(for: router.rootRoute)
+                // 루트가 바뀐 뒤(로그인·가입 완료) 받아 둔 초대 링크를 연다. `onChange` 로 루트 교체와 같은 프레임에
+                // path 를 넣으면 SwiftUI 가 이동 요청을 버린다("NavigationRequestObserver ... multiple times per frame")
+                // → 새 루트가 뜬 뒤 도는 task 에서 연다.
+                .task(id: router.rootRoute) { openPendingInviteCode() }
                 .navigationDestination(for: AppRoute.self) { route in
                     // 라우트 값마다 새 identity — 같은 깊이에서 값만 바뀌면(캔버스 A → 푸시로 캔버스 B)
                     // SwiftUI 가 목적지 뷰를 재사용해 화면의 @State(스토어)가 이전 그룹 걸 물고 있다.
@@ -69,6 +90,7 @@ struct RootView: View {
             guard router.rootRoute == .group else { return }
             await diContainer.registerDeviceToken()
         }
+        .onChange(of: pendingInviteCode, initial: true) { openPendingInviteCode() }
         // 화면 위 어떤 프레젠테이션보다 위 레이어 — 스택 전환과 무관하게 마지막(바깥쪽)에 선언한다.
         .ygToastOverlay($toasts)
     }
@@ -120,6 +142,24 @@ struct RootView: View {
                 onExit: { handleSideMenuExit($0, groupName: groupName) }
             )
         }
+    }
+
+    /// `https://parfait-app.store/link?inviteCode=ABC123` → `ABC123`. 다른 URL 은 nil.
+    private func inviteCode(from url: URL) -> String? {
+        guard url.host() == "parfait-app.store", url.path() == "/link" else { return nil }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first { $0.name == "inviteCode" }?
+            .value
+    }
+
+    /// 받아 둔 초대코드를 초대코드 화면에 채워 연다. 로그인 전이면 그룹 화면이 루트가 될 때까지 미룬다.
+    /// 피처 내부 화면 직행이라 `GroupRoute` 를 path 에 직접 넣는다 (architecture.md 딥링크 규칙).
+    private func openPendingInviteCode() {
+        guard let inviteCode = pendingInviteCode, router.rootRoute == .group else { return }
+        pendingInviteCode = nil
+        router.resetPath(to: .group)
+        router.path.append(GroupRoute.inviteCode(prefilledCode: inviteCode))
     }
 
     /// 사이드메뉴를 떠나는 지점의 화면 이동·확인 토스트 — 호출부(App) 몫이다 (`GroupSideMenuView.onExit`).

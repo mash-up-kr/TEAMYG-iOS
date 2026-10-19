@@ -23,7 +23,7 @@ struct CanvasEntryNudge: View {
                     title: isInviteCodeCopied ? "복사완료" : "복사하기",
                     icon: .icCopy
                 ) {
-                    UIPasteboard.general.string = inviteCode
+                    UIPasteboard.general.string = YGInviteCard.inviteMessage(code: inviteCode)
                     isInviteCodeCopied = true
                 }
             }
