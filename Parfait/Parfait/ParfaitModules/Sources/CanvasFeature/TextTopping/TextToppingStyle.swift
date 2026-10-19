@@ -40,8 +40,8 @@ enum TextToppingColor: CaseIterable, Sendable {
         case .orange: "#FFFBF3"
         case .yellow: "#FEFEF6"
         case .green: "#F4FCF7"
-        // 보라 배경이 파랑과 같은 값인 건 디자인 의도 (2026-10-14 확인).
-        case .blue, .violet: "#F6FBFE"
+        case .blue: "#F6FBFE"
+        case .violet: "#FAF4FF"
         }
     }
 }
