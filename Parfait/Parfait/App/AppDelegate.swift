@@ -5,6 +5,7 @@
 //  Created by Enes on 8/31/26.
 //
 
+import FirebaseAnalytics
 import FirebaseCore
 import FirebaseMessaging
 import Routing
@@ -30,6 +31,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseApp.configure()
+        setAnalyticsUserProperties()
         Messaging.messaging().delegate = self
         UNUserNotificationCenter.current().delegate = self
 
@@ -58,6 +60,39 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
         YGLogger.error("APNs registration failed")
+    }
+
+    /// 기기·앱 정보 사용자 속성 — 키는 Android `AnalyticsUserProperty` 와 같은 값을 쓴다(같은 Firebase 프로젝트에서 플랫폼 간 비교).
+    /// 값은 앱 실행 중 바뀌지 않으므로 실행 시 1회만 넣는다.
+    private func setAnalyticsUserProperties() {
+        #if DEBUG
+        let isDebug = true
+        #else
+        let isDebug = false
+        #endif
+        let info = Bundle.main.infoDictionary
+        let properties: [String: String?] = [
+            "IS_DEBUG": String(isDebug),
+            "OS_TYPE": "iOS",
+            "OS_VER": UIDevice.current.systemVersion,
+            "APP_VER": info?["CFBundleShortVersionString"] as? String,
+            "APP_VER_CODE": info?["CFBundleVersion"] as? String,
+            "DEVICE": deviceModelIdentifier(),
+            "APP_ID": Bundle.main.bundleIdentifier
+        ]
+        for (name, value) in properties {
+            Analytics.setUserProperty(value, forName: name)
+        }
+    }
+
+    /// `iPhone17,1` 같은 기종 식별자 — `UIDevice.model` 은 `"iPhone"` 뿐이라 Android `Build.MODEL` 에 대응이 안 된다.
+    /// 시뮬레이터에선 `arm64` 가 나온다.
+    private func deviceModelIdentifier() -> String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        return withUnsafeBytes(of: &systemInfo.machine) { bytes in
+            String(bytes: bytes.prefix { $0 != 0 }, encoding: .utf8) ?? ""
+        }
     }
 }
 

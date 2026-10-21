@@ -70,8 +70,9 @@ struct RootView: View {
         }
         .environment(\.ygImageLoader, diContainer.ygImageLoader)
         .task {
-            // 세션 만료(리프레시 토큰까지 거절) → 스택을 로그인으로 재시작한다.
+            // 세션 종료(로그아웃·탈퇴·리프레시 토큰까지 거절) → 스택을 로그인으로 재시작한다.
             for await _ in await diContainer.sessionExpirations() {
+                diContainer.clearAnalyticsUserID()
                 router.replaceStack(with: .login)
             }
         }
@@ -87,7 +88,9 @@ struct RootView: View {
         .task(id: router.rootRoute) {
             // 세션이 생길 때마다(콜드 스타트 자동로그인·로그인·재로그인) 기기 토큰을 등록한다.
             // 토큰은 그때그때 FCM 에서 조회한다 — 1회용 AsyncStream 을 .task 재시작이 죽이는 문제를 피한다.
+            // Analytics 사용자 ID 도 같은 시점에 맞춘다.
             guard router.rootRoute == .group else { return }
+            await diContainer.setAnalyticsUserID()
             await diContainer.registerDeviceToken()
         }
         .onChange(of: pendingInviteCode, initial: true) { openPendingInviteCode() }
