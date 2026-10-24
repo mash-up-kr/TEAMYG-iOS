@@ -21,6 +21,9 @@ struct TextToppingBox: View {
     let type: TextToppingType
     let alignment: TextToppingAlignment
     let isEditing: Bool
+    /// 입력 중 캔버스 크기. 있으면 입력창을 이 크기로 고정한다 (너비 = 줄바꿈 너비) — 글자·줄마다 입력창 크기가 바뀌면
+    /// 그 프레임에 커서 자리를 못 구해 커서가 입력창 왼쪽 위 점으로 깜빡였다 (실기기 120Hz).
+    let inputCanvasSize: CGSize?
     @Binding var draft: ToppingTransformDraft
     let onTextChange: (String) -> Void
     let onEditingEnd: () -> Void
@@ -45,18 +48,31 @@ struct TextToppingBox: View {
                 placeholder
             }
 
+            // 배치: 줄바꿈 너비가 측정한 글자 너비와 같아지도록 좌우 대칭으로 둔다 — 정렬이 박스 기준이 된다.
+            // 입력: 입력창을 캔버스 크기로 고정하고, 정렬한 글이 박스 자리에 오도록 입력창만 옮긴다.
+            let textViewSize = inputCanvasSize ?? touchSize
+            let textInset = inputCanvasSize == nil
+                ? UIEdgeInsets(
+                    top: (touchSize.height - textSize.height) / 2,
+                    left: (touchSize.width - textSize.width) / 2,
+                    bottom: 0,
+                    right: (touchSize.width - textSize.width) / 2
+                )
+                : .zero
+            let textViewOffset = inputCanvasSize.map(inputTextViewOffset) ?? .zero
+
             TextToppingTextView(
                 text: text,
                 fontSize: fontSize,
                 color: UIColor(Color(hex: color.textHex)),
                 alignment: alignment.textAlignment,
-                // 줄바꿈 너비가 측정한 글자 너비와 같아지도록 좌우 대칭으로 둔다 — 같은 너비로 다시 줄바꿈해도
-                // 줄이 바뀌지 않고, 정렬이 박스 기준이 된다.
-                textInset: UIEdgeInsets(
-                    top: (touchSize.height - textSize.height) / 2,
-                    left: (touchSize.width - textSize.width) / 2,
-                    bottom: 0,
-                    right: (touchSize.width - textSize.width) / 2
+                textInset: textInset,
+                // 키운 입력창이 박스 밖 탭(입력 닫기)을 가로채지 않게 터치는 박스 자리에서만 받는다.
+                touchRect: inputCanvasSize == nil ? nil : CGRect(
+                    x: (textViewSize.width - touchSize.width) / 2 - textViewOffset.width,
+                    y: (textViewSize.height - touchSize.height) / 2 - textViewOffset.height,
+                    width: touchSize.width,
+                    height: touchSize.height
                 ),
                 isEditing: isEditing,
                 isTransformEnabled: !TextToppingLayout.isBlank(text),
@@ -66,8 +82,20 @@ struct TextToppingBox: View {
                 onTransformBegin: onTransformBegin,
                 onTransformCommit: onTransformCommit
             )
-            .frame(width: touchSize.width, height: touchSize.height)
+            .frame(width: textViewSize.width, height: textViewSize.height)
+            .offset(textViewOffset)
         }
+    }
+
+    /// 입력창(캔버스 크기, 글은 위에서부터) 안에서 정렬된 글이 박스(글자 크기) 자리에 오도록 옮기는 거리.
+    private func inputTextViewOffset(canvasSize: CGSize) -> CGSize {
+        let horizontalSlack = (canvasSize.width - textSize.width) / 2
+        let horizontal: CGFloat = switch alignment {
+        case .left: horizontalSlack
+        case .center: 0
+        case .right: -horizontalSlack
+        }
+        return CGSize(width: horizontal, height: (canvasSize.height - textSize.height) / 2)
     }
 
     private var background: some View {

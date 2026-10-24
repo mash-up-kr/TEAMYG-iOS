@@ -40,8 +40,9 @@ final class TextToppingStore: MVIStore {
             state.canvasSize = canvasSize
             refitFontSize()
         case .textAreaResized(let height):
-            // 닫히며 키보드가 내려가 입력 영역이 커져도 박스를 다시 놓지 않는다 — 페이드아웃 중에 박스가 내려가며 커져 보였다.
-            guard !state.isDismissing else { return }
+            // 키보드가 내려가 입력 영역이 커져도 박스를 다시 놓지 않는다 — 닫는 중엔 페이드아웃 중에 박스가 내려가며 커져 보였고,
+            // 배치에서 받아 두면 다시 입력으로 들어갈 때 키보드가 아직 안 올라온 높이로 박스를 놓았다.
+            guard state.phase == .input, !state.isDismissing else { return }
             state.textAreaHeight = height
             refitFontSize()
         case .colorButtonTapped:
@@ -60,8 +61,11 @@ final class TextToppingStore: MVIStore {
                 return
             }
             finishInput()
-        case .confirmTapped, .editingEnded, .transformBegan:
+        case .confirmTapped, .editingEnded:
             finishInput()
+        case .transformBegan:
+            // 손가락 아래에 있는 입력 자리에서 이어 움직인다 — 이전 배치 자리로 돌아가면 손가락에서 떨어져 튀었다.
+            finishInput(placement: state.inputPlacement)
         case .placementCommitted(let draft):
             guard let placement = state.placement else { return }
             state.placement = draft.applied(to: placement, in: state.canvasSize)
@@ -84,7 +88,8 @@ final class TextToppingStore: MVIStore {
 
     /// 키보드를 내리는 모든 경로(✓·박스 밖 탭·끌기·핀치·시스템)가 여기로 모인다.
     /// 이 순간의 줄바꿈과 글자 크기를 고정한다 — 배치에서 입력 영역이 커져도 다시 계산하지 않는다.
-    private func finishInput() {
+    /// `placement` 가 없으면 이전 배치 자리로, 처음이면 입력 중 보이던 자리로 놓는다.
+    private func finishInput(placement: ToppingPlacement? = nil) {
         guard state.phase == .input else { return }
         state.isColorPopoverPresented = false
 
@@ -98,7 +103,7 @@ final class TextToppingStore: MVIStore {
             .lines(of: state.text, fontSize: state.displayFontSize, maxWidth: state.canvasSize.width)
             .joined(separator: "\n")
         // 새 텍스트의 "원래 자리" 는 입력 중 보이던 자리 — 키보드가 내려가며 튀지 않는다.
-        state.placement = state.placement ?? state.inputPlacement
+        state.placement = placement ?? state.placement ?? state.inputPlacement
         state.phase = .arrange
     }
 

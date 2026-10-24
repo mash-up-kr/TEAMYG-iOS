@@ -19,6 +19,8 @@ struct TextToppingTextView: UIViewRepresentable {
     let alignment: NSTextAlignment
     /// 프레임 안 글자 영역 여백 (textContainerInset). 줄바꿈 너비 = 프레임 너비 − 좌우 여백.
     let textInset: UIEdgeInsets
+    /// 터치를 받는 영역 (텍스트 뷰 좌표). nil 이면 전체.
+    let touchRect: CGRect?
     /// true: 편집 가능 + first responder, false: 편집 불가 + resign
     let isEditing: Bool
     /// false 면 끌기·핀치·회전 인식 안 함 (빈 내용)
@@ -33,12 +35,17 @@ struct TextToppingTextView: UIViewRepresentable {
     /// 모든 변형 제스처가 끝났을 때 1회. `onTransformBegin` 과 항상 짝을 이룬다 (변화량이 없어도 호출).
     let onTransformCommit: (ToppingTransformDraft) -> Void
 
-    func makeUIView(context: Context) -> UITextView {
+    func makeUIView(context: Context) -> TouchLimitedTextView {
         // NSLayoutManager 로 측정하는 `TextToppingLayout` 과 줄바꿈이 같아야 해서 TextKit 1 을 쓴다.
-        let textView = UITextView(usingTextLayoutManager: false)
+        let textView = TouchLimitedTextView(usingTextLayoutManager: false)
         textView.delegate = context.coordinator
         textView.backgroundColor = .clear
         textView.isScrollEnabled = false
+        // iOS 26 스크롤 가장자리 효과를 끈다 — 텍스트 뷰도 스크롤 뷰라, 위로 올리거나 크게 키워 돌리면
+        // 상단 안전 영역에 걸린 가장자리가 흐려져 글자에 블러가 생겼다.
+        for edgeEffect in [textView.topEdgeEffect, textView.leftEdgeEffect, textView.bottomEdgeEffect, textView.rightEdgeEffect] {
+            edgeEffect.isHidden = true
+        }
         textView.textContainer.lineFragmentPadding = 0
         // 줄바꿈 너비를 따로 지정하지 않고 프레임에서 따라가게 한다 — 따로 두면 입력으로 프레임이 바뀔 때
         // 내부 레이아웃이 어긋난 채 그려졌다가 다른 갱신 때 뒤늦게 바로잡혀 글자가 튀어 보였다.
@@ -55,9 +62,10 @@ struct TextToppingTextView: UIViewRepresentable {
         return textView
     }
 
-    func updateUIView(_ textView: UITextView, context: Context) {
+    func updateUIView(_ textView: TouchLimitedTextView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
+        textView.touchRect = touchRect
         coordinator.setTransformEnabled(isTransformEnabled)
 
         if textView.textContainerInset != textInset {
@@ -65,13 +73,25 @@ struct TextToppingTextView: UIViewRepresentable {
         }
 
         // 한글 조합 중(marked text)에 attributedText 를 갈아 끼우면 조합이 깨진다 → 조합이 끝난 뒤 반영.
-        let style = TextToppingAppliedStyle(fontSize: fontSize, color: color, alignment: alignment)
+        let style = TextToppingAppliedStyle(
+            fontSize: fontSize,
+            color: color,
+            alignment: alignment,
+            wrapsLines: isEditing
+        )
         if textView.markedTextRange == nil, textView.text != text || coordinator.appliedStyle != style {
-            let attributes = TextToppingLayout.attributes(
+            var attributes = TextToppingLayout.attributes(
                 fontSize: fontSize,
                 color: color,
                 alignment: alignment
             )
+            // 배치에선 줄바꿈이 이미 개행으로 박혀 있다 — 핀치로 글자 크기가 바뀔 때 소수점 오차로 줄 폭이 프레임을 살짝 넘으면
+            // 다시 줄바꿈돼 끝 글자가 한 프레임씩 다음 줄로 떨어졌다.
+            if !isEditing, let paragraphStyle = attributes[.paragraphStyle] as? NSParagraphStyle {
+                let clippingStyle = paragraphStyle.mutableCopy() as? NSMutableParagraphStyle
+                clippingStyle?.lineBreakMode = .byClipping
+                attributes[.paragraphStyle] = clippingStyle
+            }
             let selectedRange = textView.selectedRange
             textView.attributedText = NSAttributedString(string: text, attributes: attributes)
             textView.typingAttributes = attributes
@@ -85,22 +105,31 @@ struct TextToppingTextView: UIViewRepresentable {
             coordinator.appliedStyle = style
         }
 
-        textView.isEditable = isEditing
-        textView.isSelectable = isEditing
-        // 뷰 업데이트 도중 responder 를 바꾸면 delegate 콜백이 상태를 건드리므로 다음 런루프로 미룬다.
+        // 편집을 끄면 그 자리에서 키보드가 내려간다 — 끄는 건 아래 responder 변경과 함께 미룬다.
+        if isEditing || !textView.isFirstResponder {
+            Self.setEditable(isEditing, on: textView)
+        }
+        // 뷰 업데이트 도중 responder 를 바꾸면 delegate 콜백이 상태를 건드리므로 이 갱신이 화면에 반영된 뒤로 미룬다.
+        // 이 갱신 중에 키보드가 움직이기 시작하면 갱신 전체가 키보드 애니메이션에 휩쓸려, 입력 ↔ 배치 전환에서 박스가 엉뚱한 자리에서 튀어나왔다.
         if isEditing != textView.isFirstResponder {
-            DispatchQueue.main.async { [weak textView, weak coordinator] in
+            CATransaction.setCompletionBlock { [weak textView, weak coordinator] in
                 guard let textView, let coordinator else { return }
                 if coordinator.parent.isEditing, !textView.isFirstResponder {
                     textView.becomeFirstResponder()
                 } else if !coordinator.parent.isEditing, textView.isFirstResponder {
                     textView.resignFirstResponder()
+                    Self.setEditable(false, on: textView)
                 }
             }
         }
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+    private static func setEditable(_ isEditable: Bool, on textView: UITextView) {
+        textView.isEditable = isEditable
+        textView.isSelectable = isEditable
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: TouchLimitedTextView, context: Context) -> CGSize? {
         // 바깥에서 프레임을 직접 잡아 준다.
         proposal.replacingUnspecifiedDimensions()
     }
@@ -283,4 +312,15 @@ private struct TextToppingAppliedStyle: Equatable {
     let fontSize: CGFloat
     let color: UIColor
     let alignment: NSTextAlignment
+    let wrapsLines: Bool
+}
+
+/// `touchRect` 밖의 터치는 받지 않아 아래(박스 밖 탭)로 넘긴다.
+final class TouchLimitedTextView: UITextView {
+    var touchRect: CGRect?
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard let touchRect else { return super.point(inside: point, with: event) }
+        return touchRect.contains(point)
+    }
 }
