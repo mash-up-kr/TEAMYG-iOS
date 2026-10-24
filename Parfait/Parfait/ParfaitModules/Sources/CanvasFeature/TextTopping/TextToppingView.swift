@@ -191,16 +191,11 @@ struct TextToppingView: View {
         .position(x: canvasFrame.midX, y: canvasFrame.midY)
     }
 
-    /// 배치 상태 — 캔버스 전체 제스처 면 + 포커스 테두리 + 모서리 X.
+    /// 배치 상태 — 캔버스 전체 제스처 면 + 모서리 X.
     @ViewBuilder
     private func arrangeControls(placement: ToppingPlacement, boxSize: CGSize) -> some View {
         let canvasSize = state.canvasSize
         let committedPlacement = state.displayPlacement
-
-        ToppingSelectionFrame(renderedSize: boxSize)
-            .rotationEffect(.degrees(placement.rotationDegrees))
-            .position(placement.center(in: canvasSize))
-            .allowsHitTesting(false)
 
         ToppingTransformGestureOverlay(
             draft: $draft,
