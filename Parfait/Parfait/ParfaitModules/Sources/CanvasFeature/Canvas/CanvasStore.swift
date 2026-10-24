@@ -115,11 +115,11 @@ public final class CanvasStore: MVIStore {
             }
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
         case .cameraOptionTapped:
-            openToppingAddFlow { .camera(canvasDate: $0) }
+            openToppingAddFlow(.camera) { .camera(canvasDate: $0) }
         case .galleryOptionTapped:
-            openToppingAddFlow { .gallery(canvasDate: $0) }
+            openToppingAddFlow(.gallery) { .gallery(canvasDate: $0) }
         case .textOptionTapped:
-            openToppingAddFlow { .text(canvasDate: $0) }
+            openToppingAddFlow(.text) { .text(canvasDate: $0) }
         case .menuDimTapped:
             // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
             state.menuState = .collapsed
@@ -177,8 +177,12 @@ public final class CanvasStore: MVIStore {
         }
     }
 
-    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
+    private func openToppingAddFlow(
+        _ type: AnalyticsEvent.ToppingAddType,
+        _ makeSource: (CalendarDate) -> ToppingAddSource
+    ) {
         guard !state.isClosedCanvas, state.parfaitID != nil else { return }
+        logAnalyticsEvent(.canvasMainToppingAddTapped(type: type))
         state.calendar.close()
         state.menuState = .collapsed
         state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))

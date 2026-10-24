@@ -26,6 +26,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
 
     // MARK: canvas
 
+    /// 사진 추가 버튼에서 카메라 / 갤러리 / 텍스트 선택
+    case canvasMainToppingAddTapped(type: ToppingAddType)
     /// C101 다시 찍기 탭
     case canvasCameraRetakeTapped
     /// C102 최근 사진 / 앨범 사진 선택
@@ -34,8 +36,11 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case canvasCameraDetectionCompleted(success: Bool)
     /// 테두리 편집 탭
     case canvasEditBorderTapped
-    /// C105 캔버스 쌓기 탭
+    /// C105 캔버스 쌓기 탭 — 새 사진 토핑 추가 흐름의 배치·테두리 화면.
+    /// `edit` 은 화면 이름(`canvas_edit`)이다. 기존 토핑 편집 화면(`canvas_topping`)의 쌓기는 이 이벤트가 아니다.
     case canvasEditStackTapped(groupID: String, isBorderOn: Bool)
+    /// C106 텍스트 캔버스 쌓기 탭
+    case canvasTextStackTapped(groupID: String)
     /// C105 토핑 편집에서 수정 없이 완료 / X
     case canvasToppingClosedUnchanged(action: CloseAction)
     /// 토핑 편집자 확인 (내 토핑 / 다른 사람 토핑)
@@ -70,7 +75,9 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case appAccount = "app_account"
         case canvasMain = "canvas_main"
         case canvasCamera = "canvas_camera"
+        case canvasGallery = "canvas_gallery"
         case canvasEdit = "canvas_edit"
+        case canvasText = "canvas_text"
         case canvasTopping = "canvas_topping"
         case canvasBackground = "canvas_background"
         case canvasCalendar = "canvas_calendar"
@@ -90,6 +97,12 @@ public enum AnalyticsEvent: Sendable, Equatable {
     public enum AppLinkDestination: String, Sendable {
         /// 초대 링크(`/link?inviteCode=`) → 초대코드 화면
         case groupInvite = "group_invite"
+    }
+
+    public enum ToppingAddType: String, Sendable {
+        case camera
+        case gallery
+        case text
     }
 
     public enum PhotoSource: String, Sendable {
@@ -115,11 +128,13 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .appPushOpened: "app_push_opened"
         case .appLinkOpened: "AppLink"
         case .appAccountNicknameChanged: "app_account_nickname_changed"
+        case .canvasMainToppingAddTapped: "canvas_main_topping_add_tapped"
         case .canvasCameraRetakeTapped: "canvas_camera_retake_tapped"
         case .canvasCameraPhotoSelected: "canvas_camera_photo_selected"
         case .canvasCameraDetectionCompleted: "canvas_camera_detection_completed"
         case .canvasEditBorderTapped: "canvas_edit_border_tapped"
         case .canvasEditStackTapped: "canvas_edit_stack_tapped"
+        case .canvasTextStackTapped: "canvas_text_stack_tapped"
         case .canvasToppingClosedUnchanged: "canvas_topping_closed_unchanged"
         case .canvasToppingEditorChecked: "canvas_topping_editor_checked"
         case .canvasCalendarDateTapped: "canvas_calendar_date_tapped"
@@ -144,6 +159,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
             ["type": type.rawValue]
         case let .appLinkOpened(destination):
             ["destination": destination.rawValue]
+        case let .canvasMainToppingAddTapped(type):
+            ["type": type.rawValue]
         case let .canvasCameraPhotoSelected(source):
             ["source": source.rawValue]
         case let .canvasCameraDetectionCompleted(success):
@@ -154,7 +171,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
             ["action": action.rawValue]
         case let .canvasToppingEditorChecked(isMine):
             ["is_mine": String(isMine)]
-        case let .canvasCalendarDateTapped(groupID),
+        case let .canvasTextStackTapped(groupID),
+             let .canvasCalendarDateTapped(groupID),
              let .canvasCalendarPastParfaitTapped(groupID):
             ["group_id": groupID]
         case let .canvasSaveGallerySaved(format):

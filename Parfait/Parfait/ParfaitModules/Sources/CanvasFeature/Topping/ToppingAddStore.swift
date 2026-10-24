@@ -208,9 +208,13 @@ final class ToppingAddStore: MVIStore {
         }
     }
 
-    /// 촬영·사진 선택·대상 감지(C101·C102·C104)는 canvas_camera, 배치·테두리(C105)는 canvas_edit.
+    /// 배치·테두리(C105)는 canvas_edit. 그 전 화면(사진 선택·대상 감지)은 진입 경로를 따라 canvas_camera / canvas_gallery.
     private func logScreenViewIfChanged() {
-        let screenName: AnalyticsEvent.ScreenName = state.screen == .placement ? .canvasEdit : .canvasCamera
+        let screenName: AnalyticsEvent.ScreenName = switch (state.screen, state.photoSource) {
+        case (.placement, _): .canvasEdit
+        case (_, .camera): .canvasCamera
+        case (_, .gallery): .canvasGallery
+        }
         guard screenName != loggedScreenName else { return }
         loggedScreenName = screenName
         dependencies.logAnalyticsEvent(.screenView(screenName))

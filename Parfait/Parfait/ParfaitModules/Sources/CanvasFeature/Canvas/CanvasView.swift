@@ -210,7 +210,9 @@ public struct CanvasView: View {
     /// C-001 캔버스 자리만 뚫린 채 위에 겹쳐 뜬다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
     private var textToppingFlow: some View {
         TextToppingView(
-            store: TextToppingStore(state: .init()),
+            store: TextToppingStore(
+                dependencies: .init(groupID: store.groupID, logAnalyticsEvent: store.logAnalyticsEvent)
+            ),
             canvasFrame: canvasBoardFrame
         )
         .presentationBackground(.clear)

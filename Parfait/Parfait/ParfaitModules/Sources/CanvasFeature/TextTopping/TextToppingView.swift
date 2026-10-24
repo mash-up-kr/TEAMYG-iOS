@@ -77,6 +77,7 @@ struct TextToppingView: View {
         .opacity(isShown ? 1 : 0)
         // `onAppear` 에서 올리면 첫 프레임이 그려지기 전이라 페이드 없이 한 번에 떴다 — 첫 프레임 뒤에 시작한다.
         .task {
+            store.send(.screenAppeared)
             withAnimation(Self.fadeAnimation) { isShown = true }
         }
         .onChange(of: canvasFrame.size, initial: true) { _, size in

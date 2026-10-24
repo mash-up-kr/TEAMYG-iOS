@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/14/26.
 //
 
+import Common
 import CoreGraphics
 import Observation
 import UIComponent
@@ -16,9 +17,11 @@ final class TextToppingStore: MVIStore {
     private(set) var state: State
 
     @ObservationIgnored private let eventChannel = EventChannel<Event>()
+    private let dependencies: Dependencies
 
-    init(state: State) {
+    init(state: State = State(), dependencies: Dependencies) {
         self.state = state
+        self.dependencies = dependencies
     }
 
     func eventStream() -> AsyncStream<Event> {
@@ -28,6 +31,8 @@ final class TextToppingStore: MVIStore {
     // swiftlint:disable:next cyclomatic_complexity
     func send(_ intent: Intent) {
         switch intent {
+        case .screenAppeared:
+            dependencies.logAnalyticsEvent(.screenView(.canvasText))
         case .textChanged(let text):
             state.text = TextToppingLayout.limited(text)
             refitFontSize()
@@ -72,8 +77,8 @@ final class TextToppingStore: MVIStore {
         case .discardTapped:
             requestDismiss()
         case .stackTapped:
+            dependencies.logAnalyticsEvent(.canvasTextStackTapped(groupID: String(dependencies.groupID)))
             // ⚠️ 2차: 서버 텍스트 API 가 생기면 여기서 저장한다.
-            break
         }
     }
 
@@ -191,7 +196,13 @@ extension TextToppingStore {
         case dismissRequested
     }
 
+    struct Dependencies: Sendable {
+        let groupID: Int
+        let logAnalyticsEvent: AnalyticsEventLogger
+    }
+
     enum Intent {
+        case screenAppeared
         case textChanged(String)
         case canvasResized(CGSize)
         case textAreaResized(CGFloat)
