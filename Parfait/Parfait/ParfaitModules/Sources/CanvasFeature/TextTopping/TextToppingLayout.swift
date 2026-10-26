@@ -14,7 +14,7 @@ enum TextToppingLayout {
     static let designCanvasWidth: CGFloat = 335
     /// 디자인 기준 최대 글자 크기.
     static let maximumFontSize: CGFloat = 24
-    static let lineHeightMultiple: CGFloat = 1.5
+    static let lineHeightMultiple: CGFloat = 1.4
     /// 자간 퍼센트. -1.1% → 글자 크기 × -0.011
     static let letterSpacingPercent: CGFloat = -1.1
     static let characterLimit = 100
@@ -23,7 +23,7 @@ enum TextToppingLayout {
     /// 자동 크기 이진 탐색을 멈추는 정밀도(pt).
     private static let fittingPrecision: CGFloat = 0.01
 
-    /// SUIT Regular, kern, 줄높이 고정(min=max=fontSize×1.5), 글리프 세로 중앙(baselineOffset), 정렬, 글자색.
+    /// SUIT Regular, kern, 줄높이 고정(min=max=fontSize×1.4), 글리프 세로 중앙(baselineOffset), 정렬, 글자색.
     static func attributes(
         fontSize: CGFloat,
         color: UIColor,
