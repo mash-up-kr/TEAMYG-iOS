@@ -9,9 +9,9 @@ public struct Typography: Sendable {
     let letterSpacing: CGFloat  // 퍼센트. -1.1% → -1.1
 
     // 스펙은 고정값 → Dynamic Type 스케일 끔(fixedSize). 켜면 줄높이 박스가 깨짐.
+    // UIFont 경유 → 일본어·중국어 폴백(cascade) 포함. Font(UIFont) 는 Dynamic Type 스케일 안 함.
     var font: Font {
-        SuitFont.registerOnce()
-        return .custom(weight.rawValue, fixedSize: size)
+        Font(uiFont)
     }
     
     // 자간(pt) = 크기 × 퍼센트. Figma letter spacing 과 동일.
@@ -51,7 +51,7 @@ extension Typography {
     
     /// UIKit 용. 등록 보장 후 반환 (미등록 시 systemFont 폴백). 단독 사용 금지 → attributes 로 전체 스펙 적용.
     var uiFont: UIFont {
-        return UIFont(name: weight.rawValue, size: size) ?? .systemFont(ofSize: size)
+        SuitFont.uiFont(weight, size: size)
     }
 
     /// UIKit 용. 폰트·자간·줄높이 전체 스펙. SwiftUI 는 .suit() 사용.
