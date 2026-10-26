@@ -10,9 +10,10 @@ enum Suit: String, CaseIterable, Sendable {
 }
 
 enum SuitFont {
-    /// SUIT 에 없는 글리프 폴백 순서. 일본어(가나·한자) → LINE Seed JP, JP 에 없는 중국어 → LINE Seed TW.
+    /// SUIT 에 없는 글리프 폴백 순서. 중국어(번체)·가나 → LINE Seed TW, TW 에 없는 일본어 한자 → LINE Seed JP.
+    /// TW 를 먼저 둬 중국어 문장의 한자가 한 폰트로 맞춰진다 — 대신 일본어 한자도 TW 에 있으면 TW 모양으로 그려진다.
     /// ponytail: 둘 다 Regular 만 있어 SUIT 웨이트와 무관하게 Regular 로 그려짐. 웨이트 파일 추가 시 웨이트별 매핑.
-    private static let cascadeFontNames = ["LINESeedJPApp_TTF-Regular", "LINESeedTW_TTF-Regular"]
+    private static let cascadeFontNames = ["LINESeedTW_TTF-Regular", "LINESeedJPApp_TTF-Regular"]
 
     // static let = 최초 접근 시 1회만 실행(스레드세이프). 앱 시작 배선 불필요.
     private static let registered: Void = {
