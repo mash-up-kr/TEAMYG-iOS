@@ -129,8 +129,8 @@ final class TextToppingStore: MVIStore {
     /// 네모배경 상하 여백 + 바깥 테두리 — 글자뿐 아니라 박스 전체가 입력 영역에 들어가야 한다.
     /// ponytail: 최대 글자 크기 기준으로 빼서 축소된 글자에선 몇 pt 여유가 남는다. 글자 크기마다 빼려면 이진 탐색 안으로 넣는다.
     private func boxVerticalExtra(fontSize: CGFloat) -> CGFloat {
-        let padding = state.type.hasFill ? TextToppingLayout.boxPadding(fontSize: fontSize).vertical : 0
-        let border = state.type.hasStroke ? TextToppingLayout.borderWidth(fontSize: fontSize) : 0
+        let padding = state.displayType.hasFill ? TextToppingLayout.boxPadding(fontSize: fontSize).vertical : 0
+        let border = state.displayType.hasStroke ? TextToppingLayout.borderWidth(fontSize: fontSize) : 0
         return (padding + border) * 2
     }
 }
@@ -159,6 +159,12 @@ extension TextToppingStore {
 
         var isBlank: Bool {
             TextToppingLayout.isBlank(text)
+        }
+
+        /// 캔버스에 그릴 타입 — 입력한 글이 없으면 고른 타입과 무관하게 `plain` (플레이스홀더엔 배경·테두리 없음).
+        /// 툴바 아이콘은 고른 타입(`type`)을 그대로 보여준다.
+        var displayType: TextToppingType {
+            isBlank ? .plain : type
         }
 
         /// 비어 있으면 플레이스홀더 크기로 박스를 잡는다.

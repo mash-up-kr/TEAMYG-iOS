@@ -224,7 +224,7 @@ struct TextToppingView: View {
             // 배치에선 줄바꿈이 이미 개행으로 박혀 있어 제한 없이 잰다.
             wrapWidth: isInput ? canvasSize.width : .greatestFiniteMagnitude
         )
-        let boxSize = TextToppingBox.boxSize(textSize: textSize, fontSize: fontSize, type: state.type)
+        let boxSize = TextToppingBox.boxSize(textSize: textSize, fontSize: fontSize, type: state.displayType)
 
         return ZStack {
             TextToppingBox(
@@ -233,7 +233,7 @@ struct TextToppingView: View {
                 textSize: textSize,
                 boxSize: boxSize,
                 color: state.color,
-                type: state.type,
+                type: state.displayType,
                 alignment: state.alignment,
                 // 키보드는 이 값으로만 올리고 내린다 — 닫으며 따로 내리면 다음 뷰 갱신에서 다시 올라왔다.
                 isEditing: isInput && !state.isDismissing,
