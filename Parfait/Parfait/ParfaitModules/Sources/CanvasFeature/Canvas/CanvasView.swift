@@ -130,8 +130,10 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
             case .gallery(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
-            case .text:
-                textToppingFlow
+            case .text(_, let editingTextID):
+                textToppingFlow(editing: editingTextID.flatMap { textID in
+                    store.state.canvasContent?.texts.first { $0.id == textID }
+                })
             }
         }
         .fullScreenCover(item: canvasEditDestinationBinding) { destination in
@@ -208,10 +210,18 @@ public struct CanvasView: View {
     }
 
     /// C-001 캔버스 자리만 뚫린 채 위에 겹쳐 뜬다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
-    private var textToppingFlow: some View {
+    private func textToppingFlow(editing text: CanvasStore.CanvasText?) -> some View {
         TextToppingView(
             store: TextToppingStore(
-                dependencies: .init(groupID: store.groupID, logAnalyticsEvent: store.logAnalyticsEvent)
+                state: text.map(TextToppingStore.State.init(editing:)) ?? TextToppingStore.State(),
+                dependencies: .init(
+                    groupID: store.groupID,
+                    parfaitID: store.state.parfaitID,
+                    nextZOrder: store.state.canvasContent?.nextZOrder ?? 1,
+                    toppingUseCase: toppingUseCase,
+                    onChange: { [store] in store.send(.textToppingChanged($0)) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
+                )
             ),
             canvasFrame: canvasBoardFrame
         )

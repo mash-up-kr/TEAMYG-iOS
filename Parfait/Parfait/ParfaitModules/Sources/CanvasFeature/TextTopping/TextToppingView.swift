@@ -30,6 +30,7 @@ struct TextToppingView: View {
     @State private var isTransitioning = false
     @State private var transitionFallbackTask: Task<Void, Never>?
     @State private var isShown = false
+    @State private var toasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
     /// C-001 캔버스 패널의 화면 좌표 — 열릴 때 값으로 고정한다.
     @State private var canvasFrame: CGRect
@@ -62,7 +63,10 @@ struct TextToppingView: View {
                         .onTapGesture { sendChangingPhase(.outsideTapped) }
                 }
 
-                textLayer
+                // 고치던 텍스트를 지운 표시면 박스·모서리 X 를 걷는다 — 반영은 `[캔버스에 쌓기]` 때.
+                if !state.isDeleted {
+                    textLayer
+                }
             }
             .ignoresSafeArea()
 
@@ -85,6 +89,9 @@ struct TextToppingView: View {
                     .ignoresSafeArea(.keyboard)
             }
         }
+        .ygLoading(state.isSaving)
+        .disabled(state.isSaving)
+        .ygToastOverlay($toasts)
         .opacity(isShown ? 1 : 0)
         // `onAppear` 에서 올리면 첫 프레임이 그려지기 전이라 페이드 없이 한 번에 떴다 — 첫 프레임 뒤에 시작한다.
         .task {
@@ -117,6 +124,10 @@ struct TextToppingView: View {
                 switch event {
                 case .dismissRequested:
                     fadeOutAndDismiss()
+                case .saveFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "텍스트를 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
+                    )
                 }
             }
         }
@@ -235,6 +246,7 @@ struct TextToppingView: View {
                 color: state.color,
                 type: state.displayType,
                 alignment: state.alignment,
+                allowsTextChange: state.editing == nil,
                 // 키보드는 이 값으로만 올리고 내린다 — 닫으며 따로 내리면 다음 뷰 갱신에서 다시 올라왔다.
                 isEditing: isInput && !state.isDismissing,
                 inputCanvasSize: isInput ? canvasSize : nil,

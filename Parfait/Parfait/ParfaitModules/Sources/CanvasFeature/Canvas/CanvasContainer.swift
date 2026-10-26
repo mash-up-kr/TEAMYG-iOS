@@ -31,12 +31,13 @@ struct CanvasContainer: View {
                             dateText: state.dateText,
                             weekdayText: state.weekdayText,
                             contentState: state.contentState,
-                            canvasContent: state.canvasContent,
+                            canvasContent: state.boardContent,
                             spotlightedToppingID: state.spotlightedToppingID,
                             isDimmed: state.menuState == .sourceOptions,
                             onCalendarTap: { send(.calendarTapped) },
                             onSaveTap: { send(.savePreviewRequested) },
                             onToppingTap: { send(.toppingTapped($0)) },
+                            onTextTap: { send(.textTapped($0)) },
                             onSpotlightDismiss: { send(.spotlightDismissed) },
                             onDimTap: { send(.menuDimTapped) },
                             onToppingImageLoaded: { send(.toppingImageLoaded($0)) },
@@ -164,6 +165,7 @@ private struct CanvasBoard: View {
     let onCalendarTap: () -> Void
     let onSaveTap: () -> Void
     let onToppingTap: (Int) -> Void
+    let onTextTap: (Int) -> Void
     let onSpotlightDismiss: () -> Void
     let onDimTap: () -> Void
     let onToppingImageLoaded: (Int) -> Void
@@ -192,6 +194,7 @@ private struct CanvasBoard: View {
                             content: canvasContent,
                             spotlightedToppingID: spotlightedToppingID,
                             onImageTap: { onToppingTap($0.id) },
+                            onTextTap: { onTextTap($0.id) },
                             onDimTap: onSpotlightDismiss,
                             onToppingImageLoaded: onToppingImageLoaded,
                             onToppingImageLoadFailed: onToppingImageLoadFailed

@@ -16,6 +16,8 @@ extension CanvasEditStore {
         var savedBackground: CanvasStore.CanvasBackground
         var background: CanvasStore.CanvasBackground
         var toppings: [EditableTopping]
+        /// 편집 화면에선 읽기 전용 — 10초 갱신 때 통째로 바꾼다.
+        var texts: [CanvasStore.CanvasText]
         var selectedToppingID: Int?
         var isBorderPanelExpanded = false
         var backgroundImageSource: BackgroundImagePickerStore.PhotoSource?
@@ -35,6 +37,7 @@ extension CanvasEditStore {
             savedBackground = canvasContent.background
             background = canvasContent.background
             toppings = canvasContent.images.map(EditableTopping.init)
+            texts = canvasContent.texts
             self.selectedToppingID = toppings.first { $0.id == selectedToppingID && $0.isMine }?.id
         }
 

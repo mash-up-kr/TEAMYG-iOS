@@ -294,6 +294,8 @@ extension CanvasEditStore {
             state.background = content.background
         }
 
+        state.texts = content.texts
+
         let editingToppings = state.toppings
         state.toppings = content.images.map { image in
             // 내 토핑은 이 기기에서만 바뀐다 — 위치·테두리·삭제 예정 초안을 그대로 지킨다.

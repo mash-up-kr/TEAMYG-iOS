@@ -26,6 +26,15 @@ public protocol ToppingUseCase: Sendable {
 
     /// 토핑을 지운다.
     func delete(toppingID: Int, groupID: Int, parfaitID: Int) async throws
+
+    /// 텍스트를 캔버스에 배치한다.
+    func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText
+
+    /// 텍스트의 위치·크기·회전·색·타입을 바꾼다. 바뀐 것이 없으면 요청하지 않는다.
+    func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws
+
+    /// 텍스트를 지운다.
+    func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws
 }
 
 public struct ToppingUseCaseImpl: ToppingUseCase {
@@ -80,6 +89,23 @@ public struct ToppingUseCaseImpl: ToppingUseCase {
         try await toppingRepository.delete(toppingID: toppingID, groupID: groupID, parfaitID: parfaitID)
     }
 
+    public func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText {
+        // 서버도 공백만 있는 글을 거절한다 — 요청 전에 막는다.
+        guard !draft.text.allSatisfy(\.isWhitespace) else { throw ToppingError.blankText }
+        guard HexColor.isValid(draft.colorHex) else { throw ToppingError.invalidTextColor }
+        return try await toppingRepository.placeText(draft, groupID: groupID, parfaitID: parfaitID)
+    }
+
+    public func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws {
+        guard !update.isEmpty else { return }
+        if let colorHex = update.colorHex, !HexColor.isValid(colorHex) { throw ToppingError.invalidTextColor }
+        try await toppingRepository.updateText(update, textID: textID, groupID: groupID, parfaitID: parfaitID)
+    }
+
+    public func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws {
+        try await toppingRepository.deleteText(textID: textID, groupID: groupID, parfaitID: parfaitID)
+    }
+
     /// 좌표는 캔버스를 벗어나도 보정하지 않는다(제품 정책). 테두리 값만 범위를 지킨다.
     private static func validate(_ border: ToppingBorderStyle) throws {
         guard case .solid(let colorHex, let width) = border else { return }
@@ -91,4 +117,6 @@ public struct ToppingUseCaseImpl: ToppingUseCase {
 public enum ToppingError: Error, Equatable {
     case invalidBorderColor
     case invalidBorderWidth
+    case blankText
+    case invalidTextColor
 }

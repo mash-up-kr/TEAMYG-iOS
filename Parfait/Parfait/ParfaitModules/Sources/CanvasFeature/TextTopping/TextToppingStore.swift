@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/14/26.
 //
 
+import CanvasDomain
 import Common
 import CoreGraphics
 import Observation
@@ -16,8 +17,8 @@ import UIComponent
 final class TextToppingStore: MVIStore {
     private(set) var state: State
 
-    @ObservationIgnored private let eventChannel = EventChannel<Event>()
-    private let dependencies: Dependencies
+    @ObservationIgnored let eventChannel = EventChannel<Event>()
+    let dependencies: Dependencies
 
     init(state: State = State(), dependencies: Dependencies) {
         self.state = state
@@ -34,6 +35,8 @@ final class TextToppingStore: MVIStore {
         case .screenAppeared:
             dependencies.logAnalyticsEvent(.screenView(.canvasText))
         case .textChanged(let text):
+            // 쌓은 텍스트의 내용은 고칠 수 없다 (제품 정책) — 입력창도 막지만 여기서 한 번 더 지킨다.
+            guard state.editing == nil else { return }
             state.text = TextToppingLayout.limited(text)
             refitFontSize()
         case .canvasResized(let canvasSize):
@@ -64,25 +67,26 @@ final class TextToppingStore: MVIStore {
         case .confirmTapped, .editingEnded:
             finishInput()
         case .transformBegan:
-            // 손가락 아래에 있는 입력 자리에서 이어 움직인다 — 이전 배치 자리로 돌아가면 손가락에서 떨어져 튀었다.
-            finishInput(placement: state.inputPlacement)
+            // 새 텍스트: 손가락 아래에 있는 입력 자리에서 이어 움직인다 — 이전 배치 자리로 돌아가면 손가락에서 떨어져 튀었다.
+            // 수정: 쌓아 둔 자리·배율로 돌아가 이어 간다 — 입력 자리(배율 1)에서 이어 가면 쌓아 둔 크기를 잃는다.
+            finishInput(placement: state.editing == nil ? state.inputPlacement : nil)
         case .placementCommitted(let draft):
             guard let placement = state.placement else { return }
             state.placement = draft.applied(to: placement, in: state.canvasSize)
         case .arrangedTextTapped:
             state.phase = .input
         case .deleteTapped:
-            // ponytail: 새 텍스트만 다루는 1차 범위 — 지우면 남는 게 없어 바로 닫는다. 수정 흐름(3차)에서 삭제 표시로 바꾼다.
-            requestDismiss()
+            // 새 텍스트는 지우면 남는 게 없어 바로 닫는다. 쌓아 둔 텍스트는 지운 표시만 하고 `[캔버스에 쌓기]` 때 반영한다.
+            if state.editing == nil { requestDismiss() } else { state.isDeleted = true }
         case .closeTapped:
-            state.showsExitPopup = true
+            if state.hasChanges { state.showsExitPopup = true } else { requestDismiss() }
         case .exitPopupVisibilityChanged(let isPresented):
             state.showsExitPopup = isPresented
         case .discardTapped:
             requestDismiss()
         case .stackTapped:
             dependencies.logAnalyticsEvent(.canvasTextStackTapped(groupID: String(dependencies.groupID)))
-            // ⚠️ 2차: 서버 텍스트 API 가 생기면 여기서 저장한다.
+            if let editing = state.editing { saveEdit(of: editing) } else { saveText() }
         }
     }
 
@@ -99,22 +103,66 @@ final class TextToppingStore: MVIStore {
             return
         }
 
-        state.arrangedText = TextToppingLayout
-            .lines(of: state.text, fontSize: state.displayFontSize, maxWidth: state.canvasSize.width)
-            .joined(separator: "\n")
+        // 쌓아 둔 텍스트는 받은 개행 그대로 둔다 — 글자 크기가 기본값으로 돌아와 있어 다시 감싸면 줄이 바뀐다.
+        if state.editing == nil {
+            state.arrangedText = TextToppingLayout
+                .lines(of: state.text, fontSize: state.displayFontSize, maxWidth: state.canvasSize.width)
+                .joined(separator: "\n")
+        }
         // 새 텍스트의 "원래 자리" 는 입력 중 보이던 자리 — 키보드가 내려가며 튀지 않는다.
         state.placement = placement ?? state.placement ?? state.inputPlacement
         state.phase = .arrange
     }
 
-    private func requestDismiss() {
+    /// 배치한 텍스트를 서버에 쌓고, 성공하면 닫는다 — 닫히면 캔버스가 다시 조회해 새 텍스트를 그린다.
+    private func saveText() {
+        // 이미 저장 중이면 조용히 무시한다 — 진행 중인 저장을 실패로 보고하면 안 된다.
+        guard !state.isSaving else { return }
+        guard let draft = state.textDraft(zOrder: dependencies.nextZOrder),
+              let parfaitID = dependencies.parfaitID
+        else {
+            eventChannel.send(.saveFailed)
+            return
+        }
+
+        save { dependencies in
+            let placed = try await dependencies.toppingUseCase.placeText(
+                draft,
+                groupID: dependencies.groupID,
+                parfaitID: parfaitID
+            )
+            return .saved(CanvasStore.CanvasText(placed))
+        }
+    }
+
+    /// 저장 중엔 화면을 막고, 성공하면 캔버스에 바로 반영한 뒤 닫는다.
+    func save(_ operation: @escaping @Sendable (Dependencies) async throws -> TextToppingChange) {
+        state.isSaving = true
+        Task { [weak self, dependencies] in
+            do {
+                let change = try await operation(dependencies)
+                guard let self else { return }
+                state.isSaving = false
+                dependencies.onChange(change)
+                requestDismiss()
+            } catch {
+                guard let self else { return }
+                state.isSaving = false
+                eventChannel.send(.saveFailed)
+            }
+        }
+    }
+
+    func requestDismiss() {
         guard !state.isDismissing else { return }
         state.isDismissing = true
         eventChannel.send(.dismissRequested)
     }
 
     private func refitFontSize() {
-        guard state.phase == .input, state.canvasScale > 0, state.textAreaHeight > 0 else { return }
+        // 쌓아 둔 텍스트는 크기가 이미 `scale` 에 담겨 있다 — 다시 줄이면 이중으로 작아진다.
+        guard state.editing == nil, state.phase == .input, state.canvasScale > 0, state.textAreaHeight > 0
+        else { return }
 
         let maxFontSize = TextToppingLayout.maximumFontSize * state.canvasScale
         let fittingFontSize = TextToppingLayout.fittingFontSize(
@@ -156,6 +204,11 @@ extension TextToppingStore {
         var arrangedText = ""
         /// 배치 위치·핀치 배율·회전. 처음 키보드를 내릴 때 정해진다.
         var placement: ToppingPlacement?
+        var isSaving = false
+        /// 쌓아 둔 내 텍스트를 고치는 중이면 그 원래 값.
+        var editing: TextToppingEditing?
+        /// 고치는 중 모서리 X 로 지운 표시 — `[캔버스에 쌓기]` 때 서버에서 지운다.
+        var isDeleted = false
 
         var isBlank: Bool {
             TextToppingLayout.isBlank(text)
@@ -194,6 +247,25 @@ extension TextToppingStore {
             case .arrange: placement ?? inputPlacement
             }
         }
+
+        /// 서버에 보낼 텍스트. 배치를 마친(키보드를 한 번 내린) 뒤에만 만들 수 있다.
+        /// 글자 크기는 기본 크기 × `scale` 로만 전하므로 자동 축소분을 핀치 배율에 합친다.
+        func textDraft(zOrder: Int) -> TextDraft? {
+            guard let placement, !isBlank else { return nil }
+            return TextDraft(
+                text: arrangedText,
+                placement: ToppingPlacementValues(
+                    positionX: placement.positionX,
+                    positionY: placement.positionY,
+                    positionZ: zOrder,
+                    scale: placement.scale * Double(designFontSize) / PlacedText.baseFontSize,
+                    rotation: placement.rotationDegrees
+                ),
+                colorHex: color.textHex,
+                isFill: type.hasFill,
+                isStroke: type.hasStroke
+            )
+        }
     }
 
     enum Phase: Equatable {
@@ -205,10 +277,17 @@ extension TextToppingStore {
 
     enum Event: Sendable {
         case dismissRequested
+        case saveFailed
     }
 
     struct Dependencies: Sendable {
         let groupID: Int
+        let parfaitID: Int?
+        /// 새 텍스트를 맨 위(이미지·텍스트 전체)에 얹을 `positionZ`. 화면을 연 시점의 캔버스 기준.
+        let nextZOrder: Int
+        let toppingUseCase: any ToppingUseCase
+        /// 저장을 마친 결과를 캔버스에 바로 넘긴다.
+        let onChange: @MainActor @Sendable (TextToppingChange) -> Void
         let logAnalyticsEvent: AnalyticsEventLogger
     }
 

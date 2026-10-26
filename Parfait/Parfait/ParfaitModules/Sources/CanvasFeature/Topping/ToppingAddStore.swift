@@ -668,10 +668,9 @@ private extension ToppingAddStore {
         return (pngData, scaleFactor)
     }
 
-    /// 새 토핑은 항상 맨 위에 얹는다.
+    /// 새 토핑은 항상 맨 위(텍스트 포함)에 얹는다.
     var nextZOrder: Int {
-        let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
-        return Int(highest.rounded()) + 1
+        state.canvasContent?.nextZOrder ?? 1
     }
 }
 

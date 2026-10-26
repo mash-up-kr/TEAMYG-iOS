@@ -20,6 +20,8 @@ struct TextToppingBox: View {
     let color: TextToppingColor
     let type: TextToppingType
     let alignment: TextToppingAlignment
+    /// false 면 키보드는 올라와도(툴바로 색·타입을 고르려고) 글은 바뀌지 않는다 — 쌓아 둔 텍스트 수정.
+    let allowsTextChange: Bool
     let isEditing: Bool
     /// 입력 중 캔버스 크기. 있으면 입력창을 이 크기로 고정한다 (너비 = 줄바꿈 너비) — 글자·줄마다 입력창 크기가 바뀌면
     /// 그 프레임에 커서 자리를 못 구해 커서가 입력창 왼쪽 위 점으로 깜빡였다 (실기기 120Hz).
@@ -41,7 +43,12 @@ struct TextToppingBox: View {
 
         ZStack {
             if type.hasFill {
-                background
+                TextToppingBackground(
+                    boxSize: boxSize,
+                    fontSize: fontSize,
+                    fillHex: color.fillHex,
+                    strokeHex: type.hasStroke ? color.textHex : nil
+                )
             }
 
             if text.isEmpty {
@@ -66,6 +73,7 @@ struct TextToppingBox: View {
                 fontSize: fontSize,
                 color: UIColor(Color(hex: color.textHex)),
                 alignment: alignment.textAlignment,
+                allowsTextChange: allowsTextChange,
                 textInset: textInset,
                 // 키운 입력창이 박스 밖 탭(입력 닫기)을 가로채지 않게 터치는 박스 자리에서만 받는다.
                 touchRect: inputCanvasSize == nil ? nil : CGRect(
@@ -98,22 +106,6 @@ struct TextToppingBox: View {
         return CGSize(width: horizontal, height: (canvasSize.height - textSize.height) / 2)
     }
 
-    private var background: some View {
-        let borderWidth = TextToppingLayout.borderWidth(fontSize: fontSize)
-
-        return Rectangle()
-            .fill(Color(hex: color.fillHex))
-            .overlay {
-                if type.hasStroke {
-                    // 테두리는 박스 바깥쪽으로 두른다.
-                    Rectangle()
-                        .strokeBorder(Color(hex: color.textHex), lineWidth: borderWidth)
-                        .padding(-borderWidth)
-                }
-            }
-            .frame(width: boxSize.width, height: boxSize.height)
-    }
-
     private var placeholder: some View {
         Text(TextToppingLayout.placeholder)
             .font(Font(UIFont.suit(size: fontSize)))
@@ -122,6 +114,32 @@ struct TextToppingBox: View {
             .lineLimit(1)
             .fixedSize()
             .allowsHitTesting(false)
+    }
+}
+
+/// 네모배경(Fill·Fill+Stroke). 입력 화면과 캔버스가 같은 모양을 쓴다.
+struct TextToppingBackground: View {
+    let boxSize: CGSize
+    /// 화면 pt, 핀치 배율 포함
+    let fontSize: CGFloat
+    let fillHex: String
+    /// `nil` 이면 테두리 없음
+    let strokeHex: String?
+
+    var body: some View {
+        let borderWidth = TextToppingLayout.borderWidth(fontSize: fontSize)
+
+        Rectangle()
+            .fill(Color(hex: fillHex))
+            .overlay {
+                if let strokeHex {
+                    // 테두리는 박스 바깥쪽으로 두른다.
+                    Rectangle()
+                        .strokeBorder(Color(hex: strokeHex), lineWidth: borderWidth)
+                        .padding(-borderWidth)
+                }
+            }
+            .frame(width: boxSize.width, height: boxSize.height)
     }
 }
 

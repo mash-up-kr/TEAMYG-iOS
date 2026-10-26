@@ -21,6 +21,12 @@ extension CanvasStore {
             nametagChip = topping.placedBy.nametagChip
             placedAt = topping.createdAt
         }
+
+        init(_ text: PlacedText) {
+            nickname = text.placedBy.nickname
+            nametagChip = text.placedBy.nametagChip
+            placedAt = text.createdAt
+        }
     }
 
     public struct SpotlightToast: Equatable, Sendable {

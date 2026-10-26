@@ -16,6 +16,7 @@ struct CanvasToppingEditBoard: View {
 
     let background: CanvasStore.CanvasBackground
     let toppings: [CanvasEditStore.EditableTopping]
+    let texts: [CanvasStore.CanvasText]
     let selectedToppingID: Int?
     let onToppingTap: (Int) -> Void
     let onPlacementChange: (Int, ToppingPlacement) -> Void
@@ -28,8 +29,10 @@ struct CanvasToppingEditBoard: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack {
+                // ponytail: 텍스트는 편집 대상이 아니라 배경과 함께 남의 사진 아래에 깐다 — 사진과의 z 순서는 이 화면에서만 무시.
+                // 텍스트 편집(3차)이 붙으면 토핑 스택과 합친다.
                 CanvasContentView(
-                    content: CanvasStore.CanvasContent(background: background, images: [])
+                    content: CanvasStore.CanvasContent(background: background, texts: texts)
                 )
 
                 toppingStack(otherToppings, canvasSize: proxy.size)

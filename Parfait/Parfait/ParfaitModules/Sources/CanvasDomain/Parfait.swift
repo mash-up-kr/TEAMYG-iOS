@@ -19,10 +19,11 @@ public struct Parfait: Identifiable, Equatable, Sendable {
     public let members: [ParfaitMember]
     public let background: ParfaitBackground?
     public let toppings: [PlacedTopping]
+    public let texts: [PlacedText]
 
-    /// 배경도 토핑도 없는 캔버스. C-001-Empty 판정 기준이다.
+    /// 배경도 토핑(이미지·텍스트)도 없는 캔버스. C-001-Empty 판정 기준이다.
     public var isEmpty: Bool {
-        background == nil && toppings.isEmpty
+        background == nil && toppings.isEmpty && texts.isEmpty
     }
 
     public init(
@@ -33,7 +34,8 @@ public struct Parfait: Identifiable, Equatable, Sendable {
         lastClosedDate: ParfaitDate?,
         members: [ParfaitMember],
         background: ParfaitBackground?,
-        toppings: [PlacedTopping]
+        toppings: [PlacedTopping],
+        texts: [PlacedText] = []
     ) {
         self.id = id
         self.groupName = groupName
@@ -43,6 +45,7 @@ public struct Parfait: Identifiable, Equatable, Sendable {
         self.members = members
         self.background = background
         self.toppings = toppings.sorted { $0.positionZ < $1.positionZ }
+        self.texts = texts.sorted { $0.positionZ < $1.positionZ }
     }
 }
 

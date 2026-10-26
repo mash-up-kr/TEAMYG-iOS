@@ -21,6 +21,7 @@ struct CanvasContentView: View {
     let content: CanvasStore.CanvasContent
     var spotlightedToppingID: Int?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
+    var onTextTap: ((CanvasStore.CanvasText) -> Void)?
     var onDimTap: (() -> Void)?
     /// 토핑 이미지 다운로드 결과 — 로딩 딤(C-001-Loading)이 전부 모일 때까지 기다린다.
     var onToppingImageLoaded: ((Int) -> Void)?
@@ -30,6 +31,7 @@ struct CanvasContentView: View {
         content: CanvasStore.CanvasContent,
         spotlightedToppingID: Int? = nil,
         onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
+        onTextTap: ((CanvasStore.CanvasText) -> Void)? = nil,
         onDimTap: (() -> Void)? = nil,
         onToppingImageLoaded: ((Int) -> Void)? = nil,
         onToppingImageLoadFailed: ((Int) -> Void)? = nil
@@ -37,6 +39,7 @@ struct CanvasContentView: View {
         self.content = content
         self.spotlightedToppingID = spotlightedToppingID
         self.onImageTap = onImageTap
+        self.onTextTap = onTextTap
         self.onDimTap = onDimTap
         self.onToppingImageLoaded = onToppingImageLoaded
         self.onToppingImageLoadFailed = onToppingImageLoadFailed
@@ -58,22 +61,32 @@ struct CanvasContentView: View {
                         .zIndex(Self.dimZIndex)
                 }
 
-                ForEach(Array(content.images.enumerated()), id: \.element.id) { order, canvasImage in
-                    CanvasPlacedImage(
-                        canvasImage: canvasImage,
-                        canvasSize: proxy.size,
-                        onTap: imageTapAction(for: canvasImage),
-                        onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
-                        onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
-                    )
-                    .zIndex(zIndex(for: canvasImage, order: order))
+                ForEach(Array(content.layers.enumerated()), id: \.element.id) { order, layer in
+                    switch layer {
+                    case .image(let canvasImage):
+                        CanvasPlacedImage(
+                            canvasImage: canvasImage,
+                            canvasSize: proxy.size,
+                            onTap: imageTapAction(for: canvasImage),
+                            onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
+                            onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
+                        )
+                        .zIndex(zIndex(for: canvasImage, order: order))
+                    case .text(let canvasText):
+                        CanvasPlacedText(
+                            canvasText: canvasText,
+                            canvasSize: proxy.size,
+                            onTap: onTextTap.map { onTextTap in { onTextTap(canvasText) } }
+                        )
+                        .zIndex(Double(order))
+                    }
                 }
             }
         }
         .clipped()
     }
 
-    /// `content.images` 는 `positionZ` 오름차순으로 정렬돼 있다 — 배열 순서가 곧 쌓임 순서다.
+    /// `content.layers` 는 `positionZ` 오름차순으로 정렬돼 있다 — 배열 순서가 곧 쌓임 순서다.
     private func zIndex(for canvasImage: CanvasStore.CanvasImage, order: Int) -> Double {
         canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : Double(order)
     }

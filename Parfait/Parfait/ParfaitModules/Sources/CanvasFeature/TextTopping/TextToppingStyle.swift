@@ -46,6 +46,15 @@ enum TextToppingColor: CaseIterable, Sendable {
     }
 }
 
+extension TextToppingColor {
+    /// 서버에 저장된 글자색으로 칩을 찾는다. 대소문자는 가리지 않는다.
+    init?(textHex: String) {
+        guard let color = Self.allCases.first(where: { $0.textHex.caseInsensitiveCompare(textHex) == .orderedSame })
+        else { return nil }
+        self = color
+    }
+}
+
 /// 툴바 [타입] 버튼이 탭마다 순환하는 배경 타입.
 enum TextToppingType: Sendable {
     case plain
@@ -57,6 +66,15 @@ enum TextToppingType: Sendable {
         case .plain: .fill
         case .fill: .fillStroke
         case .fillStroke: .plain
+        }
+    }
+
+    /// 서버 `isFill`·`isStroke`. 앱이 만들지 않는 조합(테두리만)은 `plain` 으로 그린다.
+    init(isFill: Bool, isStroke: Bool) {
+        switch (isFill, isStroke) {
+        case (true, true): self = .fillStroke
+        case (true, false): self = .fill
+        default: self = .plain
         }
     }
 

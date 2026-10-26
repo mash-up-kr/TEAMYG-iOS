@@ -110,7 +110,8 @@ struct CanvasBackgroundEditView: View {
             CanvasContentView(
                 content: CanvasStore.CanvasContent(
                     background: store.state.background,
-                    images: store.state.activeToppings.map(\.canvasImage)
+                    images: store.state.activeToppings.map(\.canvasImage),
+                    texts: store.state.texts
                 )
             )
         }

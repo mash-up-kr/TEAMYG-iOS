@@ -76,6 +76,7 @@ struct CanvasToppingEditView: View {
         CanvasToppingEditBoard(
             background: store.state.background,
             toppings: store.state.activeToppings,
+            texts: store.state.texts,
             selectedToppingID: store.state.selectedToppingID,
             onToppingTap: { store.send(.toppingTapped($0)) },
             onPlacementChange: {

@@ -67,4 +67,23 @@ public struct ToppingRepositoryImpl: ToppingRepository {
             DeleteToppingEndpoint(groupID: groupID, parfaitID: parfaitID, toppingID: toppingID)
         )
     }
+
+    public func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText {
+        let dto: ParfaitTextDTO = try await networkClient.request(
+            PlaceTextEndpoint(groupID: groupID, parfaitID: parfaitID, draft: draft)
+        )
+        return dto.toEntity()
+    }
+
+    public func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws {
+        let _: EmptyDTO = try await networkClient.request(
+            UpdateTextEndpoint(groupID: groupID, parfaitID: parfaitID, textID: textID, update: update)
+        )
+    }
+
+    public func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws {
+        let _: EmptyDTO = try await networkClient.request(
+            DeleteTextEndpoint(groupID: groupID, parfaitID: parfaitID, textID: textID)
+        )
+    }
 }

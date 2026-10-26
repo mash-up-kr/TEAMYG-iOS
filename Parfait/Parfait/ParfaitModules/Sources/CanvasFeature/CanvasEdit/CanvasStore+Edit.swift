@@ -9,7 +9,8 @@ public extension CanvasStore {
     enum ToppingAddSource: Hashable, Identifiable, Sendable {
         case camera(canvasDate: CalendarDate)
         case gallery(canvasDate: CalendarDate)
-        case text(canvasDate: CalendarDate)
+        /// `editingTextID` 가 있으면 내 텍스트를 고치러 들어간 경우.
+        case text(canvasDate: CalendarDate, editingTextID: Int? = nil)
 
         public var id: Self { self }
     }

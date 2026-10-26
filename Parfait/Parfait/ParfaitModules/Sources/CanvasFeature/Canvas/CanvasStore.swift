@@ -33,6 +33,8 @@ public final class CanvasStore: MVIStore {
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
     /// Spotlight Toast 문구에만 쓰는 작성자 정보 — 렌더링 모델(`CanvasImage`)과 분리해 둔다.
     private var toppingAuthorsByID: [Int: ToppingAuthor] = [:]
+    /// 텍스트 id 는 이미지와 따로 매겨져 겹칠 수 있어 따로 든다.
+    private var textAuthorsByID: [Int: ToppingAuthor] = [:]
     /// 마지막으로 보낸 `screen_view`. 하위 화면이 떠 있던 동안은 `nil` — 돌아오면 다시 보낸다.
     @ObservationIgnored private var loggedScreenName: AnalyticsEvent.ScreenName?
 
@@ -85,6 +87,12 @@ public final class CanvasStore: MVIStore {
             refreshCanvasSilently()
         case .toppingTapped(let toppingID):
             handleToppingTap(toppingID)
+        case .textTapped(let textID):
+            handleTextTap(textID)
+        case .textToppingChanged(let change):
+            // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다 — 고친 텍스트가 잠깐 예전 모습으로 비치지 않게.
+            state.canvasContent = (state.canvasContent ?? .empty).applying(change)
+            if state.contentState == .empty { state.contentState = .filled }
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
         case .toppingImageLoadFailed(let toppingID):
@@ -257,6 +265,7 @@ public final class CanvasStore: MVIStore {
         state.failedToppingImageIDs = []
         state.awaitedToppingImageIDs = []
         toppingAuthorsByID = [:]
+        textAuthorsByID = [:]
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
         state.parfaitID = nil
@@ -375,6 +384,29 @@ private extension CanvasStore {
         }
     }
 
+    /// 내 텍스트는 C-106 배치 상태로 열어 고치고, 남의 텍스트는 작성자 토스트만 띄운다 (진입·Spotlight 없음).
+    func handleTextTap(_ textID: Int) {
+        guard state.spotlightedToppingID == nil,
+              let text = state.canvasContent?.texts.first(where: { $0.id == textID })
+        else { return }
+        state.calendar.close()
+        state.menuState = .collapsed
+
+        if text.isMine, !state.isClosedCanvas {
+            guard state.parfaitID != nil else {
+                eventChannel.send(.canvasNotReady)
+                return
+            }
+            state.toppingAddSource = .text(
+                canvasDate: CalendarDate(canvasDayContaining: dependencies.now()),
+                editingTextID: textID
+            )
+        } else {
+            guard let author = textAuthorsByID[textID] else { return }
+            eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
+        }
+    }
+
     func loadInitialDataIfNeeded() {
         guard !didLoadInitialData else { return }
         didLoadInitialData = true
@@ -450,11 +482,13 @@ private extension CanvasStore {
             state.contentState = .empty
             state.canvasContent = nil
             toppingAuthorsByID = [:]
+            textAuthorsByID = [:]
             return
         }
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
         toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
+        textAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.texts.map { ($0.id, ToppingAuthor($0)) })
     }
 
     func cancelTasks() {

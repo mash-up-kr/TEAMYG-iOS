@@ -19,7 +19,7 @@ public struct CanvasImageExporter: Sendable {
     private static let renderScale: CGFloat = 3
     /// 배경 사진은 저장본 픽셀 크기(1920)보다 조금 여유 있게 받아 둔다.
     private static let backgroundLongEdgePixelSize = 2160
-    /// 영상 저장본 — 토핑이 `toppingAppearWindow` 안에서 배열 순서대로 하나씩 튀어나오고, 남은 시간은 완성본을 보여 준다.
+    /// 영상 저장본 — 토핑(이미지·텍스트)이 `toppingAppearWindow` 안에서 쌓인 순서대로 하나씩 튀어나오고, 남은 시간은 완성본을 보여 준다.
     private static let videoDuration: Double = 2
     private static let videoFramesPerSecond: Int32 = 30
     private static let toppingAppearWindow: Double = 1.5
@@ -34,14 +34,14 @@ public struct CanvasImageExporter: Sendable {
     }
 
     func image(of content: CanvasStore.CanvasContent) async -> UIImage? {
-        guard let (background, toppings) = await prepared(content) else { return nil }
-        return await renderImage(background: background, toppings: toppings)
+        guard let (background, layers) = await prepared(content) else { return nil }
+        return await renderImage(background: background, layers: layers)
     }
 
     /// 2초짜리 mp4 를 임시 폴더에 쓰고 그 주소를 돌려준다. 파일 정리는 받는 쪽 몫이다.
     func video(of content: CanvasStore.CanvasContent) async -> URL? {
-        guard let (background, toppings) = await prepared(content) else { return nil }
-        return await renderVideo(background: background, toppings: toppings)
+        guard let (background, layers) = await prepared(content) else { return nil }
+        return await renderVideo(background: background, layers: layers)
     }
 
     /// 토핑별 등장 진행도(0...1). `count` 개를 `toppingAppearWindow` 에 고르게 나눠 차례로 띄운다.
@@ -52,16 +52,25 @@ public struct CanvasImageExporter: Sendable {
         }
     }
 
+    /// 이미지만 내려받는다 — 텍스트는 받을 것이 없어 그대로 끼워 넣는다.
     private func prepared(
         _ content: CanvasStore.CanvasContent
-    ) async -> (PreparedBackground, [PreparedTopping])? {
+    ) async -> (PreparedBackground, [PreparedLayer])? {
         async let loadedBackground = preparedBackground(content.background)
         async let loadedToppings = preparedToppings(content.images)
 
         guard let background = await loadedBackground,
               let toppings = await loadedToppings
         else { return nil }
-        return (background, toppings)
+
+        let toppingsByID = Dictionary(uniqueKeysWithValues: toppings.map { ($0.id, $0) })
+        let layers = content.layers.compactMap { layer -> PreparedLayer? in
+            switch layer {
+            case .image(let canvasImage): toppingsByID[canvasImage.id].map(PreparedLayer.image)
+            case .text(let canvasText): .text(canvasText)
+            }
+        }
+        return (background, layers)
     }
 
     private func preparedToppings(
@@ -80,25 +89,25 @@ public struct CanvasImageExporter: Sendable {
                 }
                 prepared.append(topping)
             }
-            return prepared.sorted { $0.canvasImage.positionZ < $1.canvasImage.positionZ }
+            return prepared
         }
     }
 
     @MainActor
-    private func renderImage(background: PreparedBackground, toppings: [PreparedTopping]) -> UIImage? {
-        renderer(background: background, toppings: toppings).uiImage
+    private func renderImage(background: PreparedBackground, layers: [PreparedLayer]) -> UIImage? {
+        renderer(background: background, layers: layers).uiImage
     }
 
     @MainActor
     private func renderer(
         background: PreparedBackground,
-        toppings: [PreparedTopping],
+        layers: [PreparedLayer],
         toppingProgresses: [Double]? = nil
     ) -> ImageRenderer<CanvasSnapshotView> {
         let renderer = ImageRenderer(
             content: CanvasSnapshotView(
                 background: background,
-                toppings: toppings,
+                layers: layers,
                 toppingProgresses: toppingProgresses,
                 canvasSize: Self.canvasSize
             )
@@ -109,7 +118,7 @@ public struct CanvasImageExporter: Sendable {
     }
 
     @MainActor
-    private func renderVideo(background: PreparedBackground, toppings: [PreparedTopping]) async -> URL? {
+    private func renderVideo(background: PreparedBackground, layers: [PreparedLayer]) async -> URL? {
         let pixelSize = CGSize(
             width: Self.canvasSize.width * Self.renderScale,
             height: Self.canvasSize.height * Self.renderScale
@@ -125,12 +134,12 @@ public struct CanvasImageExporter: Sendable {
 
         for frameIndex in 0..<frameCount {
             let time = Double(frameIndex) / Double(Self.videoFramesPerSecond)
-            let progresses = Self.toppingProgresses(count: toppings.count, at: time)
+            let progresses = Self.toppingProgresses(count: layers.count, at: time)
             // 토핑이 다 나온 뒤처럼 그림이 그대로면 다시 그리지 않는다.
             if progresses != previousProgresses {
                 previousFrame = renderer(
                     background: background,
-                    toppings: toppings,
+                    layers: layers,
                     toppingProgresses: progresses
                 ).cgImage
                 previousProgresses = progresses
@@ -213,12 +222,33 @@ private struct PreparedTopping: Identifiable {
     var id: Int { canvasImage.id }
 }
 
+/// 저장본에 쌓는 한 장 — `positionZ` 오름차순으로 넘긴다.
+private enum PreparedLayer: Identifiable {
+    case image(PreparedTopping)
+    case text(CanvasStore.CanvasText)
+
+    var id: CanvasLayer.LayerID {
+        switch self {
+        case .image(let topping): .image(topping.id)
+        case .text(let canvasText): .text(canvasText.id)
+        }
+    }
+
+    /// 등장 애니메이션의 축이 되는 중심 (캔버스 대비 0~1).
+    var center: UnitPoint {
+        switch self {
+        case .image(let topping): UnitPoint(x: topping.canvasImage.positionX, y: topping.canvasImage.positionY)
+        case .text(let canvasText): UnitPoint(x: canvasText.positionX, y: canvasText.positionY)
+        }
+    }
+}
+
 /// 저장본 한 장. 이미지를 모두 받아 둔 뒤에 그리므로 `CanvasContentView` 와 달리 비동기 로딩이 없다 —
 /// `ImageRenderer` 는 `task` 를 기다려 주지 않는다.
 private struct CanvasSnapshotView: View {
     let background: PreparedBackground
-    let toppings: [PreparedTopping]
-    /// 영상 프레임일 때 토핑별 등장 진행도(0...1, `toppings` 와 같은 순서). `nil` 이면 전부 다 보인다.
+    let layers: [PreparedLayer]
+    /// 영상 프레임일 때 토핑별 등장 진행도(0...1, `layers` 와 같은 순서). `nil` 이면 전부 다 보인다.
     let toppingProgresses: [Double]?
     let canvasSize: CGSize
 
@@ -227,12 +257,12 @@ private struct CanvasSnapshotView: View {
             backgroundLayer
 
             // 이미 positionZ 오름차순으로 정렬해 넘긴다 — 배열 순서가 곧 쌓임 순서다.
-            ForEach(Array(toppings.enumerated()), id: \.element.id) { order, topping in
+            ForEach(Array(layers.enumerated()), id: \.element.id) { order, layer in
                 let progress = toppingProgresses?[order] ?? 1
-                toppingLayer(topping)
+                layerView(layer)
                     .opacity(progress)
-                    // `CanvasToppingLayer` 가 캔버스 전체를 차지하고 `position` 으로 놓이므로 토핑 중심을 축으로 키운다.
-                    .scaleEffect(0.6 + 0.4 * Self.easeOutBack(progress), anchor: anchor(of: topping))
+                    // 토핑 뷰가 캔버스 전체를 차지하고 `position` 으로 놓이므로 토핑 중심을 축으로 키운다.
+                    .scaleEffect(0.6 + 0.4 * Self.easeOutBack(progress), anchor: layer.center)
                     .zIndex(Double(order))
             }
         }
@@ -255,11 +285,6 @@ private struct CanvasSnapshotView: View {
         }
     }
 
-    private func anchor(of topping: PreparedTopping) -> UnitPoint {
-        let center = ToppingPlacement(topping.canvasImage).center(in: canvasSize)
-        return UnitPoint(x: center.x / canvasSize.width, y: center.y / canvasSize.height)
-    }
-
     /// 살짝 넘쳤다 돌아오는 팝 느낌.
     private static func easeOutBack(_ progress: Double) -> Double {
         let overshoot = 1.70158
@@ -267,14 +292,20 @@ private struct CanvasSnapshotView: View {
         return 1 + (overshoot + 1) * pow(shifted, 3) + overshoot * pow(shifted, 2)
     }
 
-    private func toppingLayer(_ topping: PreparedTopping) -> some View {
-        CanvasToppingLayer(
-            topping: topping.image,
-            silhouette: topping.silhouette,
-            borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
-            borderWidth: topping.canvasImage.border.map { CGFloat($0.width) } ?? 0,
-            placement: ToppingPlacement(topping.canvasImage),
-            canvasSize: canvasSize
-        )
+    @ViewBuilder
+    private func layerView(_ layer: PreparedLayer) -> some View {
+        switch layer {
+        case .image(let topping):
+            CanvasToppingLayer(
+                topping: topping.image,
+                silhouette: topping.silhouette,
+                borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
+                borderWidth: topping.canvasImage.border.map { CGFloat($0.width) } ?? 0,
+                placement: ToppingPlacement(topping.canvasImage),
+                canvasSize: canvasSize
+            )
+        case .text(let canvasText):
+            CanvasPlacedText(canvasText: canvasText, canvasSize: canvasSize)
+        }
     }
 }

@@ -28,7 +28,8 @@ extension ParfaitDTO {
             lastClosedDate: lastClosedDate.flatMap(ParfaitDate.init(isoText:)),
             members: groupMembers.map { $0.toEntity() },
             background: try background?.toEntity(),
-            toppings: try (images ?? []).map { try $0.toEntity() }
+            toppings: try (images ?? []).map { try $0.toEntity() },
+            texts: (texts ?? []).map { $0.toEntity() }
         )
     }
 }
@@ -83,6 +84,27 @@ extension ParfaitImageDTO {
             scale: scale,
             rotation: rotation,
             border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
+            placedBy: placedBy?.toEntity() ?? .unknown,
+            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
+            createdAt: ServerDateTime.parse(createdAt)
+        )
+    }
+}
+
+extension ParfaitTextDTO {
+    /// 색 형식이 깨졌으면 색만 떨어뜨린다 — 텍스트 하나 때문에 캔버스 전체 조회를 실패시키지 않는다.
+    func toEntity() -> PlacedText {
+        PlacedText(
+            id: parfaitTextId,
+            text: text,
+            positionX: positionX,
+            positionY: positionY,
+            positionZ: positionZ,
+            scale: scale,
+            rotation: rotation,
+            colorHex: HexColor.isValid(color) ? color : nil,
+            isFill: isFill,
+            isStroke: isStroke,
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
             createdAt: ServerDateTime.parse(createdAt)

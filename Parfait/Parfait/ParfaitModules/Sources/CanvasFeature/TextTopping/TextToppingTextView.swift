@@ -17,6 +17,8 @@ struct TextToppingTextView: UIViewRepresentable {
     let fontSize: CGFloat
     let color: UIColor
     let alignment: NSTextAlignment
+    /// false 면 입력·붙여넣기·지우기를 모두 막는다.
+    let allowsTextChange: Bool
     /// 프레임 안 글자 영역 여백 (textContainerInset). 줄바꿈 너비 = 프레임 너비 − 좌우 여백.
     let textInset: UIEdgeInsets
     /// 터치를 받는 영역 (텍스트 뷰 좌표). nil 이면 전체.
@@ -176,6 +178,7 @@ struct TextToppingTextView: UIViewRepresentable {
             shouldChangeTextIn range: NSRange,
             replacementText replacement: String
         ) -> Bool {
+            guard parent.allowsTextChange else { return false }
             // 조합 중 입력은 막지 않는다 — 조합이 끝난 뒤 `textViewDidChange` 에서 자른다.
             guard textView.markedTextRange == nil, !replacement.isEmpty else { return true }
 
