@@ -72,9 +72,6 @@ final class TextToppingStore: MVIStore {
             state.placement = draft.applied(to: placement, in: state.canvasSize)
         case .arrangedTextTapped:
             state.phase = .input
-        case .deleteTapped:
-            // 지우면 남는 게 없어 바로 닫는다.
-            requestDismiss()
         case .closeTapped:
             state.showsExitPopup = true
         case .exitPopupVisibilityChanged(let isPresented):
@@ -299,7 +296,6 @@ extension TextToppingStore {
         case transformBegan
         case placementCommitted(ToppingTransformDraft)
         case arrangedTextTapped
-        case deleteTapped
         case closeTapped
         case exitPopupVisibilityChanged(Bool)
         case discardTapped

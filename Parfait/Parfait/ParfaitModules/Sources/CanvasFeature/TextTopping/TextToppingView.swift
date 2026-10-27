@@ -266,7 +266,7 @@ struct TextToppingView: View {
 
             if !isInput {
                 arrangeControls(placement: placement, boxSize: boxSize)
-                    // 박스가 제자리에 오기 전엔 모서리 X 를 숨긴다.
+                    // 박스가 제자리에 오기 전엔 포커스 테두리를 숨긴다.
                     .opacity(isTransitioning ? 0 : 1)
             }
         }
@@ -275,7 +275,7 @@ struct TextToppingView: View {
         .position(x: canvasFrame.midX, y: canvasFrame.midY)
     }
 
-    /// 배치 상태 — 캔버스 전체 제스처 면 + 모서리 X.
+    /// 배치 상태 — 캔버스 전체 제스처 면 + 포커스 테두리 (토핑 편집 화면과 같은 점선).
     @ViewBuilder
     private func arrangeControls(placement: ToppingPlacement, boxSize: CGSize) -> some View {
         let canvasSize = state.canvasSize
@@ -292,19 +292,10 @@ struct TextToppingView: View {
             onCommit: { store.send(.placementCommitted($0)) }
         )
 
-        Button { store.send(.deleteTapped) } label: {
-            ToppingHandleIcon(.icClose)
-        }
-        .buttonStyle(.plain)
-        .position(
-            placement.handleCenter(
-                horizontal: -1,
-                vertical: -1,
-                frameSize: ToppingSelectionFrame.size(around: boxSize),
-                cornerOffset: ToppingHandle.cornerOffset,
-                in: canvasSize
-            )
-        )
+        ToppingSelectionFrame(renderedSize: boxSize)
+            .rotationEffect(.degrees(placement.rotationDegrees))
+            .position(placement.center(in: canvasSize))
+            .allowsHitTesting(false)
     }
 
     // MARK: - 입력 도구
