@@ -75,6 +75,20 @@ final class CanvasEditStore: MVIStore {
                 state.selectedToppingID = nil
                 state.isBorderPanelExpanded = false
             }
+        case .textTapped(let textID):
+            selectText(textID)
+        case .textPlacementChanged(let textID, let placement):
+            updateText(textID) { $0.placement = placement }
+        case .textDeleteTapped(let textID):
+            updateText(textID) { $0.isDeleted = true }
+            if state.selectedTextID == textID {
+                state.selectedTextID = nil
+            }
+        case .emptyAreaTapped:
+            guard state.saveState != .saving else { return }
+            state.selectedToppingID = nil
+            state.selectedTextID = nil
+            state.isBorderPanelExpanded = false
         case .borderWidthChanged(let width):
             updateBorderPanelTopping { $0.border.width = width }
         case .borderColorSelected(let color):
@@ -111,6 +125,7 @@ final class CanvasEditStore: MVIStore {
         }
         state.isBorderPanelExpanded = state.selectedToppingID == toppingID
         state.selectedToppingID = toppingID
+        state.selectedTextID = nil
     }
 
     private func updateBorderPanelTopping(_ update: (inout EditableTopping) -> Void) {
@@ -137,6 +152,26 @@ final class CanvasEditStore: MVIStore {
         guard let index = state.toppings.firstIndex(where: { $0.id == toppingID }) else { return }
         update(&state.toppings[index])
     }
+
+    private func selectText(_ textID: Int) {
+        guard state.saveState != .saving,
+              let text = state.texts.first(where: { $0.id == textID }),
+              !text.isDeleted
+        else { return }
+
+        guard text.isMine else {
+            eventChannel.send(.otherTextSelected)
+            return
+        }
+        state.selectedTextID = textID
+        state.selectedToppingID = nil
+        state.isBorderPanelExpanded = false
+    }
+
+    private func updateText(_ textID: Int, update: (inout EditableText) -> Void) {
+        guard let index = state.texts.firstIndex(where: { $0.id == textID }) else { return }
+        update(&state.texts[index])
+    }
 }
 
 extension CanvasEditStore {
@@ -157,6 +192,7 @@ extension CanvasEditStore {
                 try await savePlacementChanges()
                 try await saveBorderChanges()
                 try await saveDeletions()
+                try await saveTextDeletions()
                 state.saveState = .idle
                 dependencies.onSaved()
             } catch is CancellationError {
@@ -213,22 +249,32 @@ extension CanvasEditStore {
         state.savedBackground = state.background
     }
 
+    /// 이미지·텍스트 위치는 한 요청으로 보낸다.
     private func savePlacementChanges() async throws {
         let updates = Dictionary(
             uniqueKeysWithValues: state.toppings
                 .filter { !$0.isDeleted && $0.hasPlacementChanges }
                 .map { ($0.id, $0.placementUpdate) }
         )
+        let textUpdates = Dictionary(
+            uniqueKeysWithValues: state.texts
+                .filter { !$0.isDeleted && $0.hasPlacementChanges }
+                .map { ($0.id, $0.placementUpdate) }
+        )
 
-        guard !updates.isEmpty else { return }
+        guard !updates.isEmpty || !textUpdates.isEmpty else { return }
 
         try await dependencies.toppingUseCase.updatePlacements(
             updates,
+            textUpdates: textUpdates,
             groupID: dependencies.groupID,
             parfaitID: dependencies.parfaitID
         )
         for toppingID in updates.keys {
             updateTopping(toppingID) { $0.savedPlacement = $0.placement }
+        }
+        for textID in textUpdates.keys {
+            updateText(textID) { $0.savedPlacement = $0.placement }
         }
     }
 
@@ -264,6 +310,18 @@ extension CanvasEditStore {
         }
     }
 
+    private func saveTextDeletions() async throws {
+        try await saveConcurrently(state.texts.filter(\.isDeleted).map(\.id)) { [dependencies] textID in
+            try await dependencies.toppingUseCase.deleteText(
+                textID: textID,
+                groupID: dependencies.groupID,
+                parfaitID: dependencies.parfaitID
+            )
+        } promote: { textID in
+            state.texts.removeAll { $0.id == textID }
+        }
+    }
+
 }
 
 /// 편집 중에도 10초마다 오늘 캔버스를 다시 받아 **읽기 전용 부분만** 맞춘다.
@@ -294,7 +352,18 @@ extension CanvasEditStore {
             state.background = content.background
         }
 
-        state.texts = content.texts
+        let editingTexts = state.texts
+        state.texts = content.texts.map { text in
+            // 내 텍스트도 이 기기에서만 바뀐다 — 위치·스타일·삭제 예정 초안을 그대로 지킨다.
+            if let mine = editingTexts.first(where: { $0.id == text.id && $0.isMine }) {
+                return mine
+            }
+            return EditableText(text)
+        }
+        if let selectedTextID = state.selectedTextID,
+           !state.texts.contains(where: { $0.id == selectedTextID && !$0.isDeleted }) {
+            state.selectedTextID = nil
+        }
 
         let editingToppings = state.toppings
         state.toppings = content.images.map { image in

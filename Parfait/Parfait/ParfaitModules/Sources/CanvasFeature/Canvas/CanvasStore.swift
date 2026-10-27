@@ -89,9 +89,9 @@ public final class CanvasStore: MVIStore {
             handleToppingTap(toppingID)
         case .textTapped(let textID):
             handleTextTap(textID)
-        case .textToppingChanged(let change):
-            // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다 — 고친 텍스트가 잠깐 예전 모습으로 비치지 않게.
-            state.canvasContent = (state.canvasContent ?? .empty).applying(change)
+        case .textToppingSaved(let text):
+            // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다.
+            state.canvasContent = (state.canvasContent ?? .empty).adding(text)
             if state.contentState == .empty { state.contentState = .filled }
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
@@ -384,7 +384,7 @@ private extension CanvasStore {
         }
     }
 
-    /// 내 텍스트는 C-106 배치 상태로 열어 고치고, 남의 텍스트는 작성자 토스트만 띄운다 (진입·Spotlight 없음).
+    /// 내 텍스트는 사진과 같은 토핑 편집 화면으로 열고, 남의 텍스트는 작성자 토스트만 띄운다 (진입·Spotlight 없음).
     func handleTextTap(_ textID: Int) {
         guard state.spotlightedToppingID == nil,
               let text = state.canvasContent?.texts.first(where: { $0.id == textID })
@@ -397,10 +397,7 @@ private extension CanvasStore {
                 eventChannel.send(.canvasNotReady)
                 return
             }
-            state.toppingAddSource = .text(
-                canvasDate: CalendarDate(canvasDayContaining: dependencies.now()),
-                editingTextID: textID
-            )
+            state.canvasEditDestination = .toppings(selectedTextID: textID)
         } else {
             guard let author = textAuthorsByID[textID] else { return }
             eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))

@@ -9,7 +9,7 @@ import Foundation
 
 /// 캔버스에 놓인 텍스트. 위치·배율·회전은 이미지 토핑과 같은 기준이고 `positionZ` 도 같은 축을 쓴다.
 /// 서버 `fontSize` 는 쓰지 않는다 — 글자 크기는 기본 크기 × `scale` 로만 정한다.
-/// 내용은 한 번 쌓으면 고칠 수 없다 (제품 정책).
+/// 한 번 쌓으면 위치·크기·회전만 바꿀 수 있다 — 내용·색·타입·정렬은 고칠 수 없다 (제품 정책).
 public struct PlacedText: Identifiable, Equatable, Sendable {
     public let id: Int
     /// 받은 그대로 그린다. 줄바꿈은 작성자가 박아 보낸 개행만 따른다.
@@ -86,33 +86,6 @@ public struct TextDraft: Equatable, Sendable {
         self.isFill = isFill
         self.isStroke = isStroke
         self.alignment = alignment
-    }
-}
-
-/// 텍스트 편집 요청. 값이 있는 필드만 서버로 보낸다. 내용은 고칠 수 없어 필드가 없다.
-public struct TextUpdate: Equatable, Sendable {
-    public var placement: ToppingPlacementUpdate
-    public var colorHex: String?
-    public var isFill: Bool?
-    public var isStroke: Bool?
-    public var alignment: PlacedTextAlignment?
-
-    public init(
-        placement: ToppingPlacementUpdate = ToppingPlacementUpdate(),
-        colorHex: String? = nil,
-        isFill: Bool? = nil,
-        isStroke: Bool? = nil,
-        alignment: PlacedTextAlignment? = nil
-    ) {
-        self.placement = placement
-        self.colorHex = colorHex
-        self.isFill = isFill
-        self.isStroke = isStroke
-        self.alignment = alignment
-    }
-
-    public var isEmpty: Bool {
-        self == TextUpdate()
     }
 }
 

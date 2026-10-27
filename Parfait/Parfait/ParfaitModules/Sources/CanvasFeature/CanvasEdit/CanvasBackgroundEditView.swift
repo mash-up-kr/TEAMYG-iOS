@@ -97,7 +97,7 @@ struct CanvasBackgroundEditView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "편집 내용을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
-                case .otherToppingSelected:
+                case .otherToppingSelected, .otherTextSelected:
                     break
                 }
             }
@@ -111,7 +111,7 @@ struct CanvasBackgroundEditView: View {
                 content: CanvasStore.CanvasContent(
                     background: store.state.background,
                     images: store.state.activeToppings.map(\.canvasImage),
-                    texts: store.state.texts
+                    texts: store.state.activeTexts.map { $0.canvasText(placement: $0.placement) }
                 )
             )
         }

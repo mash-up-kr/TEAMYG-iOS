@@ -21,8 +21,6 @@ struct TextToppingBox: View {
     let color: TextToppingColor
     let type: TextToppingType
     let alignment: PlacedTextAlignment
-    /// false 면 키보드는 올라와도(툴바로 색·타입을 고르려고) 글은 바뀌지 않는다 — 쌓아 둔 텍스트 수정.
-    let allowsTextChange: Bool
     let isEditing: Bool
     /// 입력 중 캔버스 크기. 있으면 입력창을 이 크기로 고정한다 (너비 = 줄바꿈 너비) — 글자·줄마다 입력창 크기가 바뀌면
     /// 그 프레임에 커서 자리를 못 구해 커서가 입력창 왼쪽 위 점으로 깜빡였다 (실기기 120Hz).
@@ -74,7 +72,6 @@ struct TextToppingBox: View {
                 fontSize: fontSize,
                 color: UIColor(Color(hex: color.textHex)),
                 alignment: alignment.textAlignment,
-                allowsTextChange: allowsTextChange,
                 textInset: textInset,
                 // 키운 입력창이 박스 밖 탭(입력 닫기)을 가로채지 않게 터치는 박스 자리에서만 받는다.
                 touchRect: inputCanvasSize == nil ? nil : CGRect(

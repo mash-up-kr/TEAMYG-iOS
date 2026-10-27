@@ -63,10 +63,7 @@ struct TextToppingView: View {
                         .onTapGesture { sendChangingPhase(.outsideTapped) }
                 }
 
-                // 고치던 텍스트를 지운 표시면 박스·모서리 X 를 걷는다 — 반영은 `[캔버스에 쌓기]` 때.
-                if !state.isDeleted {
-                    textLayer
-                }
+                textLayer
             }
             .ignoresSafeArea()
 
@@ -246,7 +243,6 @@ struct TextToppingView: View {
                 color: state.color,
                 type: state.displayType,
                 alignment: state.alignment,
-                allowsTextChange: state.editing == nil,
                 // 키보드는 이 값으로만 올리고 내린다 — 닫으며 따로 내리면 다음 뷰 갱신에서 다시 올라왔다.
                 isEditing: isInput && !state.isDismissing,
                 inputCanvasSize: isInput ? canvasSize : nil,

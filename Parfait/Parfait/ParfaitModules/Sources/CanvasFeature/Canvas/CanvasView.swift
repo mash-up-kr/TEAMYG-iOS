@@ -130,10 +130,8 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
             case .gallery(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
-            case .text(_, let editingTextID):
-                textToppingFlow(editing: editingTextID.flatMap { textID in
-                    store.state.canvasContent?.texts.first { $0.id == textID }
-                })
+            case .text:
+                textToppingFlow()
             }
         }
         .fullScreenCover(item: canvasEditDestinationBinding) { destination in
@@ -210,16 +208,15 @@ public struct CanvasView: View {
     }
 
     /// C-001 캔버스 자리만 뚫린 채 위에 겹쳐 뜬다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
-    private func textToppingFlow(editing text: CanvasStore.CanvasText?) -> some View {
+    private func textToppingFlow() -> some View {
         TextToppingView(
             store: TextToppingStore(
-                state: text.map(TextToppingStore.State.init(editing:)) ?? TextToppingStore.State(),
                 dependencies: .init(
                     groupID: store.groupID,
                     parfaitID: store.state.parfaitID,
                     nextZOrder: store.state.canvasContent?.nextZOrder ?? 1,
                     toppingUseCase: toppingUseCase,
-                    onChange: { [store] in store.send(.textToppingChanged($0)) },
+                    onSaved: { [store] in store.send(.textToppingSaved($0)) },
                     logAnalyticsEvent: store.logAnalyticsEvent
                 )
             ),
@@ -271,7 +268,8 @@ public struct CanvasView: View {
                     dateText: store.state.dateText,
                     weekdayText: store.state.weekdayText,
                     canvasContent: store.state.canvasContent ?? .empty,
-                    selectedToppingID: destination.selectedToppingID
+                    selectedToppingID: destination.selectedToppingID,
+                    selectedTextID: destination.selectedTextID
                 ),
                 dependencies: .init(
                     groupID: store.groupID,
@@ -281,7 +279,7 @@ public struct CanvasView: View {
                     imageUploadRepository: imageUploadRepository,
                     onDismiss: { store.send(.canvasEditFlowDismissed) },
                     onSaved: { store.send(.canvasEditSaved) },
-                    isToppingEdit: destination.selectedToppingID != nil,
+                    isToppingEdit: destination != .background,
                     logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )

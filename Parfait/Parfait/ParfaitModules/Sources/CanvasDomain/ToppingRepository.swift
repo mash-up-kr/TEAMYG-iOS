@@ -18,6 +18,7 @@ public protocol ToppingRepository: Sendable {
 
     func updatePlacements(
         _ updates: [Int: ToppingPlacementUpdate],
+        textUpdates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
     ) async throws
@@ -35,9 +36,6 @@ public protocol ToppingRepository: Sendable {
 
     /// 텍스트를 캔버스에 배치한다.
     func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText
-
-    /// 텍스트의 위치·크기·회전·색·타입을 바꾼다.
-    func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws
 
     /// 텍스트를 지운다.
     func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws

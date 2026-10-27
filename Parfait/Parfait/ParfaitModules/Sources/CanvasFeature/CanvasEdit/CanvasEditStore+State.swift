@@ -16,9 +16,10 @@ extension CanvasEditStore {
         var savedBackground: CanvasStore.CanvasBackground
         var background: CanvasStore.CanvasBackground
         var toppings: [EditableTopping]
-        /// 편집 화면에선 읽기 전용 — 10초 갱신 때 통째로 바꾼다.
-        var texts: [CanvasStore.CanvasText]
+        var texts: [EditableText]
+        /// 이미지·텍스트 id 는 서버에서 따로 매겨져 겹칠 수 있어 선택도 따로 둔다. 둘 중 하나만 값이 있다.
         var selectedToppingID: Int?
+        var selectedTextID: Int?
         var isBorderPanelExpanded = false
         var backgroundImageSource: BackgroundImagePickerStore.PhotoSource?
         var selectedBackgroundImageSource: BackgroundImagePickerStore.PhotoSource?
@@ -30,15 +31,17 @@ extension CanvasEditStore {
             dateText: String,
             weekdayText: String,
             canvasContent: CanvasStore.CanvasContent,
-            selectedToppingID: Int? = nil
+            selectedToppingID: Int? = nil,
+            selectedTextID: Int? = nil
         ) {
             self.dateText = dateText
             self.weekdayText = weekdayText
             savedBackground = canvasContent.background
             background = canvasContent.background
             toppings = canvasContent.images.map(EditableTopping.init)
-            texts = canvasContent.texts
+            texts = canvasContent.texts.map(EditableText.init)
             self.selectedToppingID = toppings.first { $0.id == selectedToppingID && $0.isMine }?.id
+            self.selectedTextID = texts.first { $0.id == selectedTextID && $0.isMine }?.id
         }
 
         var selectedColorHex: String? {
@@ -57,6 +60,10 @@ extension CanvasEditStore {
             toppings.filter { !$0.isDeleted }
         }
 
+        var activeTexts: [EditableText] {
+            texts.filter { !$0.isDeleted }
+        }
+
         var selectedTopping: EditableTopping? {
             guard let selectedToppingID else { return nil }
             return toppings.first { $0.id == selectedToppingID && $0.isMine && !$0.isDeleted }
@@ -67,7 +74,9 @@ extension CanvasEditStore {
         }
 
         var hasChanges: Bool {
-            background != savedBackground || toppings.contains(where: \.hasChanges)
+            background != savedBackground
+                || toppings.contains(where: \.hasChanges)
+                || texts.contains(where: \.hasChanges)
         }
     }
 
@@ -127,6 +136,60 @@ extension CanvasEditStore {
         }
     }
 
+    /// 쌓아 둔 텍스트. 위치·크기·회전만 바꾸거나 지울 수 있다 — 내용·색·타입·정렬은 고칠 수 없다 (제품 정책).
+    struct EditableText: Equatable, Identifiable, Sendable {
+        let saved: CanvasStore.CanvasText
+        var savedPlacement: ToppingPlacement
+        var placement: ToppingPlacement
+        var isDeleted = false
+
+        init(_ canvasText: CanvasStore.CanvasText) {
+            saved = canvasText
+            savedPlacement = ToppingPlacement(
+                positionX: canvasText.positionX,
+                positionY: canvasText.positionY,
+                scale: canvasText.scale,
+                rotationDegrees: canvasText.rotation
+            )
+            placement = savedPlacement
+        }
+
+        var id: Int { saved.id }
+        var isMine: Bool { saved.isMine }
+        var positionZ: Double { saved.positionZ }
+
+        func canvasText(placement: ToppingPlacement) -> CanvasStore.CanvasText {
+            CanvasStore.CanvasText(
+                id: saved.id,
+                text: saved.text,
+                positionX: placement.positionX,
+                positionY: placement.positionY,
+                positionZ: saved.positionZ,
+                scale: placement.scale,
+                rotation: placement.rotationDegrees,
+                textHex: saved.textHex,
+                fillHex: saved.fillHex,
+                type: saved.type,
+                alignment: saved.alignment,
+                isMine: saved.isMine
+            )
+        }
+
+        var hasPlacementChanges: Bool { placement != savedPlacement }
+        var hasChanges: Bool { isDeleted || hasPlacementChanges }
+
+        var placementUpdate: ToppingPlacementUpdate {
+            ToppingPlacementUpdate(
+                positionX: placement.positionX == savedPlacement.positionX ? nil : placement.positionX,
+                positionY: placement.positionY == savedPlacement.positionY ? nil : placement.positionY,
+                scale: placement.scale == savedPlacement.scale ? nil : placement.scale,
+                rotation: placement.rotationDegrees == savedPlacement.rotationDegrees
+                    ? nil
+                    : placement.rotationDegrees
+            )
+        }
+    }
+
     struct Dependencies: Sendable {
         let groupID: Int
         let parfaitID: Int
@@ -149,6 +212,7 @@ extension CanvasEditStore {
 
     enum Event: Sendable {
         case otherToppingSelected
+        case otherTextSelected
         case saveFailed
     }
 
@@ -169,6 +233,11 @@ extension CanvasEditStore {
         case toppingTapped(Int)
         case toppingPlacementChanged(toppingID: Int, placement: ToppingPlacement)
         case toppingDeleteTapped(Int)
+        case textTapped(Int)
+        case textPlacementChanged(textID: Int, placement: ToppingPlacement)
+        case textDeleteTapped(Int)
+        /// 보드에서 사진·텍스트가 없는 곳을 탭했다.
+        case emptyAreaTapped
         case borderWidthChanged(Double)
         case borderColorSelected(ToppingBorderColor)
         case borderPanelExpandTapped

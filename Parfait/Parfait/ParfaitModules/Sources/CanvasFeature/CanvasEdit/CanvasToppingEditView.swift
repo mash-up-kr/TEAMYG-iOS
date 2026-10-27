@@ -63,6 +63,8 @@ struct CanvasToppingEditView: View {
                 switch event {
                 case .otherToppingSelected:
                     toasts = [YGToastItem(kind: .warning, message: "다른 사람의 사진은 편집할 수 없어요")]
+                case .otherTextSelected:
+                    toasts = [YGToastItem(kind: .warning, message: "다른 사람의 텍스트는 편집할 수 없어요")]
                 case .saveFailed:
                     toasts.append(
                         YGToastItem(kind: .error, message: "편집 내용을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
@@ -76,17 +78,25 @@ struct CanvasToppingEditView: View {
         CanvasToppingEditBoard(
             background: store.state.background,
             toppings: store.state.activeToppings,
-            texts: store.state.texts,
+            texts: store.state.activeTexts,
             selectedToppingID: store.state.selectedToppingID,
+            selectedTextID: store.state.selectedTextID,
             onToppingTap: { store.send(.toppingTapped($0)) },
             onPlacementChange: {
                 store.send(.toppingPlacementChanged(toppingID: $0, placement: $1))
             },
             onDeleteTap: { store.send(.toppingDeleteTapped($0)) },
+            onTextTap: { store.send(.textTapped($0)) },
+            onTextPlacementChange: {
+                store.send(.textPlacementChanged(textID: $0, placement: $1))
+            },
+            onTextDeleteTap: { store.send(.textDeleteTapped($0)) },
+            onEmptyTap: { store.send(.emptyAreaTapped) },
             onBorderPanelDismiss: store.state.borderPanelTopping == nil ? nil : { store.send(.borderPanelClosed) }
         )
     }
 
+    /// 테두리는 사진만 바꿀 수 있다 — 사진을 골랐을 때만 핸들을 띄운다.
     @ViewBuilder
     private var borderPanel: some View {
         if let topping = store.state.borderPanelTopping {
@@ -96,9 +106,8 @@ struct CanvasToppingEditView: View {
                 onColorSelect: { store.send(.borderColorSelected($0)) },
                 onCollapseTap: { store.send(.borderPanelClosed) }
             )
-        } else {
+        } else if store.state.selectedTopping != nil {
             ToppingBorderPanelHandle(onExpandTap: { store.send(.borderPanelExpandTapped) })
-                .disabled(store.state.selectedTopping == nil)
         }
     }
 }

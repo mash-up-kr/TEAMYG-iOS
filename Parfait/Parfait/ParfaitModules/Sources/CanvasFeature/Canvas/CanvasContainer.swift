@@ -31,7 +31,7 @@ struct CanvasContainer: View {
                             dateText: state.dateText,
                             weekdayText: state.weekdayText,
                             contentState: state.contentState,
-                            canvasContent: state.boardContent,
+                            canvasContent: state.canvasContent,
                             spotlightedToppingID: state.spotlightedToppingID,
                             isDimmed: state.menuState == .sourceOptions,
                             onCalendarTap: { send(.calendarTapped) },

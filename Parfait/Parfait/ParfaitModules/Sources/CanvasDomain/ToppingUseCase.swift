@@ -10,8 +10,10 @@ public protocol ToppingUseCase: Sendable {
     /// 누끼를 업로드하고 캔버스에 배치한다. 업로드 → 배치를 한 번에 처리한다.
     func place(_ draft: ToppingDraft, groupID: Int, parfaitID: Int) async throws -> PlacedTopping
 
+    /// 이미지·텍스트 위치를 한 번에 바꾼다. 키는 각각 이미지·텍스트 id.
     func updatePlacements(
         _ updates: [Int: ToppingPlacementUpdate],
+        textUpdates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
     ) async throws
@@ -29,9 +31,6 @@ public protocol ToppingUseCase: Sendable {
 
     /// 텍스트를 캔버스에 배치한다.
     func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText
-
-    /// 텍스트의 위치·크기·회전·색·타입을 바꾼다. 바뀐 것이 없으면 요청하지 않는다.
-    func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws
 
     /// 텍스트를 지운다.
     func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws
@@ -63,11 +62,17 @@ public struct ToppingUseCaseImpl: ToppingUseCase {
 
     public func updatePlacements(
         _ updates: [Int: ToppingPlacementUpdate],
+        textUpdates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
     ) async throws {
-        guard !updates.isEmpty else { return }
-        try await toppingRepository.updatePlacements(updates, groupID: groupID, parfaitID: parfaitID)
+        guard !updates.isEmpty || !textUpdates.isEmpty else { return }
+        try await toppingRepository.updatePlacements(
+            updates,
+            textUpdates: textUpdates,
+            groupID: groupID,
+            parfaitID: parfaitID
+        )
     }
 
     public func updateBorder(
@@ -94,12 +99,6 @@ public struct ToppingUseCaseImpl: ToppingUseCase {
         guard !draft.text.allSatisfy(\.isWhitespace) else { throw ToppingError.blankText }
         guard HexColor.isValid(draft.colorHex) else { throw ToppingError.invalidTextColor }
         return try await toppingRepository.placeText(draft, groupID: groupID, parfaitID: parfaitID)
-    }
-
-    public func updateText(_ update: TextUpdate, textID: Int, groupID: Int, parfaitID: Int) async throws {
-        guard !update.isEmpty else { return }
-        if let colorHex = update.colorHex, !HexColor.isValid(colorHex) { throw ToppingError.invalidTextColor }
-        try await toppingRepository.updateText(update, textID: textID, groupID: groupID, parfaitID: parfaitID)
     }
 
     public func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws {

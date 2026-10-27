@@ -116,12 +116,6 @@ public extension CanvasStore {
             return calendar.presentation == .closed ? .canvasMain : .canvasCalendar
         }
 
-        /// C-001 보드에 그릴 내용. C-106 으로 고치는 중인 텍스트는 C-106 이 그리므로 뺀다 — 뒤에서 겹쳐 보이지 않게.
-        var boardContent: CanvasContent? {
-            guard case .text(_, let editingTextID?) = toppingAddSource, let canvasContent else { return canvasContent }
-            return canvasContent.applying(.deleted(textID: editingTextID))
-        }
-
         var isClosedCanvas: Bool {
             calendar.selectedDate != calendar.today
         }
@@ -345,7 +339,7 @@ public extension CanvasStore {
         case canvasRefreshTicked
         case toppingTapped(Int)
         case textTapped(Int)
-        case textToppingChanged(TextToppingChange)
+        case textToppingSaved(CanvasText)
         case toppingImageLoaded(Int)
         case toppingImageLoadFailed(Int)
         case spotlightDismissed

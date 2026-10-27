@@ -27,24 +27,10 @@ public extension CanvasStore {
     }
 }
 
-/// C-106 이 저장을 마친 결과 — 캔버스가 재조회 전에 바로 반영해 고치기 전 모습이 비치지 않게 한다.
-public enum TextToppingChange: Sendable {
-    /// 새로 쌓았거나 고쳤다.
-    case saved(CanvasStore.CanvasText)
-    case deleted(textID: Int)
-}
-
 extension CanvasStore.CanvasContent {
-    func applying(_ change: TextToppingChange) -> Self {
-        var texts = texts
-        switch change {
-        case .saved(let text):
-            texts.removeAll { $0.id == text.id }
-            texts.append(text)
-        case .deleted(let textID):
-            texts.removeAll { $0.id == textID }
-        }
-        return Self(background: background, images: images, texts: texts)
+    /// C-106 이 쌓은 텍스트를 재조회 전에 바로 얹는다 — 닫히는 동안 캔버스에서 빠져 보이지 않게.
+    func adding(_ text: CanvasStore.CanvasText) -> Self {
+        Self(background: background, images: images, texts: texts + [text])
     }
 }
 
@@ -79,18 +65,14 @@ enum CanvasLayer: Identifiable {
 struct CanvasPlacedText: View {
     let canvasText: CanvasStore.CanvasText
     let canvasSize: CGSize
+    /// 편집 화면에서 고른 텍스트 — 사진과 같은 점선 테두리를 두른다.
+    var isSelected = false
     /// `nil` 이면 탭을 받지 않아 아래 토핑으로 넘긴다 (편집 화면·저장본).
     var onTap: (() -> Void)?
 
     var body: some View {
-        let fontSize = TextToppingLayout.maximumFontSize
-            * canvasSize.width / TextToppingLayout.designCanvasWidth
-            * CGFloat(canvasText.scale)
-        let textSize = TextToppingLayout.textSize(
-            of: canvasText.text,
-            fontSize: fontSize,
-            maxWidth: .greatestFiniteMagnitude
-        )
+        let fontSize = Self.fontSize(of: canvasText, canvasSize: canvasSize)
+        let textSize = Self.textSize(of: canvasText, fontSize: fontSize)
         let boxSize = TextToppingBox.boxSize(textSize: textSize, fontSize: fontSize, type: canvasText.type)
 
         ZStack {
@@ -106,6 +88,11 @@ struct CanvasPlacedText: View {
             lines(fontSize: fontSize)
                 .frame(width: textSize.width, height: textSize.height)
         }
+        .overlay {
+            if isSelected {
+                ToppingSelectionFrame(renderedSize: boxSize)
+            }
+        }
         // 작은 글도 누를 수 있게 터치 영역은 최소 44 — 배치 화면과 같은 기준.
         .frame(
             width: max(boxSize.width, ToppingPlacement.minimumHitLength),
@@ -116,6 +103,26 @@ struct CanvasPlacedText: View {
         .allowsHitTesting(onTap != nil)
         .rotationEffect(.degrees(canvasText.rotation))
         .position(x: canvasText.positionX * canvasSize.width, y: canvasText.positionY * canvasSize.height)
+    }
+
+    /// 네모배경까지 포함한 박스 크기 — 탭 판정·모서리 X 자리에 쓴다.
+    static func boxSize(of canvasText: CanvasStore.CanvasText, canvasSize: CGSize) -> CGSize {
+        let fontSize = fontSize(of: canvasText, canvasSize: canvasSize)
+        return TextToppingBox.boxSize(
+            textSize: textSize(of: canvasText, fontSize: fontSize),
+            fontSize: fontSize,
+            type: canvasText.type
+        )
+    }
+
+    private static func fontSize(of canvasText: CanvasStore.CanvasText, canvasSize: CGSize) -> CGFloat {
+        TextToppingLayout.maximumFontSize
+            * canvasSize.width / TextToppingLayout.designCanvasWidth
+            * CGFloat(canvasText.scale)
+    }
+
+    private static func textSize(of canvasText: CanvasStore.CanvasText, fontSize: CGFloat) -> CGSize {
+        TextToppingLayout.textSize(of: canvasText.text, fontSize: fontSize, maxWidth: .greatestFiniteMagnitude)
     }
 
     /// 줄마다 줄높이(글자 크기 × 1.4) 칸 가운데에 글리프를 둔다 — `TextToppingLayout.attributes` 의 줄높이·baselineOffset 과 같은 모양.
