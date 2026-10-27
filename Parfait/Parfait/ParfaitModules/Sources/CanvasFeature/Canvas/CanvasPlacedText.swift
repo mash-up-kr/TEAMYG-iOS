@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/26/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -21,6 +22,7 @@ public extension CanvasStore {
         let textHex: String
         let fillHex: String
         let type: TextToppingType
+        let alignment: PlacedTextAlignment
         let isMine: Bool
     }
 }
@@ -117,12 +119,11 @@ struct CanvasPlacedText: View {
     }
 
     /// 줄마다 줄높이(글자 크기 × 1.4) 칸 가운데에 글리프를 둔다 — `TextToppingLayout.attributes` 의 줄높이·baselineOffset 과 같은 모양.
-    /// ponytail: 정렬 필드가 서버에 없어 가운데 고정. 필드가 생기면 VStack 정렬만 바꾼다.
     private func lines(fontSize: CGFloat) -> some View {
         let font = Font(UIFont.suit(size: fontSize))
         let lineHeight = fontSize * TextToppingLayout.lineHeightMultiple
 
-        return VStack(spacing: 0) {
+        return VStack(alignment: canvasText.alignment.horizontalAlignment, spacing: 0) {
             ForEach(Array(canvasText.lines.enumerated()), id: \.offset) { _, line in
                 Text(line)
                     .font(font)
@@ -131,6 +132,16 @@ struct CanvasPlacedText: View {
                     .fixedSize()
                     .frame(height: lineHeight)
             }
+        }
+    }
+}
+
+private extension PlacedTextAlignment {
+    var horizontalAlignment: HorizontalAlignment {
+        switch self {
+        case .left: .leading
+        case .center: .center
+        case .right: .trailing
         }
     }
 }

@@ -23,6 +23,7 @@ public struct PlacedText: Identifiable, Equatable, Sendable {
     public let colorHex: String?
     public let isFill: Bool
     public let isStroke: Bool
+    public let alignment: PlacedTextAlignment
     public let placedBy: ParfaitMember
     public let ownerType: ToppingOwnerType
     public let createdAt: Date?
@@ -38,6 +39,7 @@ public struct PlacedText: Identifiable, Equatable, Sendable {
         colorHex: String?,
         isFill: Bool,
         isStroke: Bool,
+        alignment: PlacedTextAlignment,
         placedBy: ParfaitMember,
         ownerType: ToppingOwnerType,
         createdAt: Date?
@@ -52,6 +54,7 @@ public struct PlacedText: Identifiable, Equatable, Sendable {
         self.colorHex = colorHex
         self.isFill = isFill
         self.isStroke = isStroke
+        self.alignment = alignment
         self.placedBy = placedBy
         self.ownerType = ownerType
         self.createdAt = createdAt
@@ -67,13 +70,22 @@ public struct TextDraft: Equatable, Sendable {
     public let colorHex: String
     public let isFill: Bool
     public let isStroke: Bool
+    public let alignment: PlacedTextAlignment
 
-    public init(text: String, placement: ToppingPlacementValues, colorHex: String, isFill: Bool, isStroke: Bool) {
+    public init(
+        text: String,
+        placement: ToppingPlacementValues,
+        colorHex: String,
+        isFill: Bool,
+        isStroke: Bool,
+        alignment: PlacedTextAlignment
+    ) {
         self.text = text
         self.placement = placement
         self.colorHex = colorHex
         self.isFill = isFill
         self.isStroke = isStroke
+        self.alignment = alignment
     }
 }
 
@@ -83,22 +95,32 @@ public struct TextUpdate: Equatable, Sendable {
     public var colorHex: String?
     public var isFill: Bool?
     public var isStroke: Bool?
+    public var alignment: PlacedTextAlignment?
 
     public init(
         placement: ToppingPlacementUpdate = ToppingPlacementUpdate(),
         colorHex: String? = nil,
         isFill: Bool? = nil,
-        isStroke: Bool? = nil
+        isStroke: Bool? = nil,
+        alignment: PlacedTextAlignment? = nil
     ) {
         self.placement = placement
         self.colorHex = colorHex
         self.isFill = isFill
         self.isStroke = isStroke
+        self.alignment = alignment
     }
 
     public var isEmpty: Bool {
         self == TextUpdate()
     }
+}
+
+/// 여러 줄 텍스트의 줄 정렬. 서버가 값을 안 주면 가운데로 본다.
+public enum PlacedTextAlignment: Sendable {
+    case left
+    case center
+    case right
 }
 
 public extension PlacedText {

@@ -189,7 +189,7 @@ extension TextToppingStore {
         var text = ""
         var color = TextToppingColor.white
         var type = TextToppingType.plain
-        var alignment = TextToppingAlignment.center
+        var alignment = PlacedTextAlignment.center
         var isColorPopoverPresented = false
         var showsExitPopup = false
         /// 닫는 중 — 편집을 끄고(키보드 내림) 화면 배치를 고정한다. 닫기 요청은 한 번만 보낸다.
@@ -263,7 +263,8 @@ extension TextToppingStore {
                 ),
                 colorHex: color.textHex,
                 isFill: type.hasFill,
-                isStroke: type.hasStroke
+                isStroke: type.hasStroke,
+                alignment: alignment
             )
         }
     }

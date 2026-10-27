@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/14/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -19,7 +20,7 @@ struct TextToppingBox: View {
     let boxSize: CGSize
     let color: TextToppingColor
     let type: TextToppingType
-    let alignment: TextToppingAlignment
+    let alignment: PlacedTextAlignment
     /// false 면 키보드는 올라와도(툴바로 색·타입을 고르려고) 글은 바뀌지 않는다 — 쌓아 둔 텍스트 수정.
     let allowsTextChange: Bool
     let isEditing: Bool

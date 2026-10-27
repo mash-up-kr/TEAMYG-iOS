@@ -59,6 +59,7 @@ struct ParfaitTextDTO: Decodable, Sendable {
     let color: String
     let isFill: Bool
     let isStroke: Bool
+    let textAlign: String?
     let placedBy: PlacedByDTO?
     let createdAt: String?
 }

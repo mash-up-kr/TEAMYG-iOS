@@ -29,6 +29,7 @@ struct UpdateTextEndpoint: Endpoint {
         let color: String?
         let isFill: Bool?
         let isStroke: Bool?
+        let textAlign: String?
 
         init(_ update: TextUpdate) {
             positionX = update.placement.positionX
@@ -39,6 +40,7 @@ struct UpdateTextEndpoint: Endpoint {
             color = update.colorHex
             isFill = update.isFill
             isStroke = update.isStroke
+            textAlign = update.alignment?.serverValue
         }
     }
 }

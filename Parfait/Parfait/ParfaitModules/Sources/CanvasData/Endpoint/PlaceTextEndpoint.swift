@@ -29,6 +29,7 @@ struct PlaceTextEndpoint: Endpoint {
         let fontSize: Double
         let isFill: Bool
         let isStroke: Bool
+        let textAlign: String
 
         init(_ draft: TextDraft) {
             text = draft.text
@@ -41,6 +42,7 @@ struct PlaceTextEndpoint: Endpoint {
             fontSize = PlacedText.baseFontSize
             isFill = draft.isFill
             isStroke = draft.isStroke
+            textAlign = draft.alignment.serverValue
         }
     }
 }

@@ -105,6 +105,7 @@ extension ParfaitTextDTO {
             colorHex: HexColor.isValid(color) ? color : nil,
             isFill: isFill,
             isStroke: isStroke,
+            alignment: PlacedTextAlignment(serverValue: textAlign),
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
             createdAt: ServerDateTime.parse(createdAt)
@@ -187,6 +188,24 @@ private extension ToppingBorderStyle {
         }
         let range = Self.widthRange
         self = .solid(colorHex: colorHex, width: min(max(width, range.lowerBound), range.upperBound))
+    }
+}
+
+extension PlacedTextAlignment {
+    init(serverValue: String?) {
+        switch serverValue {
+        case "LEFT": self = .left
+        case "RIGHT": self = .right
+        default: self = .center
+        }
+    }
+
+    var serverValue: String {
+        switch self {
+        case .left: "LEFT"
+        case .center: "CENTER"
+        case .right: "RIGHT"
+        }
     }
 }
 

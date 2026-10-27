@@ -13,6 +13,7 @@ struct TextToppingEditing: Equatable {
     /// 팔레트 밖 색이면 White 로 열린다 — 비교는 열린 값 기준이라 색을 안 건드리면 보내지 않는다.
     let color: TextToppingColor
     let type: TextToppingType
+    let alignment: PlacedTextAlignment
     let placement: ToppingPlacement
 }
 
@@ -70,14 +71,25 @@ extension TextToppingStore.State {
         arrangedText = text.text
         self.color = color
         type = text.type
+        alignment = text.alignment
         self.placement = placement
-        editing = TextToppingEditing(text: text, color: color, type: text.type, placement: placement)
+        editing = TextToppingEditing(
+            text: text,
+            color: color,
+            type: text.type,
+            alignment: text.alignment,
+            placement: placement
+        )
     }
 
     /// 나가기 확인 팝업을 띄울지. 새 텍스트는 늘 있다.
     var hasChanges: Bool {
         guard let editing else { return true }
-        return isDeleted || color != editing.color || type != editing.type || placement != editing.placement
+        return isDeleted
+            || color != editing.color
+            || type != editing.type
+            || alignment != editing.alignment
+            || placement != editing.placement
     }
 
     var textUpdate: TextUpdate {
@@ -92,7 +104,8 @@ extension TextToppingStore.State {
             ),
             colorHex: color == editing.color ? nil : color.textHex,
             isFill: type == editing.type ? nil : type.hasFill,
-            isStroke: type == editing.type ? nil : type.hasStroke
+            isStroke: type == editing.type ? nil : type.hasStroke,
+            alignment: alignment == editing.alignment ? nil : alignment
         )
     }
 
@@ -110,6 +123,7 @@ extension TextToppingStore.State {
             textHex: colorChanged ? color.textHex : text.textHex,
             fillHex: colorChanged ? color.fillHex : text.fillHex,
             type: type,
+            alignment: alignment,
             isMine: text.isMine
         )
     }

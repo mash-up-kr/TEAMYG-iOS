@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/14/26.
 //
 
+import CanvasDomain
 import SwiftUI
 import UIComponent
 
@@ -15,7 +16,7 @@ struct TextToppingToolbar: View {
 
     let color: TextToppingColor
     let type: TextToppingType
-    let alignment: TextToppingAlignment
+    let alignment: PlacedTextAlignment
     let characterCount: Int
     let onColorTap: () -> Void
     let onTypeTap: () -> Void

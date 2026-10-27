@@ -94,6 +94,7 @@ extension CanvasStore.CanvasText {
             textHex: textHex,
             fillHex: (TextToppingColor(textHex: textHex) ?? .white).fillHex,
             type: TextToppingType(isFill: placedText.isFill, isStroke: placedText.isStroke),
+            alignment: placedText.alignment,
             isMine: placedText.ownerType == .currentUser
         )
     }

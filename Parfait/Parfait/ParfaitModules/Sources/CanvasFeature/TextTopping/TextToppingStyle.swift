@@ -5,6 +5,7 @@
 //  Created by 김남수 on 10/14/26.
 //
 
+import CanvasDomain
 import UIKit
 
 /// 텍스트 색 팝오버의 칩. 고른 색이 곧 글자색·테두리색이고, 배경 타입일 때만 짝지은 배경색이 붙는다
@@ -83,11 +84,7 @@ enum TextToppingType: Sendable {
 }
 
 /// 툴바 [정렬] 버튼이 탭마다 순환하는 정렬. 가운데에서 시작한다.
-enum TextToppingAlignment: Sendable {
-    case center
-    case left
-    case right
-
+extension PlacedTextAlignment {
     var next: Self {
         switch self {
         case .center: .left
