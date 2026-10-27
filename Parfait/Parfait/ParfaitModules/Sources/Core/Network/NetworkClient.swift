@@ -11,6 +11,20 @@ import Foundation
 /// 통신 담당 추상화. Data 레이어는 이 프로토콜만 주입받는다 (테스트 목 지점).
 public protocol NetworkClient: Sendable {
     func request<Response: Decodable & Sendable>(_ endpoint: some Endpoint) async throws -> Response
+
+    /// `If-None-Match` 를 붙인 조건부 요청. 서버가 304 를 주면 본문 없이 `.notModified` 를 돌려준다.
+    func request<Response: Decodable & Sendable>(
+        _ endpoint: some Endpoint,
+        ifNoneMatch etag: String?
+    ) async throws -> ConditionalResponse<Response>
+}
+
+/// 조건부 요청 결과.
+public enum ConditionalResponse<Response: Sendable>: Sendable {
+    /// 304 — 보낸 ETag 의 응답이 그대로다.
+    case notModified
+    /// 새 응답과 그 ETag (서버가 안 주면 `nil`).
+    case modified(Response, etag: String?)
 }
 
 /// Alamofire 기반 구현체.
@@ -52,6 +66,36 @@ public final class NetworkClientImpl: NetworkClient {
         switch response.result {
         case .success(let data):
             return try unwrap(data)
+        case .failure(let error):
+            throw mapFailure(error, data: response.data)
+        }
+    }
+
+    public func request<Response: Decodable & Sendable>(
+        _ endpoint: some Endpoint,
+        ifNoneMatch etag: String?
+    ) async throws -> ConditionalResponse<Response> {
+        var urlRequest = try makeURLRequest(for: endpoint)
+        urlRequest.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        // 304 를 URLCache 가 가로채지 않고 그대로 받도록 로컬 캐시를 건너뛴다.
+        urlRequest.cachePolicy = .reloadIgnoringLocalCacheData
+        let response = await session.request(
+            urlRequest,
+            interceptor: endpoint.requiresAuth ? interceptor : nil
+        )
+        .validate(statusCode: Array(200..<300) + [304])
+        .serializingData(emptyResponseCodes: [200, 204, 205, 304])
+        .response
+
+        switch response.result {
+        case .success(let data):
+            if response.response?.statusCode == 304 {
+                return .notModified
+            }
+            return .modified(
+                try unwrap(data),
+                etag: response.response?.value(forHTTPHeaderField: "ETag")
+            )
         case .failure(let error):
             throw mapFailure(error, data: response.data)
         }
