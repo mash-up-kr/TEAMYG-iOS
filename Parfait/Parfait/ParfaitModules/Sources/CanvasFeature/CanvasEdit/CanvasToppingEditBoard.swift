@@ -45,7 +45,9 @@ struct CanvasToppingEditBoard: View {
 
                 toppingStack(otherToppings, canvasSize: proxy.size)
 
+                // 딤은 캔버스와 함께 옮겨 가지 않고 페이드로 깔린다 — 한 번에 어두워지면 번쩍였다.
                 Color.black25
+                    .canvasEditChrome()
 
                 myLayerStack(canvasSize: proxy.size)
 

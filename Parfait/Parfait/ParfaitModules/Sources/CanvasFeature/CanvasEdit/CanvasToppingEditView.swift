@@ -11,6 +11,9 @@ import UIComponent
 struct CanvasToppingEditView: View {
     @State private var store: CanvasEditStore
     @State private var toasts: [YGToastItem] = []
+    /// 상단 바·버튼을 뺀 영역의 화면 좌표.
+    @State private var contentFrame: CGRect = .zero
+    @Environment(\.canvasBoardEntrance) private var entrance
     private let toppingRenderer: CanvasToppingRenderer
 
     init(store: CanvasEditStore, toppingRenderer: CanvasToppingRenderer) {
@@ -22,27 +25,40 @@ struct CanvasToppingEditView: View {
         ZStack {
             Color.whiteFixed
                 .ignoresSafeArea()
+                .canvasEditChrome()
 
-            board
-                .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
-                .overlay(alignment: .bottom) {
-                    borderPanel
-                }
-                .canvasBoardFrame()
-                .ygToastOverlay($toasts)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.horizontal, .padding7)
-                .padding(.top, .padding4)
+            if let pinnedBoardFrame {
+                boardStack
+                    .frame(width: pinnedBoardFrame.width, height: pinnedBoardFrame.height)
+                    .position(
+                        x: pinnedBoardFrame.midX - contentFrame.minX,
+                        y: pinnedBoardFrame.midY - contentFrame.minY
+                    )
+            } else {
+                boardStack
+                    .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.horizontal, .padding7)
+                    // C-001 캔버스와 위쪽 끝을 맞춘다 — 전환 중 캔버스가 위로 올라가지 않고 아래·옆으로만 줄어든다.
+                    .padding(.top, .padding6)
+            }
+        }
+        .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .global)
+        } action: { frame in
+            contentFrame = frame
         }
         .disabled(store.state.saveState == .saving)
         .safeAreaInset(edge: .top, spacing: 0) {
             YGFloatingBar(.title("배치"), onClose: { store.send(.closeTapped) })
+                .canvasEditChrome()
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGButton("캔버스에 쌓기", variant: .large) { store.send(.confirmTapped) }
                 .padding(.horizontal, .padding7)
                 .padding(.top, .padding6)
                 .padding(.bottom, .padding1)
+                .canvasEditChrome()
         }
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .canvasEditLifecycle(
@@ -72,6 +88,30 @@ struct CanvasToppingEditView: View {
                 }
             }
         }
+    }
+
+    /// C-001 캔버스와 같은 자리·크기 — 전환 중 캔버스가 움직이지 않고 주변만 페이드된다(C-106 처럼).
+    /// 그 자리에 두면 상단 바·버튼과 겹치는 기기(세로가 짧은 화면)에선 `nil` 이라 이 화면 크기에 맞춘다.
+    private var pinnedBoardFrame: CGRect? {
+        guard let frame = entrance?.sourceFrame,
+              frame.width > 0,
+              contentFrame.height > 0,
+              frame.minY >= contentFrame.minY,
+              // 버튼 위 여백(`padding6`)은 비어 있어 캔버스가 걸쳐도 된다 — 버튼 자체와만 안 겹치면 된다.
+              frame.maxY <= contentFrame.maxY + .padding6
+        else { return nil }
+        return frame
+    }
+
+    private var boardStack: some View {
+        board
+            .overlay(alignment: .bottom) {
+                borderPanel
+                    .canvasEditChrome()
+            }
+            .canvasBoardFrame()
+            .canvasBoardEntrance()
+            .ygToastOverlay($toasts)
     }
 
     private var board: some View {

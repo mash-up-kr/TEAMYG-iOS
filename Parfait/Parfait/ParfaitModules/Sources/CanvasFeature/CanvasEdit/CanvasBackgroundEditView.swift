@@ -28,13 +28,16 @@ struct CanvasBackgroundEditView: View {
         ZStack {
             Color.whiteFixed
                 .ignoresSafeArea()
+                .canvasEditChrome()
 
             VStack(spacing: 0) {
                 canvasBoard
                     .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                    .canvasBoardEntrance()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.horizontal, .padding7)
-                    .padding(.top, .padding4)
+                    // C-001 캔버스와 위쪽 끝을 맞춘다 — 전환 중 캔버스가 위로 올라가지 않고 아래·옆으로만 줄어든다.
+                    .padding(.top, .padding6)
 
                 CanvasBackgroundPalette(
                     background: store.state.background,
@@ -45,17 +48,20 @@ struct CanvasBackgroundEditView: View {
                     onColorSelect: { store.send(.colorSelected($0)) },
                     onImageSourceSelect: { store.send(.backgroundImageSourceTapped($0)) }
                 )
+                .canvasEditChrome()
             }
         }
         .disabled(store.state.saveState == .saving)
         .safeAreaInset(edge: .top, spacing: 0) {
             YGFloatingBar(.title("배경 변경"), onClose: { store.send(.closeTapped) })
+                .canvasEditChrome()
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             YGButton("저장하기", variant: .large) { store.send(.confirmTapped) }
                 .padding(.horizontal, .padding7)
                 .padding(.top, .padding6)
                 .padding(.bottom, .padding1)
+                .canvasEditChrome()
         }
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .navigationDestination(item: backgroundImageSourceBinding) { source in

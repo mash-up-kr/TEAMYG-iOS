@@ -176,8 +176,11 @@ struct CanvasPlacedImage: View {
 
     @Environment(\.canvasToppingRenderer) private var renderer
     @Environment(\.displayScale) private var displayScale
+    /// 편집 화면 전환이 이 토핑이 처음 그려질 때까지 기다린다. C-001 에선 없다.
+    @Environment(\.canvasLoadTracker) private var loadTracker
     @State private var topping: CGImage?
     @State private var silhouette: CGImage?
+    @State private var isHoldingLoadTracker = false
 
     var body: some View {
         // 토핑이 오기 전엔 `content` 가 빈 옵셔널 뷰라 `.task` 가 돌지 않는다(`EmptyView` 와 같다).
@@ -188,6 +191,18 @@ struct CanvasPlacedImage: View {
         .task(id: loadKey) {
             await load()
         }
+        .onAppear {
+            guard let loadTracker, !isHoldingLoadTracker else { return }
+            isHoldingLoadTracker = true
+            loadTracker.begin()
+        }
+        .onDisappear(perform: releaseLoadTracker)
+    }
+
+    private func releaseLoadTracker() {
+        guard isHoldingLoadTracker else { return }
+        isHoldingLoadTracker = false
+        loadTracker?.end()
     }
 
     private var loadKey: LoadKey {
@@ -235,6 +250,7 @@ struct CanvasPlacedImage: View {
 
         guard let loaded, let border = canvasImage.border, border.width > 0 else {
             silhouette = nil
+            releaseLoadTracker()
             return
         }
         let rendered = try? await renderer.silhouette(
@@ -245,6 +261,7 @@ struct CanvasPlacedImage: View {
         )
         guard !Task.isCancelled else { return }
         silhouette = rendered
+        releaseLoadTracker()
     }
 
     private var placement: ToppingPlacement {
