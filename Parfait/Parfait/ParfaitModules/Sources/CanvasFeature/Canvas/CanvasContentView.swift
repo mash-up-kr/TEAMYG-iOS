@@ -231,8 +231,7 @@ struct CanvasPlacedImage: View {
             CanvasToppingLayer(
                 topping: topping,
                 silhouette: silhouette,
-                borderColor: canvasImage.border.map { Color(hex: $0.colorHex) },
-                borderWidth: canvasImage.border.map { CGFloat($0.width) } ?? 0,
+                border: canvasImage.border,
                 placement: placement,
                 canvasSize: canvasSize,
                 isSelected: isSelected,

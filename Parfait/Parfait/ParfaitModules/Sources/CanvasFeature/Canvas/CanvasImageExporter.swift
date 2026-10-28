@@ -299,8 +299,7 @@ private struct CanvasSnapshotView: View {
             CanvasToppingLayer(
                 topping: topping.image,
                 silhouette: topping.silhouette,
-                borderColor: topping.canvasImage.border.map { Color(hex: $0.colorHex) },
-                borderWidth: topping.canvasImage.border.map { CGFloat($0.width) } ?? 0,
+                border: topping.canvasImage.border,
                 placement: ToppingPlacement(topping.canvasImage),
                 canvasSize: canvasSize
             )
