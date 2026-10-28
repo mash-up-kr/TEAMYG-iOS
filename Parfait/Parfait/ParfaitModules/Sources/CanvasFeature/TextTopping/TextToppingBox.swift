@@ -145,7 +145,7 @@ extension TextToppingBox {
     /// 비어 있으면 플레이스홀더 크기로 잡는다.
     static func textSize(of text: String, fontSize: CGFloat, wrapWidth: CGFloat) -> CGSize {
         TextToppingLayout.textSize(
-            of: text.isEmpty ? TextToppingLayout.placeholder : text,
+            of: TextToppingLayout.measuredText(text),
             fontSize: fontSize,
             maxWidth: wrapWidth
         )

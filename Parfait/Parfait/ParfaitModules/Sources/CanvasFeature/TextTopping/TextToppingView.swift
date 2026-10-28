@@ -181,10 +181,7 @@ struct TextToppingView: View {
     }
 
     private func look(of phase: TextToppingStore.Phase) -> TextToppingLook {
-        let placement = switch phase {
-        case .input: state.inputPlacement
-        case .arrange: state.placement ?? state.inputPlacement
-        }
+        let placement = state.placement(for: phase)
         return TextToppingLook(
             center: placement.center(in: state.canvasSize),
             rotationDegrees: placement.rotationDegrees,

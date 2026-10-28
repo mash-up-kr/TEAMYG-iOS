@@ -208,7 +208,7 @@ extension TextToppingStore {
 
         /// 비어 있으면 플레이스홀더 크기로 박스를 잡는다.
         var measuredText: String {
-            text.isEmpty ? TextToppingLayout.placeholder : text
+            TextToppingLayout.measuredText(text)
         }
 
         /// 디자인 pt → 화면 pt 배율.
@@ -228,6 +228,11 @@ extension TextToppingStore {
         }
 
         var displayPlacement: ToppingPlacement {
+            placement(for: phase)
+        }
+
+        /// 그 상태에서 박스가 놓이는 자리. 전환 애니메이션은 지금이 아닌 상태의 자리도 묻는다.
+        func placement(for phase: Phase) -> ToppingPlacement {
             switch phase {
             case .input: inputPlacement
             case .arrange: placement ?? inputPlacement

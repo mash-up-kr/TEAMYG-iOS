@@ -50,8 +50,7 @@ enum TextToppingColor: CaseIterable, Sendable {
 extension TextToppingColor {
     /// 서버에 저장된 글자색으로 칩을 찾는다. 대소문자는 가리지 않는다.
     init?(textHex: String) {
-        guard let color = Self.allCases.first(where: { $0.textHex.caseInsensitiveCompare(textHex) == .orderedSame })
-        else { return nil }
+        guard let color = Self.allCases.first(where: { CanvasPalette.matches($0.textHex, textHex) }) else { return nil }
         self = color
     }
 }

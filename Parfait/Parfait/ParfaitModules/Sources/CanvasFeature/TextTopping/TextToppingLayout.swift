@@ -20,6 +20,11 @@ enum TextToppingLayout {
     static let characterLimit = 100
     static let placeholder = "텍스트를 입력해 주세요"
 
+    /// 크기를 잴 글 — 비어 있으면 플레이스홀더 크기로 잡는다.
+    static func measuredText(_ text: String) -> String {
+        text.isEmpty ? placeholder : text
+    }
+
     /// 자동 크기 이진 탐색을 멈추는 정밀도(pt).
     private static let fittingPrecision: CGFloat = 0.01
 
