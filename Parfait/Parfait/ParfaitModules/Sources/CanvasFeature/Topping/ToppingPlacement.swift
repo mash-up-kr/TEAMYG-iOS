@@ -98,12 +98,10 @@ extension ToppingPlacement {
     func contains(_ point: CGPoint, renderedSize size: CGSize, canvasSize: CGSize) -> Bool {
         let placementCenter = center(in: canvasSize)
         let offset = CGSize(width: point.x - placementCenter.x, height: point.y - placementCenter.y)
-        let radians = -rotationDegrees * .pi / 180
-        let localX = offset.width * cos(radians) - offset.height * sin(radians)
-        let localY = offset.width * sin(radians) + offset.height * cos(radians)
+        let local = offset.applying(CGAffineTransform(rotationAngle: -rotationDegrees * .pi / 180))
 
-        return abs(localX) <= max(size.width, Self.minimumHitLength) / 2
-            && abs(localY) <= max(size.height, Self.minimumHitLength) / 2
+        return abs(local.width) <= max(size.width, Self.minimumHitLength) / 2
+            && abs(local.height) <= max(size.height, Self.minimumHitLength) / 2
     }
 
     func handleCenter(
@@ -117,12 +115,12 @@ extension ToppingPlacement {
             width: horizontal * (frameSize.width / 2 + cornerOffset),
             height: vertical * (frameSize.height / 2 + cornerOffset)
         )
-        let radians = rotationDegrees * .pi / 180
+        let rotatedCorner = corner.applying(CGAffineTransform(rotationAngle: rotationDegrees * .pi / 180))
         let placementCenter = center(in: canvasSize)
 
         return CGPoint(
-            x: placementCenter.x + corner.width * cos(radians) - corner.height * sin(radians),
-            y: placementCenter.y + corner.width * sin(radians) + corner.height * cos(radians)
+            x: placementCenter.x + rotatedCorner.width,
+            y: placementCenter.y + rotatedCorner.height
         )
     }
 }

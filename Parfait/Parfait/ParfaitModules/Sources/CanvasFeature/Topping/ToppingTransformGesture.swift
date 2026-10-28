@@ -37,11 +37,7 @@ struct ToppingTransformDraft: Equatable {
     mutating func rotate(byDegrees degrees: Double, pivotOffset: CGSize) {
         rotationDegrees += degrees
 
-        let radians = CGFloat(degrees * .pi / 180)
-        let rotatedOffset = CGSize(
-            width: pivotOffset.width * cos(radians) - pivotOffset.height * sin(radians),
-            height: pivotOffset.width * sin(radians) + pivotOffset.height * cos(radians)
-        )
+        let rotatedOffset = pivotOffset.applying(CGAffineTransform(rotationAngle: CGFloat(degrees * .pi / 180)))
         translation.width += rotatedOffset.width - pivotOffset.width
         translation.height += rotatedOffset.height - pivotOffset.height
     }
