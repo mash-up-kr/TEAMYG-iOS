@@ -44,7 +44,6 @@ public final class InviteCodeStore: MVIStore {
             state.inviteCode = ""
             state.phase = .idle
         case .pasted(let pastedString):
-            logAnalyticsEvent(.groupListInviteCodePasted)
             applyPastedString(pastedString)
         case .confirmTapped:
             beginJoinRequest()
@@ -76,7 +75,9 @@ public final class InviteCodeStore: MVIStore {
 
     /// 붙여넣은 문자열이 공유 형식이면 초대코드를 채운다 — 실패 상태였다면 함께 해제.
     private func applyPastedString(_ pastedString: String) {
+        // 진입·복귀마다 클립보드를 자동으로 읽으므로, 초대코드를 실제로 채웠을 때만 집계한다.
         guard let inviteCode = Self.inviteCode(fromPastedString: pastedString) else { return }
+        logAnalyticsEvent(.groupListInviteCodePasted)
         state.inviteCode = inviteCode
         if state.isFailed {
             state.phase = .idle
