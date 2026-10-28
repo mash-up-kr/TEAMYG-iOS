@@ -13,6 +13,7 @@ struct ToppingAddFlowView: View {
     @State private var toasts: [YGToastItem] = []
     @State private var areaSelectionToasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     private let toppingRenderer: CanvasToppingRenderer
 
@@ -112,7 +113,7 @@ struct ToppingAddFlowView: View {
         case .cameraPermissionError:
             CameraErrorScreen.permissionDenied(
                 onCloseTap: { store.send(.closeTapped) },
-                onSettingsTap: { store.send(.settingsTapped) }
+                onSettingsTap: openURL.openAppSettings
             )
 
         case .cameraUnavailable:

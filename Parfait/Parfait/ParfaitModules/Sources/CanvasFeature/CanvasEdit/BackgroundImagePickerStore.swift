@@ -59,8 +59,6 @@ final class BackgroundImagePickerStore: MVIStore {
             prepareGalleryPhoto(assetIdentifier: assetIdentifier)
         case .cameraRetryTapped:
             camera.prepare()
-        case .settingsTapped:
-            openSystemSettings()
         case .closeTapped:
             guard state.screen == .cameraConfirmation else {
                 dependencies.onClose()
@@ -121,13 +119,6 @@ final class BackgroundImagePickerStore: MVIStore {
                 return
             }
             dependencies.onImageSelected(jpegData, source)
-        }
-    }
-
-    private func openSystemSettings() {
-        Task {
-            guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-            await UIApplication.shared.open(settingsURL)
         }
     }
 }

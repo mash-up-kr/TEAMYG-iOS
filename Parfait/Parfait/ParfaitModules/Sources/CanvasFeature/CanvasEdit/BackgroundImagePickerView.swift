@@ -11,6 +11,7 @@ import UIComponent
 struct BackgroundImagePickerView: View {
     @State private var store: BackgroundImagePickerStore
     @State private var toasts: [YGToastItem] = []
+    @Environment(\.openURL) private var openURL
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
 
@@ -75,7 +76,7 @@ struct BackgroundImagePickerView: View {
         case .cameraPermissionError:
             CameraErrorScreen.permissionDenied(
                 onCloseTap: { store.send(.closeTapped) },
-                onSettingsTap: { store.send(.settingsTapped) }
+                onSettingsTap: openURL.openAppSettings
             )
 
         case .cameraUnavailable:

@@ -50,8 +50,7 @@ public struct AlbumView: View {
                         message: "설정에서 사진 접근 권한을 허용해 주세요",
                         buttonTitle: "설정으로 이동"
                     ) {
-                        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-                        openURL(settingsURL)
+                        openURL.openAppSettings()
                     }
                 case .notDetermined, nil:
                     Color.clear // 시스템 권한 팝업 대기

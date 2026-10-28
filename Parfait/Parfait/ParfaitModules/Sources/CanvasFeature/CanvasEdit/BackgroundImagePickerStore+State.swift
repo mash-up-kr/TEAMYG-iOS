@@ -73,7 +73,6 @@ extension BackgroundImagePickerStore {
         case camera(CameraCaptureScreen.Action)
         case galleryPhotoConfirmed(assetIdentifier: String)
         case cameraRetryTapped
-        case settingsTapped
         case closeTapped
         case quitPopupVisibilityChanged(Bool)
         case quitConfirmed

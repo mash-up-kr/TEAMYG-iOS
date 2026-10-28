@@ -111,8 +111,6 @@ final class ToppingAddStore: MVIStore {
             openRecentUpload(upload)
         case .cameraRetryTapped:
             camera.prepare()
-        case .settingsTapped:
-            openSystemSettings()
         case .analysisCancelled:
             cancelAnalysis()
             eventChannel.send(.dismissRequested)
@@ -592,13 +590,6 @@ private extension ToppingAddStore {
             proceedWithCapturedPhoto()
         case .closeTapped:
             requestQuit()
-        }
-    }
-
-    func openSystemSettings() {
-        Task {
-            guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-            await UIApplication.shared.open(settingsURL)
         }
     }
 }

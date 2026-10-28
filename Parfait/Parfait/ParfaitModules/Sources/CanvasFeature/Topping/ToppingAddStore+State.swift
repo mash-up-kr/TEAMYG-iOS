@@ -78,7 +78,6 @@ extension ToppingAddStore {
         case galleryPhotoConfirmed(assetIdentifier: String)
         case recentUploadConfirmed(StoredImage)
         case cameraRetryTapped
-        case settingsTapped
         case analysisCancelled
         case candidateTapped(normalizedPoint: CGPoint)
         case manualSelectionTapped
