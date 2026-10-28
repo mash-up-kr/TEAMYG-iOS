@@ -19,11 +19,10 @@ public struct CanvasImageExporter: Sendable {
     private static let renderScale: CGFloat = 3
     /// 배경 사진은 저장본 픽셀 크기(1920)보다 조금 여유 있게 받아 둔다.
     private static let backgroundLongEdgePixelSize = 2160
-    /// 영상 저장본 — 토핑(이미지·텍스트)이 `toppingAppearWindow` 안에서 쌓인 순서대로 하나씩 튀어나오고, 남은 시간은 완성본을 보여 준다.
+    /// 영상 저장본 — 토핑(이미지·텍스트)이 `toppingAppearWindow` 안에서 쌓인 순서대로 하나씩 효과 없이 나타나고, 남은 시간은 완성본을 보여 준다.
     private static let videoDuration: Double = 2
     private static let videoFramesPerSecond: Int32 = 30
     private static let toppingAppearWindow: Double = 1.5
-    private static let toppingPopDuration: Double = 0.25
 
     private let toppingRenderer: CanvasToppingRenderer
     private let imageProvider: ImageProvider
@@ -44,11 +43,10 @@ public struct CanvasImageExporter: Sendable {
         return await renderVideo(background: background, layers: layers)
     }
 
-    /// 토핑별 등장 진행도(0...1). `count` 개를 `toppingAppearWindow` 에 고르게 나눠 차례로 띄운다.
-    static func toppingProgresses(count: Int, at time: Double) -> [Double] {
+    /// 토핑별 노출 여부. `count` 개를 `toppingAppearWindow` 에 고르게 나눠 차례로 띄운다.
+    static func toppingVisibilities(count: Int, at time: Double) -> [Bool] {
         (0..<count).map { order in
-            let startTime = toppingAppearWindow * Double(order) / Double(count)
-            return min(max((time - startTime) / toppingPopDuration, 0), 1)
+            time >= toppingAppearWindow * Double(order) / Double(count)
         }
     }
 
@@ -102,13 +100,13 @@ public struct CanvasImageExporter: Sendable {
     private func renderer(
         background: PreparedBackground,
         layers: [PreparedLayer],
-        toppingProgresses: [Double]? = nil
+        toppingVisibilities: [Bool]? = nil
     ) -> ImageRenderer<CanvasSnapshotView> {
         let renderer = ImageRenderer(
             content: CanvasSnapshotView(
                 background: background,
                 layers: layers,
-                toppingProgresses: toppingProgresses,
+                toppingVisibilities: toppingVisibilities,
                 canvasSize: Self.canvasSize
             )
         )
@@ -129,20 +127,20 @@ public struct CanvasImageExporter: Sendable {
         ) else { return nil }
 
         let frameCount = Int(Self.videoDuration * Double(Self.videoFramesPerSecond))
-        var previousProgresses: [Double]?
+        var previousVisibilities: [Bool]?
         var previousFrame: CGImage?
 
         for frameIndex in 0..<frameCount {
             let time = Double(frameIndex) / Double(Self.videoFramesPerSecond)
-            let progresses = Self.toppingProgresses(count: layers.count, at: time)
-            // 토핑이 다 나온 뒤처럼 그림이 그대로면 다시 그리지 않는다.
-            if progresses != previousProgresses {
+            let visibilities = Self.toppingVisibilities(count: layers.count, at: time)
+            // 새 토핑이 나오지 않아 그림이 그대로면 다시 그리지 않는다.
+            if visibilities != previousVisibilities {
                 previousFrame = renderer(
                     background: background,
                     layers: layers,
-                    toppingProgresses: progresses
+                    toppingVisibilities: visibilities
                 ).cgImage
-                previousProgresses = progresses
+                previousVisibilities = visibilities
             }
 
             guard !Task.isCancelled,
@@ -234,13 +232,6 @@ private enum PreparedLayer: Identifiable {
         }
     }
 
-    /// 등장 애니메이션의 축이 되는 중심 (캔버스 대비 0~1).
-    var center: UnitPoint {
-        switch self {
-        case .image(let topping): UnitPoint(x: topping.canvasImage.positionX, y: topping.canvasImage.positionY)
-        case .text(let canvasText): UnitPoint(x: canvasText.positionX, y: canvasText.positionY)
-        }
-    }
 }
 
 /// 저장본 한 장. 이미지를 모두 받아 둔 뒤에 그리므로 `CanvasContentView` 와 달리 비동기 로딩이 없다 —
@@ -248,8 +239,8 @@ private enum PreparedLayer: Identifiable {
 private struct CanvasSnapshotView: View {
     let background: PreparedBackground
     let layers: [PreparedLayer]
-    /// 영상 프레임일 때 토핑별 등장 진행도(0...1, `layers` 와 같은 순서). `nil` 이면 전부 다 보인다.
-    let toppingProgresses: [Double]?
+    /// 영상 프레임일 때 토핑별 노출 여부 (`layers` 와 같은 순서). `nil` 이면 전부 다 보인다.
+    let toppingVisibilities: [Bool]?
     let canvasSize: CGSize
 
     var body: some View {
@@ -258,12 +249,10 @@ private struct CanvasSnapshotView: View {
 
             // 이미 positionZ 오름차순으로 정렬해 넘긴다 — 배열 순서가 곧 쌓임 순서다.
             ForEach(Array(layers.enumerated()), id: \.element.id) { order, layer in
-                let progress = toppingProgresses?[order] ?? 1
-                layerView(layer)
-                    .opacity(progress)
-                    // 토핑 뷰가 캔버스 전체를 차지하고 `position` 으로 놓이므로 토핑 중심을 축으로 키운다.
-                    .scaleEffect(0.6 + 0.4 * Self.easeOutBack(progress), anchor: layer.center)
-                    .zIndex(Double(order))
+                if toppingVisibilities?[order] ?? true {
+                    layerView(layer)
+                        .zIndex(Double(order))
+                }
             }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
@@ -283,13 +272,6 @@ private struct CanvasSnapshotView: View {
                 .frame(width: canvasSize.width, height: canvasSize.height)
                 .clipped()
         }
-    }
-
-    /// 살짝 넘쳤다 돌아오는 팝 느낌.
-    private static func easeOutBack(_ progress: Double) -> Double {
-        let overshoot = 1.70158
-        let shifted = progress - 1
-        return 1 + (overshoot + 1) * pow(shifted, 3) + overshoot * pow(shifted, 2)
     }
 
     @ViewBuilder
