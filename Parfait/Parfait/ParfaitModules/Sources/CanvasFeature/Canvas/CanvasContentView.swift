@@ -19,7 +19,7 @@ struct CanvasContentView: View {
     private static let spotlightZIndex: Double = 2_000_000
 
     let content: CanvasStore.CanvasContent
-    var spotlightedToppingID: Int?
+    var spotlightedLayerID: CanvasLayer.LayerID?
     var onImageTap: ((CanvasStore.CanvasImage) -> Void)?
     var onTextTap: ((CanvasStore.CanvasText) -> Void)?
     var onDimTap: (() -> Void)?
@@ -29,7 +29,7 @@ struct CanvasContentView: View {
 
     init(
         content: CanvasStore.CanvasContent,
-        spotlightedToppingID: Int? = nil,
+        spotlightedLayerID: CanvasLayer.LayerID? = nil,
         onImageTap: ((CanvasStore.CanvasImage) -> Void)? = nil,
         onTextTap: ((CanvasStore.CanvasText) -> Void)? = nil,
         onDimTap: (() -> Void)? = nil,
@@ -37,7 +37,7 @@ struct CanvasContentView: View {
         onToppingImageLoadFailed: ((Int) -> Void)? = nil
     ) {
         self.content = content
-        self.spotlightedToppingID = spotlightedToppingID
+        self.spotlightedLayerID = spotlightedLayerID
         self.onImageTap = onImageTap
         self.onTextTap = onTextTap
         self.onDimTap = onDimTap
@@ -54,7 +54,7 @@ struct CanvasContentView: View {
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
 
-                if spotlightedToppingID != nil {
+                if spotlightedLayerID != nil {
                     Color.black50
                         .contentShape(.rect)
                         .onTapGesture { onDimTap?() }
@@ -71,14 +71,14 @@ struct CanvasContentView: View {
                             onToppingLoaded: { _ in onToppingImageLoaded?(canvasImage.id) },
                             onToppingLoadFailed: { onToppingImageLoadFailed?(canvasImage.id) }
                         )
-                        .zIndex(zIndex(for: canvasImage, order: order))
+                        .zIndex(zIndex(for: layer, order: order))
                     case .text(let canvasText):
                         CanvasPlacedText(
                             canvasText: canvasText,
                             canvasSize: proxy.size,
                             onTap: onTextTap.map { onTextTap in { onTextTap(canvasText) } }
                         )
-                        .zIndex(Double(order))
+                        .zIndex(zIndex(for: layer, order: order))
                     }
                 }
             }
@@ -87,8 +87,8 @@ struct CanvasContentView: View {
     }
 
     /// `content.layers` 는 `positionZ` 오름차순으로 정렬돼 있다 — 배열 순서가 곧 쌓임 순서다.
-    private func zIndex(for canvasImage: CanvasStore.CanvasImage, order: Int) -> Double {
-        canvasImage.id == spotlightedToppingID ? Self.spotlightZIndex : Double(order)
+    private func zIndex(for layer: CanvasLayer, order: Int) -> Double {
+        layer.id == spotlightedLayerID ? Self.spotlightZIndex : Double(order)
     }
 
     private func imageTapAction(for canvasImage: CanvasStore.CanvasImage) -> (() -> Void)? {

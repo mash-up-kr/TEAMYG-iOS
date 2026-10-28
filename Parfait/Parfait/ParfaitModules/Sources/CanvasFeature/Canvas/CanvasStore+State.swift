@@ -75,7 +75,7 @@ public extension CanvasStore {
         public var lastClosedDate: CalendarDate?
         /// 그 마감 캔버스에 토핑을 올린 인원. `lastClosedDate` 와 함께 채운다.
         var lastClosedParticipantCount = 0
-        var spotlightedToppingID: Int?
+        var spotlightedLayerID: CanvasLayer.LayerID?
         /// 다운로드가 끝난 토핑 이미지 — 캔버스의 토핑이 전부 모여야 로딩 딤(C-001-Loading)을 걷는다.
         var loadedToppingImageIDs: Set<Int> = []
         /// 다운로드에 실패한 토핑 이미지 — 하나라도 있으면 에러 딤(C-001-Error)으로 바꾼다.

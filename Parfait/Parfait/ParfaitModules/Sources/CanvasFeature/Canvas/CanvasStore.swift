@@ -73,7 +73,7 @@ public final class CanvasStore: MVIStore {
             loadInitialDataIfNeeded()
             startCanvasRefreshTicker()
         case .sceneBecameActive:
-            state.spotlightedToppingID = nil
+            state.spotlightedLayerID = nil
             reloadIfDayChanged()
             startCanvasRefreshTicker()
         case .sceneEnteredBackground:
@@ -98,7 +98,7 @@ public final class CanvasStore: MVIStore {
         case .toppingImageLoadFailed(let toppingID):
             state.failedToppingImageIDs.insert(toppingID)
         case .spotlightDismissed:
-            state.spotlightedToppingID = nil
+            state.spotlightedLayerID = nil
         case .backgroundEditTapped:
             guard !state.isClosedCanvas else { return }
             dismissOverlays()
@@ -202,7 +202,7 @@ public final class CanvasStore: MVIStore {
     }
 
     private func refreshCanvas() {
-        state.spotlightedToppingID = nil
+        state.spotlightedLayerID = nil
         dismissOverlays()
         reload(state.calendar.selectedDate)
     }
@@ -264,7 +264,7 @@ public final class CanvasStore: MVIStore {
 
         state.contentState = .loading
         state.canvasContent = nil
-        state.spotlightedToppingID = nil
+        state.spotlightedLayerID = nil
         state.loadedToppingImageIDs = []
         state.failedToppingImageIDs = []
         state.awaitedToppingImageIDs = []
@@ -378,15 +378,15 @@ private extension CanvasStore {
             guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .toppings(selectedToppingID: toppingID)
         } else {
-            state.spotlightedToppingID = toppingID
+            state.spotlightedLayerID = .image(toppingID)
             guard let author = toppingAuthorsByID[toppingID] else { return }
             eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
         }
     }
 
-    /// 내 텍스트는 사진과 같은 토핑 편집 화면으로 열고, 남의 텍스트는 작성자 토스트만 띄운다 (진입·Spotlight 없음).
+    /// 내 텍스트는 사진과 같은 토핑 편집 화면으로 열고, 남의 텍스트는 사진처럼 Spotlight 하고 작성자 토스트를 띄운다.
     func handleTextTap(_ textID: Int) {
-        guard state.spotlightedToppingID == nil,
+        guard state.spotlightedLayerID == nil,
               let text = state.canvasContent?.texts.first(where: { $0.id == textID })
         else { return }
         dismissOverlays()
@@ -395,6 +395,7 @@ private extension CanvasStore {
             guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .toppings(selectedTextID: textID)
         } else {
+            state.spotlightedLayerID = .text(textID)
             guard let author = textAuthorsByID[textID] else { return }
             eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
         }
@@ -428,7 +429,7 @@ private extension CanvasStore {
         guard !state.isClosedCanvas,
               silentRefreshTask == nil,
               state.loadingOverlay == .hidden,
-              state.spotlightedToppingID == nil,
+              state.spotlightedLayerID == nil,
               state.toppingAddSource == nil,
               state.canvasEditDestination == nil,
               state.savePreview == nil

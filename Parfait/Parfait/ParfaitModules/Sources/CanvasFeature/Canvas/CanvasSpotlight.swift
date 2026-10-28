@@ -44,7 +44,7 @@ extension CanvasStore {
 
 extension CanvasStore.State {
     func tappableTopping(_ toppingID: Int) -> CanvasStore.CanvasImage? {
-        guard spotlightedToppingID == nil else { return nil }
+        guard spotlightedLayerID == nil else { return nil }
         return canvasContent?.images.first { $0.id == toppingID }
     }
 }

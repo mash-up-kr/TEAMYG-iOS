@@ -32,7 +32,7 @@ struct CanvasContainer: View {
                             weekdayText: state.weekdayText,
                             contentState: state.contentState,
                             canvasContent: state.canvasContent,
-                            spotlightedToppingID: state.spotlightedToppingID,
+                            spotlightedLayerID: state.spotlightedLayerID,
                             isDimmed: state.menuState == .sourceOptions,
                             onCalendarTap: { send(.calendarTapped) },
                             onSaveTap: { send(.savePreviewRequested) },
@@ -160,7 +160,7 @@ private struct CanvasBoard: View {
     let weekdayText: String
     let contentState: CanvasStore.ContentState
     let canvasContent: CanvasStore.CanvasContent?
-    let spotlightedToppingID: Int?
+    let spotlightedLayerID: CanvasLayer.LayerID?
     let isDimmed: Bool
     let onCalendarTap: () -> Void
     let onSaveTap: () -> Void
@@ -192,7 +192,7 @@ private struct CanvasBoard: View {
                     if let canvasContent {
                         CanvasContentView(
                             content: canvasContent,
-                            spotlightedToppingID: spotlightedToppingID,
+                            spotlightedLayerID: spotlightedLayerID,
                             onImageTap: { onToppingTap($0.id) },
                             onTextTap: { onTextTap($0.id) },
                             onDimTap: onSpotlightDismiss,
