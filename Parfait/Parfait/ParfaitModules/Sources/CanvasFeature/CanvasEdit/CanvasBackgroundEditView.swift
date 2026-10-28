@@ -51,18 +51,12 @@ struct CanvasBackgroundEditView: View {
                 .canvasEditChrome()
             }
         }
-        .disabled(store.state.saveState == .saving)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.title("배경 변경"), onClose: { store.send(.closeTapped) })
-                .canvasEditChrome()
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            YGButton("저장하기", variant: .large) { store.send(.confirmTapped) }
-                .padding(.horizontal, .padding7)
-                .padding(.top, .padding6)
-                .padding(.bottom, .padding1)
-                .canvasEditChrome()
-        }
+        .canvasEditScaffold(
+            store: store,
+            title: "배경 변경",
+            confirmTitle: "저장하기",
+            exitPopupTitle: "배경 변경을 그만둘까요?"
+        )
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .navigationDestination(item: backgroundImageSourceBinding) { source in
             BackgroundImagePickerView(
@@ -82,19 +76,7 @@ struct CanvasBackgroundEditView: View {
                 makeAlbumPickerStore: makeAlbumPickerStore
             )
         }
-        .canvasEditLifecycle(
-            isSaving: store.state.saveState == .saving,
-            send: { store.send($0) }
-        )
         .onAppear { store.send(.backgroundEditScreenAppeared) }
-        .ygPopup(
-            isPresented: store.binding(\.showsExitPopup, CanvasEditStore.Intent.exitPopupVisibilityChanged),
-            title: "배경 변경을 그만둘까요?",
-            description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
-            secondaryTitle: "그만두기",
-            primaryTitle: "계속 편집",
-            secondaryAction: { store.send(.discardTapped) }
-        )
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {

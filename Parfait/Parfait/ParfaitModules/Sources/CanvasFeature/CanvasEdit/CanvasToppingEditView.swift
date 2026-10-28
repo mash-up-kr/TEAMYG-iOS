@@ -48,31 +48,13 @@ struct CanvasToppingEditView: View {
         } action: { frame in
             contentFrame = frame
         }
-        .disabled(store.state.saveState == .saving)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.title("배치"), onClose: { store.send(.closeTapped) })
-                .canvasEditChrome()
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            YGButton("캔버스에 쌓기", variant: .large) { store.send(.confirmTapped) }
-                .padding(.horizontal, .padding7)
-                .padding(.top, .padding6)
-                .padding(.bottom, .padding1)
-                .canvasEditChrome()
-        }
+        .canvasEditScaffold(
+            store: store,
+            title: "배치",
+            confirmTitle: "캔버스에 쌓기",
+            exitPopupTitle: "사진 편집을 그만둘까요?"
+        )
         .environment(\.canvasToppingRenderer, toppingRenderer)
-        .canvasEditLifecycle(
-            isSaving: store.state.saveState == .saving,
-            send: { store.send($0) }
-        )
-        .ygPopup(
-            isPresented: store.binding(\.showsExitPopup, CanvasEditStore.Intent.exitPopupVisibilityChanged),
-            title: "사진 편집을 그만둘까요?",
-            description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
-            secondaryTitle: "그만두기",
-            primaryTitle: "계속 편집",
-            secondaryAction: { store.send(.discardTapped) }
-        )
         .onAppear { store.send(.toppingEditScreenAppeared) }
         .task {
             for await event in store.eventStream() {

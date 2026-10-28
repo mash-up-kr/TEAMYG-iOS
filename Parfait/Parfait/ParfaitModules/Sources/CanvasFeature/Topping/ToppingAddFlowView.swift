@@ -14,8 +14,6 @@ struct ToppingAddFlowView: View {
     @State private var areaSelectionToasts: [YGToastItem] = []
     @Environment(\.dismiss) private var dismiss
 
-    private static let quitPopupDescription = "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?"
-
     private let toppingRenderer: CanvasToppingRenderer
 
     init(
@@ -53,7 +51,7 @@ struct ToppingAddFlowView: View {
                 .quitPopupVisibilityChanged(.addPhoto, $0)
             },
             title: ToppingAddStore.QuitConfirmation.addPhoto.title,
-            description: Self.quitPopupDescription,
+            description: canvasQuitPopupDescription,
             secondaryTitle: "그만두기",
             primaryTitle: ToppingAddStore.QuitConfirmation.addPhoto.continueTitle,
             secondaryAction: { store.send(.quitConfirmed) }
@@ -63,7 +61,7 @@ struct ToppingAddFlowView: View {
                 .quitPopupVisibilityChanged(.editPhoto, $0)
             },
             title: ToppingAddStore.QuitConfirmation.editPhoto.title,
-            description: Self.quitPopupDescription,
+            description: canvasQuitPopupDescription,
             secondaryTitle: "그만두기",
             primaryTitle: ToppingAddStore.QuitConfirmation.editPhoto.continueTitle,
             secondaryAction: { store.send(.quitConfirmed) }
