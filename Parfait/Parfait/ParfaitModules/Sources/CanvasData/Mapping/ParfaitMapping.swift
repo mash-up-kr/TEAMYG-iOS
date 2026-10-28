@@ -68,8 +68,23 @@ extension BackgroundDTO {
     }
 }
 
-extension ParfaitImageDTO {
-    func toEntity() throws -> PlacedTopping {
+/// 배치된 이미지 응답의 공통 필드 — 오늘 조회(`ParfaitImageDTO`)와 배치 응답(`PlacedToppingDTO`).
+private protocol PlacedImageFields {
+    var parfaitImageId: Int { get }
+    var imageUrl: String { get }
+    var positionX: Double { get }
+    var positionY: Double { get }
+    var positionZ: Int { get }
+    var scale: Double { get }
+    var rotation: Double { get }
+    var placedBy: PlacedByDTO? { get }
+}
+
+extension ParfaitImageDTO: PlacedImageFields {}
+extension PlacedToppingDTO: PlacedImageFields {}
+
+private extension PlacedImageFields {
+    func placedTopping(border: ToppingBorderStyle, createdAt: Date?) throws -> PlacedTopping {
         guard let url = URL(string: imageUrl) else {
             throw ParfaitMappingError.malformedURL(imageUrl)
         }
@@ -81,9 +96,18 @@ extension ParfaitImageDTO {
             positionZ: positionZ,
             scale: scale,
             rotation: rotation,
-            border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
+            border: border,
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
+            createdAt: createdAt
+        )
+    }
+}
+
+extension ParfaitImageDTO {
+    func toEntity() throws -> PlacedTopping {
+        try placedTopping(
+            border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
             createdAt: createdAt.flatMap(ServerDate.date(from:))
         )
     }
@@ -112,23 +136,9 @@ extension ParfaitTextDTO {
 }
 
 extension PlacedToppingDTO {
+    /// 보낸 테두리 값은 응답에 오지 않아 호출부가 넘긴다.
     func toEntity(border: ToppingBorderStyle) throws -> PlacedTopping {
-        guard let url = URL(string: imageUrl) else {
-            throw ParfaitMappingError.malformedURL(imageUrl)
-        }
-        return PlacedTopping(
-            id: parfaitImageId,
-            imageURL: url,
-            positionX: positionX,
-            positionY: positionY,
-            positionZ: positionZ,
-            scale: scale,
-            rotation: rotation,
-            border: border,
-            placedBy: placedBy?.toEntity() ?? .unknown,
-            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
-            createdAt: nil
-        )
+        try placedTopping(border: border, createdAt: nil)
     }
 }
 
