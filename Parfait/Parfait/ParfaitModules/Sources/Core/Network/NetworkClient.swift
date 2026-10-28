@@ -31,11 +31,8 @@ public enum ConditionalResponse<Response: Sendable>: Sendable {
 public final class NetworkClientImpl: NetworkClient {
     private let session: Session
     private let interceptor: RequestInterceptor?
-    private let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
+    /// 날짜는 DTO 가 문자열로 받아 `ServerDate` 로 옮긴다 — 디코더 날짜 전략은 쓰지 않는다.
+    private let decoder = JSONDecoder()
 
     /// - Parameters:
     ///   - session: 기본값은 로거 + 요청 타임아웃 10초 세션.
@@ -67,6 +64,9 @@ public final class NetworkClientImpl: NetworkClient {
         case .success(let data):
             return try unwrap(data)
         case .failure(let error):
+            // Alamofire 는 Task 취소를 `AFError` 로 감싸 던진다 — 그대로 올리면 호출부의
+            // `catch is CancellationError` 를 못 타고 실패 경로(에러 화면·토스트)로 빠진다.
+            try Task.checkCancellation()
             throw mapFailure(error, data: response.data)
         }
     }
@@ -97,6 +97,7 @@ public final class NetworkClientImpl: NetworkClient {
                 etag: response.response?.value(forHTTPHeaderField: "ETag")
             )
         case .failure(let error):
+            try Task.checkCancellation() // 위 request 와 같은 이유
             throw mapFailure(error, data: response.data)
         }
     }

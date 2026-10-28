@@ -86,7 +86,7 @@ extension ParfaitImageDTO {
             border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
-            createdAt: ServerDateTime.parse(createdAt)
+            createdAt: createdAt.flatMap(ServerDate.date(from:))
         )
     }
 }
@@ -108,7 +108,7 @@ extension ParfaitTextDTO {
             alignment: PlacedTextAlignment(serverValue: textAlign),
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
-            createdAt: ServerDateTime.parse(createdAt)
+            createdAt: createdAt.flatMap(ServerDate.date(from:))
         )
     }
 }
