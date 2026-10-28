@@ -141,32 +141,24 @@ struct TextToppingTextView: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
         var parent: TextToppingTextView
         fileprivate var appliedStyle: TextToppingAppliedStyle?
-        private var draft = ToppingTransformDraft()
-        private var isTransforming = false
-        private var transformRecognizers: [UIGestureRecognizer] = []
+        private let transform = ToppingTransformRecognizers()
+        private var transformRecognizers: [UIGestureRecognizer] { transform.recognizers }
 
         init(parent: TextToppingTextView) {
             self.parent = parent
         }
 
         func attach(to textView: UITextView) {
-            let move = UIPanGestureRecognizer(target: self, action: #selector(handleMove))
-            move.maximumNumberOfTouches = 2
-
-            let magnify = UIPinchGestureRecognizer(target: self, action: #selector(handleMagnify))
-            let rotate = UIRotationGestureRecognizer(target: self, action: #selector(handleRotate))
-
-            transformRecognizers = [move, magnify, rotate]
-            for recognizer in transformRecognizers {
-                recognizer.delegate = self
-                textView.addGestureRecognizer(recognizer)
-            }
+            // 박스 자체가 확대·회전된 채 그려지므로 이동은 window 좌표로 받아야 손가락과 일치한다.
+            transform.translationView = { _ in nil }
+            transform.onBegin = { [weak self] in self?.parent.onTransformBegin() }
+            transform.onChange = { [weak self] in self?.parent.draft = $0 }
+            transform.onCommit = { [weak self] in self?.parent.onTransformCommit($0) }
+            transform.attach(to: textView, delegate: self)
         }
 
         func setTransformEnabled(_ isEnabled: Bool) {
-            for recognizer in transformRecognizers where recognizer.isEnabled != isEnabled {
-                recognizer.isEnabled = isEnabled
-            }
+            transform.setEnabled(isEnabled)
         }
 
         // MARK: - 입력
@@ -216,72 +208,6 @@ struct TextToppingTextView: UIViewRepresentable {
         }
 
         // MARK: - 변형 제스처
-
-        @objc private func handleMove(_ recognizer: UIPanGestureRecognizer) {
-            switch recognizer.state {
-            case .began:
-                beginTransformIfNeeded()
-            case .changed:
-                // 박스 자체가 확대·회전된 채 그려지므로 window 좌표로 받아야 손가락과 일치한다.
-                let translation = recognizer.translation(in: nil)
-                draft.move(by: CGSize(width: translation.x, height: translation.y))
-                recognizer.setTranslation(.zero, in: nil)
-                parent.draft = draft
-            case .ended, .cancelled, .failed:
-                commitIfTransformIdle()
-            default:
-                break
-            }
-        }
-
-        @objc private func handleMagnify(_ recognizer: UIPinchGestureRecognizer) {
-            switch recognizer.state {
-            case .began:
-                beginTransformIfNeeded()
-            case .changed:
-                draft.magnify(by: Double(recognizer.scale), pivotOffset: .zero)
-                recognizer.scale = 1
-                parent.draft = draft
-            case .ended, .cancelled, .failed:
-                commitIfTransformIdle()
-            default:
-                break
-            }
-        }
-
-        @objc private func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
-            switch recognizer.state {
-            case .began:
-                beginTransformIfNeeded()
-            case .changed:
-                draft.rotate(byDegrees: Double(recognizer.rotation) * 180 / .pi, pivotOffset: .zero)
-                recognizer.rotation = 0
-                parent.draft = draft
-            case .ended, .cancelled, .failed:
-                commitIfTransformIdle()
-            default:
-                break
-            }
-        }
-
-        private func beginTransformIfNeeded() {
-            guard !isTransforming else { return }
-            isTransforming = true
-            parent.onTransformBegin()
-        }
-
-        /// 세 인식기 중 마지막 하나가 끝나는 시점에 한 번만 커밋한다.
-        private func commitIfTransformIdle() {
-            let isRecognizing = transformRecognizers.contains {
-                $0.state == .began || $0.state == .changed
-            }
-            guard isTransforming, !isRecognizing else { return }
-
-            isTransforming = false
-            let committed = draft.endTransform()
-            parent.draft = draft
-            parent.onTransformCommit(committed)
-        }
 
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
             guard gestureRecognizer is UIPanGestureRecognizer, let textView = gestureRecognizer.view else {
