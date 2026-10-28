@@ -101,12 +101,8 @@ public final class CanvasStore: MVIStore {
             state.spotlightedToppingID = nil
         case .canvasEditTapped:
             guard !state.isClosedCanvas else { return }
-            state.calendar.close()
-            state.menuState = .collapsed
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            dismissOverlays()
+            guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .background
         case .canvasEditFlowDismissed:
             state.canvasEditDestination = nil
@@ -117,10 +113,7 @@ public final class CanvasStore: MVIStore {
         case .toppingAddTapped:
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            guard ensureCanvasReady() else { return }
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
         case .cameraOptionTapped:
             openToppingAddFlow(.camera) { .camera(canvasDate: $0) }
@@ -160,8 +153,7 @@ public final class CanvasStore: MVIStore {
         case .refreshRequested:
             refreshCanvas()
         case .savePreviewRequested:
-            state.calendar.close()
-            state.menuState = .collapsed
+            dismissOverlays()
             guard let canvasContent = state.canvasContent else {
                 eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
                 return
@@ -180,9 +172,23 @@ public final class CanvasStore: MVIStore {
             logAnalyticsEvent(.canvasCalendarPastParfaitTapped(groupID: String(groupID)))
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
-            state.calendar.close()
-            state.menuState = .collapsed
+            dismissOverlays()
         }
+    }
+
+    /// 캘린더·토핑 추가 메뉴 오버레이를 걷는다.
+    private func dismissOverlays() {
+        state.calendar.close()
+        state.menuState = .collapsed
+    }
+
+    /// 캔버스 ID 를 아직 못 받았으면 안내하고 `false`.
+    private func ensureCanvasReady() -> Bool {
+        guard state.parfaitID != nil else {
+            eventChannel.send(.canvasNotReady)
+            return false
+        }
+        return true
     }
 
     private func openToppingAddFlow(
@@ -191,15 +197,13 @@ public final class CanvasStore: MVIStore {
     ) {
         guard !state.isClosedCanvas, state.parfaitID != nil else { return }
         logAnalyticsEvent(.canvasMainToppingAddTapped(type: type))
-        state.calendar.close()
-        state.menuState = .collapsed
+        dismissOverlays()
         state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
     private func refreshCanvas() {
         state.spotlightedToppingID = nil
-        state.menuState = .collapsed
-        state.calendar.close()
+        dismissOverlays()
         reload(state.calendar.selectedDate)
     }
 
@@ -368,14 +372,10 @@ private extension CanvasStore {
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
         logAnalyticsEvent(.canvasToppingEditorChecked(isMine: topping.isMine))
-        state.calendar.close()
-        state.menuState = .collapsed
+        dismissOverlays()
 
         if topping.isMine, !state.isClosedCanvas {
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .toppings(selectedToppingID: toppingID)
         } else {
             state.spotlightedToppingID = toppingID
@@ -389,14 +389,10 @@ private extension CanvasStore {
         guard state.spotlightedToppingID == nil,
               let text = state.canvasContent?.texts.first(where: { $0.id == textID })
         else { return }
-        state.calendar.close()
-        state.menuState = .collapsed
+        dismissOverlays()
 
         if text.isMine, !state.isClosedCanvas {
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .toppings(selectedTextID: textID)
         } else {
             guard let author = textAuthorsByID[textID] else { return }
