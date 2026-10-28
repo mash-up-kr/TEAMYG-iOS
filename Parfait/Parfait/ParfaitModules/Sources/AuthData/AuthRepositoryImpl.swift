@@ -83,8 +83,9 @@ public struct AuthRepositoryImpl: AuthRepository {
 
     public func logout() async throws {
         // 개발용 토큰 로그인은 리프레시 토큰이 없다 — 서버 무효화 없이 로컬 세션만 종료.
+        // 서버 무효화가 실패해도(오프라인 등) 로컬 세션은 반드시 끝낸다 — 사용자는 로그아웃을 눌렀다.
         if let refreshToken = await tokenManager.refreshToken, !refreshToken.isEmpty {
-            let _: EmptyDTO = try await networkClient.request(LogoutEndpoint(refreshToken: refreshToken))
+            let _: EmptyDTO? = try? await networkClient.request(LogoutEndpoint(refreshToken: refreshToken))
         }
         await tokenManager.expireSession()
     }

@@ -145,7 +145,8 @@ private extension NetworkClientImpl {
             throw NetworkError.server(
                 code: envelope.code,
                 message: envelope.message,
-                errorDetail: envelope.errorDetail
+                errorDetail: envelope.errorDetail,
+                statusCode: nil
             )
         }
         if let payload = envelope.data {
@@ -170,7 +171,8 @@ private extension NetworkClientImpl {
             return .server(
                 code: envelope.code,
                 message: envelope.message,
-                errorDetail: envelope.errorDetail
+                errorDetail: envelope.errorDetail,
+                statusCode: error.responseCode
             )
         }
         return .transport(error)

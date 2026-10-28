@@ -44,7 +44,7 @@ public final class SettingStore: MVIStore {
             actionTask = Task {
                 defer { actionTask = nil }
                 do {
-                    // 성공 시 세션 종료 이벤트가 발행돼 App 루트가 로그인 화면으로 되돌린다.
+                    // 서버 무효화 성공 여부와 무관하게 세션 종료 이벤트가 발행돼 App 루트가 로그인 화면으로 되돌린다.
                     try await authUseCase.logout()
                 } catch {
                     print("로그아웃 실패: \(error)")

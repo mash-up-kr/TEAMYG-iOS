@@ -44,15 +44,29 @@ public final class TokenInterceptor: RequestInterceptor {
             do {
                 try await tokenManager.refresh()
                 completion(.retry)
-            } catch NetworkError.server, NetworkError.unauthorized {
+            } catch let error as NetworkError where error.isRefreshRejected {
                 // 서버가 리프레시 토큰 자체를 거절 → 재로그인 외에 방법이 없다.
                 // 토큰을 지우고 세션 만료 이벤트를 보내 App 이 로그인 화면으로 되돌리게 한다.
                 await tokenManager.expireSession()
                 completion(.doNotRetryWithError(NetworkError.unauthorized))
             } catch {
-                // 오프라인·타임아웃 등 일시적 실패 — 토큰은 남기고 이번 요청만 실패시킨다
+                // 오프라인·타임아웃·서버 장애(5xx) 등 일시적 실패 — 토큰은 남기고 이번 요청만 실패시킨다
                 completion(.doNotRetryWithError(error))
             }
+        }
+    }
+}
+
+private extension NetworkError {
+    /// 서버가 리프레시 토큰을 거절했는지. 5xx 는 서버 장애라 거절로 보지 않는다.
+    var isRefreshRejected: Bool {
+        switch self {
+        case .unauthorized:
+            true
+        case .server(_, _, _, let statusCode):
+            (statusCode ?? 0) < 500
+        default:
+            false
         }
     }
 }

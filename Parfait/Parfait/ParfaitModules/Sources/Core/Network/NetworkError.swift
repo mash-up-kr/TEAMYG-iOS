@@ -12,8 +12,8 @@ public enum NetworkError: Error, Sendable {
     case invalidRequest(any Error)
     /// 전송 실패 — 타임아웃·오프라인 등
     case transport(any Error)
-    /// 서버가 `success == false` 로 응답
-    case server(code: String?, message: String?, errorDetail: [String: String]?)
+    /// 서버가 `success == false` 로 응답. `statusCode` 는 HTTP 상태 코드 (2xx 봉투 실패면 `nil`)
+    case server(code: String?, message: String?, errorDetail: [String: String]?, statusCode: Int?)
     /// 응답 디코딩 실패
     case decoding(any Error)
     /// `success == true` 인데 `data` 가 없는 응답

@@ -64,7 +64,7 @@ public struct GroupRepositoryImpl: GroupRepository {
     private static func serverMessage(from error: any Error) -> String? {
         guard
             let networkError = error as? NetworkError,
-            case .server(_, let message, _) = networkError
+            case .server(_, let message, _, _) = networkError
         else {
             return nil
         }
