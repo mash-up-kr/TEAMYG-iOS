@@ -221,8 +221,8 @@ public extension CanvasStore {
         case dismissed
         /// 저장본을 못 그려 열자마자 접었다.
         case composeFailed
-        /// 앨범 저장까지 마쳤다.
-        case saved(Bool)
+        /// 앨범 저장을 시도했다 — 성공 여부를 함께 싣는다.
+        case saveFinished(isSuccess: Bool)
     }
 
     struct Member: Equatable, Identifiable, Sendable {
@@ -339,7 +339,7 @@ public extension CanvasStore {
         case toppingImageLoaded(Int)
         case toppingImageLoadFailed(Int)
         case spotlightDismissed
-        case canvasEditTapped
+        case backgroundEditTapped
         case canvasEditFlowDismissed
         case canvasEditSaved
         case toppingAddTapped

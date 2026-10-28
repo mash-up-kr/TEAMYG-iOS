@@ -121,7 +121,7 @@ struct CanvasContainer: View {
             CanvasMenuBar(
                 isSourceOptionsPresented: state.menuState == .sourceOptions,
                 onToppingAddTap: { send(.toppingAddTapped) },
-                onCanvasEditTap: { send(.canvasEditTapped) }
+                onBackgroundEditTap: { send(.backgroundEditTapped) }
             )
         }
     }

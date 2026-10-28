@@ -99,7 +99,7 @@ public final class CanvasStore: MVIStore {
             state.failedToppingImageIDs.insert(toppingID)
         case .spotlightDismissed:
             state.spotlightedToppingID = nil
-        case .canvasEditTapped:
+        case .backgroundEditTapped:
             guard !state.isClosedCanvas else { return }
             dismissOverlays()
             guard ensureCanvasReady() else { return }

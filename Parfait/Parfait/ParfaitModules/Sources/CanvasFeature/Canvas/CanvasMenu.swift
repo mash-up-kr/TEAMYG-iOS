@@ -11,7 +11,7 @@ import UIComponent
 struct CanvasMenuBar: View {
     let isSourceOptionsPresented: Bool
     let onToppingAddTap: () -> Void
-    let onCanvasEditTap: () -> Void
+    let onBackgroundEditTap: () -> Void
 
     var body: some View {
         HStack(spacing: -1) {
@@ -25,7 +25,7 @@ struct CanvasMenuBar: View {
                 "배경 변경",
                 icon: .icCaretRight,
                 style: isSourceOptionsPresented ? .dimmed : .primary,
-                action: onCanvasEditTap
+                action: onBackgroundEditTap
             )
         }
     }
