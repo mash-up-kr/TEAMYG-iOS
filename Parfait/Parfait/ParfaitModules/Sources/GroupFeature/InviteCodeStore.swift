@@ -139,7 +139,7 @@ public final class InviteCodeStore: MVIStore {
         case screenAppeared
         case inviteCodeChanged(String)
         case inviteCodeFieldTapped
-        /// 클립보드 붙여넣기 버튼으로 받은 원본 문자열 — 형식 검증·추출은 Store 가 한다.
+        /// 진입·복귀 때 클립보드에서 읽은 원본 문자열 — 형식 검증·추출은 Store 가 한다.
         case pasted(String)
         case confirmTapped
         /// `requestJoin()` 완료 결과 — View 가 아니라 Store 내부에서만 보낸다.

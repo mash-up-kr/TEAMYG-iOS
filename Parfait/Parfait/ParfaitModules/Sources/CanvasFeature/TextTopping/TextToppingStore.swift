@@ -12,7 +12,7 @@ import Observation
 import UIComponent
 
 /// C-106 텍스트 입력·배치. 입력(키보드 ↑)과 배치(C-106-Arrange, 키보드 ↓) 두 상태를 오간다.
-/// 스펙: `docs/superpowers/specs/2026-10-14-canvas-text-requirements.md`
+/// 요구사항: #144
 @Observable @MainActor
 final class TextToppingStore: MVIStore {
     private(set) var state: State

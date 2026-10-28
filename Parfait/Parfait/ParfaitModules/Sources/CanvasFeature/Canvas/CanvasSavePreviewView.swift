@@ -74,7 +74,7 @@ struct CanvasSavePreviewView: View {
                     .frame(width: 44, height: 44)
             }
         }
-        // 저장본이 곧 16:9 Canvas-Area 라 높이만 정하면 너비는 따라온다.
+        // 저장본이 곧 9:16 Canvas-Area 라 높이만 정하면 너비는 따라온다.
         .frame(
             width: Self.imageHeight * CanvasArea.aspectRatio,
             height: Self.imageHeight

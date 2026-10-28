@@ -66,7 +66,7 @@ extension ToppingAddStore {
 
     enum Intent {
         case screenAppeared
-        /// 화면(`state.screen`)이 바뀜 — screen_view 단위가 달라졌을 때만 보낸다.
+        /// 화면(`state.screen`)이 바뀜. screen_view 단위가 같으면 Store 가 걸러 다시 기록하지 않는다.
         case screenChanged
         case screenDisappeared
         case sceneBecameActive

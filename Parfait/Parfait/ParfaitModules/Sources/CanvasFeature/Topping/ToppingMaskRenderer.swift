@@ -9,8 +9,6 @@ import Common
 import CoreGraphics
 import CoreImage
 
-/// 브러시 스트로크를 원본 알파 마스크 위에 다시 칠해 누끼를 새로 합성한다.
-/// 스트로크 목록을 매번 처음부터 재생하므로 undo/redo 는 목록만 줄였다 늘리면 된다.
 /// 스트로크를 재생해 새로 합성한 누끼 한 벌.
 struct RenderedCutout: Sendable {
     let mask: CGImage
@@ -19,6 +17,8 @@ struct RenderedCutout: Sendable {
     let hasArea: Bool
 }
 
+/// 브러시 스트로크를 원본 알파 마스크 위에 다시 칠해 누끼를 새로 합성한다.
+/// 스트로크 목록을 매번 처음부터 재생하므로 undo/redo 는 목록만 줄였다 늘리면 된다.
 actor ToppingMaskRenderer {
     private let context = CIContext(options: [.cacheIntermediates: false])
 

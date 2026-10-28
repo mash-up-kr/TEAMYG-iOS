@@ -137,7 +137,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
 /// 서버 확정 FCM data 페이로드 (#103):
 /// {"type": "TOPPING", "route": "canvas", "groupId": "50", "date": "2026-09-01"}
 /// `type`(푸시 종류)·`date`(토핑 날짜)는 아직 화면 이동에 안 쓴다 —
-/// 캔버스가 서버에 붙으면(#77) Routing 컨펌 받아 `date` 를 AppRoute.canvas 로 넘긴다.
+/// `date` 는 AppRoute.canvas 에 날짜 페이로드를 추가(Routing 컨펌)한 뒤 넘긴다.
 private struct PushPayload {
     let type: String?
     let route: String?

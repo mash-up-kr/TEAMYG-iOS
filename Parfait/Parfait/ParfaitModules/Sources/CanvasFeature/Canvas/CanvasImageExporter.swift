@@ -14,7 +14,7 @@ import UIKit
 
 /// 캔버스를 한 장의 이미지로 합성한다 — C-001-Save-Preview 가 띄우고 그대로 앨범에 넣는 그 이미지다.
 public struct CanvasImageExporter: Sendable {
-    /// 저장본 크기. 16:9 Canvas-Area 를 3배 배율로 그려 1080 × 1920 픽셀이 된다.
+    /// 저장본 크기. 9:16 Canvas-Area 를 3배 배율로 그려 1080 × 1920 픽셀이 된다.
     private static let canvasSize = CGSize(width: 360, height: 640)
     private static let renderScale: CGFloat = 3
     /// 배경 사진은 저장본 픽셀 크기(1920)보다 조금 여유 있게 받아 둔다.

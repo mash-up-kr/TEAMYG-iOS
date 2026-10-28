@@ -18,8 +18,7 @@ public protocol GroupRepository: Sendable {
     /// 그룹 상세(구성원·초대 코드) — 사이드메뉴(S-101)가 그리는 단위.
     func fetchDetail(groupID: String) async throws -> GroupDetail
 
-    /// 그룹 속 내 닉네임 변경을 서버에 요청한다.
-    /// 응답 스펙 미정 — 반환 타입은 백엔드 스펙 확정 시 추가.
+    /// 그룹 속 내 닉네임 변경을 서버에 요청한다. 응답은 보낸 값 그대로라 돌려주지 않는다.
     func changeMyNickname(groupID: String, nickname: String) async throws
 
     /// 그룹 나가기를 서버에 요청한다.

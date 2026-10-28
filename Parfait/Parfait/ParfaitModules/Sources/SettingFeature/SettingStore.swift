@@ -47,7 +47,7 @@ public final class SettingStore: MVIStore {
                     // 서버 무효화 성공 여부와 무관하게 세션 종료 이벤트가 발행돼 App 루트가 로그인 화면으로 되돌린다.
                     try await authUseCase.logout()
                 } catch {
-                    print("로그아웃 실패: \(error)")
+                    YGLogger.error("로그아웃 실패: \(error)")
                 }
             }
         case .withdrawPopupVisibilityChanged(let isPresented):
@@ -60,7 +60,7 @@ public final class SettingStore: MVIStore {
                     // 성공 시 세션 종료 이벤트가 발행돼 App 루트가 로그인 화면으로 되돌린다.
                     try await memberUseCase.withdraw()
                 } catch {
-                    print("회원 탈퇴 실패: \(error)")
+                    YGLogger.error("회원 탈퇴 실패: \(error)")
                 }
             }
         }
@@ -78,14 +78,14 @@ public final class SettingStore: MVIStore {
                 state.loginProvider = account.provider
             } catch {
                 // 에러 UI 정책 미정 — 로그만 남긴다
-                print("내 계정 조회 실패: \(error)")
+                YGLogger.error("내 계정 조회 실패: \(error)")
             }
             // 약관 내용은 바뀌지 않으므로 한 번만 조회한다.
             guard state.policies.isEmpty else { return }
             do {
                 state.policies = try await authUseCase.fetchPolicies()
             } catch {
-                print("약관 목록 조회 실패: \(error)")
+                YGLogger.error("약관 목록 조회 실패: \(error)")
             }
         }
     }

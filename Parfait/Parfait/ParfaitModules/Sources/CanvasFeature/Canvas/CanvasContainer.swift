@@ -247,8 +247,7 @@ private struct CanvasBoard: View {
 
 /// 캔버스 위에 얹히는 날짜 바(`Bar-Canvas`).
 ///
-/// 시안은 캘린더 아이콘을 날짜 왼쪽으로 옮기지만 그 재배치는 별도 작업이라 건드리지 않았다.
-/// 여기서는 저장 미리보기로 가는 `Ic_Save` 만 오른쪽 끝에 얹는다.
+/// 왼쪽은 캘린더 아이콘·날짜(탭하면 캘린더), 오른쪽 끝은 저장 미리보기로 가는 `Ic_Save`.
 struct CanvasDateHeader: View {
     static let height: CGFloat = 44
 
@@ -276,7 +275,7 @@ struct CanvasDateHeader: View {
                 }
             }
             .buttonStyle(.plain)
-            
+
             Spacer()
 
             YGIconButton(.icSave, size: .small, tone: .strong, action: onSaveTap)

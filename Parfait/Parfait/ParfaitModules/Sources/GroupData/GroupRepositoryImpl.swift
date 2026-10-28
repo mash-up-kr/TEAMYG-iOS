@@ -30,7 +30,7 @@ public struct GroupRepositoryImpl: GroupRepository {
         }
     }
 
-    /// 내가 속한 그룹 목록 (`GET /api/parfait-groups`).
+    /// 내가 속한 그룹 목록 (`GET /api/v2/parfait-groups`).
     ///
     /// 서버가 준 순서를 그대로 올린다 — 정렬은 UseCase 가 맡는다.
     public func fetchGroups() async throws -> [ParfaitGroup] {
