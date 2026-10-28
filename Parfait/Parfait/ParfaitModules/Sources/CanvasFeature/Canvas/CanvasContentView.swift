@@ -143,7 +143,11 @@ private struct LocalCanvasBackgroundImage: View {
             // GeometryReader 는 자식을 좌상단에 앉히므로, 프레임으로 감싸 가운데 크롭을 보장한다 — 저장본과 같은 기준.
             .frame(width: proxy.size.width, height: proxy.size.height)
             .clipped()
-            .task(id: DecodeRequest(size: proxy.size, displayScale: displayScale)) {
+            .task(id: DecodeRequest(
+                imageData: imageData,
+                size: proxy.size,
+                displayScale: displayScale
+            )) {
                 do {
                     let decodedImage = try await ImageDownsampling.decodedImage(
                         from: imageData,
@@ -159,6 +163,7 @@ private struct LocalCanvasBackgroundImage: View {
     }
 
     private struct DecodeRequest: Equatable {
+        let imageData: Data
         let size: CGSize
         let displayScale: CGFloat
     }
@@ -241,14 +246,18 @@ struct CanvasPlacedImage: View {
             neededLongEdge: neededLongEdgePixels
         )
         guard !Task.isCancelled else { return }
-        topping = loaded
-        if let loaded {
-            onToppingLoaded?(CGSize(width: loaded.width, height: loaded.height))
-        } else {
-            onToppingLoadFailed?()
+        guard let loaded else {
+            // 새 해상도를 못 받아도 이미 그려 둔 이미지(와 테두리)는 그대로 둔다 — 그땐 실패가 아니다.
+            if topping == nil {
+                onToppingLoadFailed?()
+            }
+            releaseLoadTracker()
+            return
         }
+        topping = loaded
+        onToppingLoaded?(CGSize(width: loaded.width, height: loaded.height))
 
-        guard let loaded, let border = canvasImage.border, border.width > 0 else {
+        guard let border = canvasImage.border, border.width > 0 else {
             silhouette = nil
             releaseLoadTracker()
             return
