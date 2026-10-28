@@ -50,6 +50,8 @@ public extension Image {
     static let parfaitCreamTop = Image("Parfait-Cream-Top", bundle: .module)
     static let parfaitCup = Image("Parfait-Cup", bundle: .module)
     static let templateError = Image("Template-Error", bundle: .module)
+    static let templateText01 = Image("Template-Text-01", bundle: .module)
+    static let templateText02 = Image("Template-Text-02", bundle: .module)
     static let template01 = Image("Template01", bundle: .module)
     static let template02 = Image("Template02", bundle: .module)
     static let template03 = Image("Template03", bundle: .module)
@@ -106,6 +108,8 @@ public extension UIImage {
     static var parfaitCreamTop: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cream-Top", bundle: .module)) }
     static var parfaitCup: UIImage { UIImage(resource: ImageResource(name: "Parfait-Cup", bundle: .module)) }
     static var templateError: UIImage { UIImage(resource: ImageResource(name: "Template-Error", bundle: .module)) }
+    static var templateText01: UIImage { UIImage(resource: ImageResource(name: "Template-Text-01", bundle: .module)) }
+    static var templateText02: UIImage { UIImage(resource: ImageResource(name: "Template-Text-02", bundle: .module)) }
     static var template01: UIImage { UIImage(resource: ImageResource(name: "Template01", bundle: .module)) }
     static var template02: UIImage { UIImage(resource: ImageResource(name: "Template02", bundle: .module)) }
     static var template03: UIImage { UIImage(resource: ImageResource(name: "Template03", bundle: .module)) }
