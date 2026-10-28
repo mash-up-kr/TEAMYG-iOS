@@ -16,7 +16,7 @@ struct CanvasMenuBar: View {
     var body: some View {
         HStack(spacing: -1) {
             CanvasMenuButton(
-                "사진 추가",
+                "추가",
                 icon: .icPlus,
                 style: .primary,
                 action: onToppingAddTap
