@@ -125,14 +125,7 @@ extension CanvasEditStore {
         var hasChanges: Bool { isDeleted || hasPlacementChanges || hasBorderChanges }
 
         var placementUpdate: ToppingPlacementUpdate {
-            ToppingPlacementUpdate(
-                positionX: placement.positionX == savedPlacement.positionX ? nil : placement.positionX,
-                positionY: placement.positionY == savedPlacement.positionY ? nil : placement.positionY,
-                scale: placement.scale == savedPlacement.scale ? nil : placement.scale,
-                rotation: placement.rotationDegrees == savedPlacement.rotationDegrees
-                    ? nil
-                    : placement.rotationDegrees
-            )
+            placement.update(since: savedPlacement)
         }
     }
 
@@ -179,14 +172,7 @@ extension CanvasEditStore {
         var hasChanges: Bool { isDeleted || hasPlacementChanges }
 
         var placementUpdate: ToppingPlacementUpdate {
-            ToppingPlacementUpdate(
-                positionX: placement.positionX == savedPlacement.positionX ? nil : placement.positionX,
-                positionY: placement.positionY == savedPlacement.positionY ? nil : placement.positionY,
-                scale: placement.scale == savedPlacement.scale ? nil : placement.scale,
-                rotation: placement.rotationDegrees == savedPlacement.rotationDegrees
-                    ? nil
-                    : placement.rotationDegrees
-            )
+            placement.update(since: savedPlacement)
         }
     }
 
@@ -247,5 +233,17 @@ extension CanvasEditStore {
         case exitPopupVisibilityChanged(Bool)
         case discardTapped
         case confirmTapped
+    }
+}
+
+private extension ToppingPlacement {
+    /// 저장된 값에서 바뀐 항목만 채운 부분 갱신 요청.
+    func update(since saved: ToppingPlacement) -> ToppingPlacementUpdate {
+        ToppingPlacementUpdate(
+            positionX: positionX == saved.positionX ? nil : positionX,
+            positionY: positionY == saved.positionY ? nil : positionY,
+            scale: scale == saved.scale ? nil : scale,
+            rotation: rotationDegrees == saved.rotationDegrees ? nil : rotationDegrees
+        )
     }
 }
