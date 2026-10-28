@@ -50,8 +50,6 @@ public final class SettingStore: MVIStore {
                     print("로그아웃 실패: \(error)")
                 }
             }
-        case .withdrawTapped:
-            state.isWithdrawPopupPresented = true
         case .withdrawPopupVisibilityChanged(let isPresented):
             state.isWithdrawPopupPresented = isPresented
         case .withdrawConfirmed:
@@ -118,7 +116,6 @@ public final class SettingStore: MVIStore {
         /// 화면 진입 — 내 계정 정보를 조회한다.
         case appeared
         case logoutTapped
-        case withdrawTapped
         case withdrawPopupVisibilityChanged(Bool)
         case withdrawConfirmed
     }

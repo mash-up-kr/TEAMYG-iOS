@@ -104,7 +104,7 @@ extension ToppingAddStore {
         case placementConfirmed
         case closeTapped
         case quitPopupVisibilityChanged(QuitConfirmation, Bool)
-        case quitConfirmed(QuitConfirmation)
+        case quitConfirmed
     }
 
     enum Event: Sendable {

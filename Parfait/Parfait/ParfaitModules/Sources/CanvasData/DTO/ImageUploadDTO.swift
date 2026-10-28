@@ -9,13 +9,10 @@
 struct IssuedUploadURLDTO: Decodable, Sendable {
     let imageId: Int
     let uploadUrl: String
-    let imageUrl: String
-    let expiresIn: Int
 }
 
 /// `ConfirmImageUploadResponse`
 struct ConfirmedUploadDTO: Decodable, Sendable {
     let imageId: Int
     let imageUrl: String
-    let status: String
 }

@@ -13,7 +13,6 @@ extension BackgroundImagePickerStore {
         let weekdayText: String
         let photoSource: PhotoSource
         var screen: Screen
-        var showsCameraGuide = true
         var isPreparingImage = false
         var showsQuitPopup = false
 
@@ -70,7 +69,6 @@ extension BackgroundImagePickerStore {
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground
-        case cameraGuideDismissed
         case flashTapped
         case cameraPositionTapped
         case cameraZoomChanged(CGFloat)

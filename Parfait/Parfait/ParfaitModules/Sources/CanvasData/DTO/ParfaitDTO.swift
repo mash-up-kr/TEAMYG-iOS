@@ -10,7 +10,6 @@ struct ParfaitDTO: Decodable, Sendable {
     let parfaitId: Int
     let groupName: String?
     let date: String
-    let status: String
     let lastClosedDate: String?
     let groupMembers: [GroupMemberDTO]
     let background: BackgroundDTO?
@@ -33,7 +32,6 @@ struct BackgroundDTO: Decodable, Sendable {
 /// `String` 으로 받아 매핑에서 형식별로 파싱한다.
 struct ParfaitImageDTO: Decodable, Sendable {
     let parfaitImageId: Int
-    let imageId: Int
     let imageUrl: String
     let positionX: Double
     let positionY: Double

@@ -26,8 +26,6 @@ public enum CreateGroupError: Error, Equatable {
     case invalidName(GroupNameViolation)
     case invalidNickname
     case invalidMemberCount
-    /// 같은 이름의 그룹을 이미 갖고 있다.
-    case duplicatedName
     /// 매핑되지 않은 서버 에러 — 서버가 내려준 메시지를 그대로 전달.
     case server(message: String)
     /// 사유 불명(네트워크 단절 등) — View 가 일반 안내 문구로 렌더링.

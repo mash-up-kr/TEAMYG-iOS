@@ -13,7 +13,6 @@ public struct Parfait: Identifiable, Equatable, Sendable {
     /// 캔버스가 속한 그룹 이름. 과거 스키마 응답엔 없을 수 있다.
     public let groupName: String?
     public let date: ParfaitDate
-    public let status: ParfaitStatus
     /// 가장 최근에 마감된 캔버스 날짜. SY-001-New 안내 노출 판단에 쓴다.
     public let lastClosedDate: ParfaitDate?
     public let members: [ParfaitMember]
@@ -30,7 +29,6 @@ public struct Parfait: Identifiable, Equatable, Sendable {
         id: Int,
         groupName: String?,
         date: ParfaitDate,
-        status: ParfaitStatus,
         lastClosedDate: ParfaitDate?,
         members: [ParfaitMember],
         background: ParfaitBackground?,
@@ -40,22 +38,12 @@ public struct Parfait: Identifiable, Equatable, Sendable {
         self.id = id
         self.groupName = groupName
         self.date = date
-        self.status = status
         self.lastClosedDate = lastClosedDate
         self.members = members
         self.background = background
         self.toppings = toppings.sorted { $0.positionZ < $1.positionZ }
         self.texts = texts.sorted { $0.positionZ < $1.positionZ }
     }
-}
-
-public enum ParfaitStatus: Sendable, Equatable {
-    /// 내용이 있는 캔버스.
-    case active
-    /// 오전 3시를 넘겨 편집이 닫힌 캔버스.
-    case closed
-    /// 발급만 되고 아직 비어 있는 캔버스. SY-001-New 안내 노출 조건이다.
-    case empty
 }
 
 /// 캘린더·목록에 쓰는 캔버스 요약.

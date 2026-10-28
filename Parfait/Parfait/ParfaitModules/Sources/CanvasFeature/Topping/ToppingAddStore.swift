@@ -42,7 +42,6 @@ final class ToppingAddStore: MVIStore {
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
     private var cutoutApplyTask: Task<Void, Never>?
-    private var saveTask: Task<Void, Never>?
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasRefreshTask: Task<Void, Never>?
     /// 마지막으로 보낸 screen_view — 같은 단위 안의 화면 전환(촬영 → 촬영 확인 등)은 다시 보내지 않는다.
@@ -70,7 +69,7 @@ final class ToppingAddStore: MVIStore {
         let onRecentUploadConfirmed: (StoredImage) -> Void = { [weak self] upload in
             self?.send(.recentUploadConfirmed(upload))
         }
-        let albumPickerStore = makeAlbumPickerStore(isLimited, true, onPhotoConfirmed, onRecentUploadConfirmed)
+        let albumPickerStore = makeAlbumPickerStore(isLimited, onPhotoConfirmed, onRecentUploadConfirmed)
         albumPicker = (isLimited, albumPickerStore)
         return albumPickerStore
     }
@@ -620,7 +619,7 @@ private extension ToppingAddStore {
         let border = state.border.style
         state.saveState = .saving
 
-        saveTask = Task { [weak self, dependencies] in
+        Task { [weak self, dependencies] in
             guard let upload = await Self.encodedUpload(from: topping.image) else {
                 guard let self else { return }
                 state.saveState = .idle

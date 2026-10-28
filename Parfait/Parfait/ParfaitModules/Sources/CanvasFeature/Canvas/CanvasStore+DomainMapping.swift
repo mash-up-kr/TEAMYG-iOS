@@ -24,10 +24,6 @@ extension CalendarDate {
     init(_ date: ParfaitDate) {
         self.init(year: date.year, month: date.month, day: date.day)
     }
-
-    var parfaitDate: ParfaitDate {
-        ParfaitDate(year: year, month: month, day: day)
-    }
 }
 
 extension NametagChip {

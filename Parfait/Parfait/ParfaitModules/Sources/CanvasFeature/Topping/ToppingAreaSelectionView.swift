@@ -94,8 +94,7 @@ struct ToppingAreaSelectionView: View {
                 onBrushEnded: endStroke,
                 onBrushCancelled: cancelStroke,
                 onMagnify: magnify,
-                onPan: pan,
-                onTransformEnded: {}
+                onPan: pan
             )
         }
         .onGeometryChange(for: CGSize.self, of: { $0.size }, action: resizeViewport)

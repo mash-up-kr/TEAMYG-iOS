@@ -239,13 +239,11 @@ struct AppDependencies {
 
     func makeAlbumPickerStore(
         isLimited: Bool,
-        showsRecentUploads: Bool,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
         onRecentUploadConfirmed: ((StoredImage) -> Void)?
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,
-            showsRecentUploads: showsRecentUploads,
             recentUploadsRepository: recentUploadsRepository,
             onPhotoConfirmed: onPhotoConfirmed,
             onRecentUploadConfirmed: onRecentUploadConfirmed

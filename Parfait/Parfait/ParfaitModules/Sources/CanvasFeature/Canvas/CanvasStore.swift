@@ -127,7 +127,7 @@ public final class CanvasStore: MVIStore {
         case .galleryOptionTapped:
             openToppingAddFlow(.gallery) { .gallery(canvasDate: $0) }
         case .textOptionTapped:
-            openToppingAddFlow(.text) { .text(canvasDate: $0) }
+            openToppingAddFlow(.text) { _ in .text }
         case .menuDimTapped:
             // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
             state.menuState = .collapsed

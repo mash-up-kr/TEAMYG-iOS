@@ -189,6 +189,7 @@ extension CanvasEditStore {
         canvasRefreshTask?.cancel()
         canvasRefreshTask = nil
         state.saveState = .saving
+        // 서버 쓰기는 취소하지 않는다(docs/mvi.md) — 핸들을 들지 않아 화면을 나가도 끝까지 간다.
         Task { [self] in
             do {
                 try await saveBackgroundIfNeeded()
@@ -198,8 +199,6 @@ extension CanvasEditStore {
                 try await saveTextDeletions()
                 state.saveState = .idle
                 dependencies.onSaved()
-            } catch is CancellationError {
-                return
             } catch {
                 state.saveState = .idle
                 eventChannel.send(.saveFailed)
@@ -227,16 +226,13 @@ extension CanvasEditStore {
                 uploadedImage = try await dependencies.imageUploadRepository.upload(
                     .background(jpegData: jpegData)
                 )
-                try Task.checkCancellation()
                 state.pendingUploadedBackground = uploadedImage
             }
-            try Task.checkCancellation()
             _ = try await dependencies.canvasUseCase.changeBackground(
                 groupID: dependencies.groupID,
                 parfaitID: dependencies.parfaitID,
                 to: .image(imageID: uploadedImage.id)
             )
-            try Task.checkCancellation()
             state.background = .image(url: uploadedImage.url)
             state.savedBackground = state.background
             state.pendingUploadedBackground = nil
@@ -248,7 +244,6 @@ extension CanvasEditStore {
             parfaitID: dependencies.parfaitID,
             to: change
         )
-        try Task.checkCancellation()
         state.savedBackground = state.background
     }
 

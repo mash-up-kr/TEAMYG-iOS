@@ -53,8 +53,6 @@ final class BackgroundImagePickerStore: MVIStore {
             camera.suspend()
         case .sceneEnteredBackground:
             camera.suspend()
-        case .cameraGuideDismissed:
-            state.showsCameraGuide = false
         case .flashTapped:
             camera.toggleFlash()
         case .cameraPositionTapped:

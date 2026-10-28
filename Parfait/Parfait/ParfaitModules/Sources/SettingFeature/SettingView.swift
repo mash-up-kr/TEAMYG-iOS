@@ -140,7 +140,7 @@ public struct SettingView: View {
     private var dangerZone: some View {
         YGDangerZone {
             YGActionItem("로그아웃") { store.send(.logoutTapped) }
-            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
+            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawPopupVisibilityChanged(true)) }
         }
     }
 }

@@ -57,7 +57,7 @@ struct ToppingAddFlowView: View {
             description: Self.quitPopupDescription,
             secondaryTitle: "그만두기",
             primaryTitle: ToppingAddStore.QuitConfirmation.addPhoto.continueTitle,
-            secondaryAction: { store.send(.quitConfirmed(.addPhoto)) }
+            secondaryAction: { store.send(.quitConfirmed) }
         )
         .ygPopup(
             isPresented: store.binding(\.isEditPhotoQuitPopupPresented) {
@@ -67,7 +67,7 @@ struct ToppingAddFlowView: View {
             description: Self.quitPopupDescription,
             secondaryTitle: "그만두기",
             primaryTitle: ToppingAddStore.QuitConfirmation.editPhoto.continueTitle,
-            secondaryAction: { store.send(.quitConfirmed(.editPhoto)) }
+            secondaryAction: { store.send(.quitConfirmed) }
         )
         .ygToastOverlay($toasts)
         .task {
@@ -125,7 +125,8 @@ struct ToppingAddFlowView: View {
                     onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
                     onSwitchCameraTap: { store.send(.cameraPositionTapped) },
                     zoomFactor: store.cameraState.zoomFactor,
-                    onZoomChange: { store.send(.cameraZoomChanged($0)) }
+                    onZoomChange: { store.send(.cameraZoomChanged($0)) },
+                    onCloseTap: { store.send(.closeTapped) }
                 )
             } confirmation: {
                 ToppingCameraConfirmationView(
@@ -145,6 +146,7 @@ struct ToppingAddFlowView: View {
                 title: "카메라 권한이 없어요",
                 message: "설정에서 카메라 권한을 허용해 주세요",
                 buttonTitle: "설정으로 이동",
+                onCloseTap: { store.send(.closeTapped) },
                 action: { store.send(.settingsTapped) }
             )
 
@@ -153,6 +155,7 @@ struct ToppingAddFlowView: View {
                 title: "카메라를 사용할 수 없어요",
                 message: "잠시 후 다시 시도해 주세요",
                 buttonTitle: "다시 시도",
+                onCloseTap: { store.send(.closeTapped) },
                 action: { store.send(.cameraRetryTapped) }
             )
 

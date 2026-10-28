@@ -12,10 +12,9 @@ import SwiftUI
 import UIComponent
 
 /// 앨범 선택 화면 Store 팩토리.
-/// `onRecentUploadConfirmed` 는 `showsRecentUploads` 가 `false` 인 화면(배경 편집)에서는 `nil` 이다.
+/// `onRecentUploadConfirmed` 가 `nil` 이면(배경 편집) 최근 업로드 섹션을 감춘다.
 public typealias AlbumPickerStoreFactory = (
     _ isLimited: Bool,
-    _ showsRecentUploads: Bool,
     _ onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
     _ onRecentUploadConfirmed: ((StoredImage) -> Void)?
 ) -> AlbumPickerStore
@@ -32,7 +31,6 @@ public final class AlbumPickerStore: MVIStore {
 
     public init(
         isLimited: Bool,
-        showsRecentUploads: Bool = true,
         recentUploadsRepository: any RecentUploadsRepository,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
         onRecentUploadConfirmed: ((StoredImage) -> Void)?
@@ -40,7 +38,7 @@ public final class AlbumPickerStore: MVIStore {
         self.recentUploadsRepository = recentUploadsRepository
         self.onPhotoConfirmed = onPhotoConfirmed
         self.onRecentUploadConfirmed = onRecentUploadConfirmed
-        state = State(isLimited: isLimited, showsRecentUploads: showsRecentUploads)
+        state = State(isLimited: isLimited, showsRecentUploads: onRecentUploadConfirmed != nil)
     }
 
     public func send(_ intent: Intent) {
@@ -59,10 +57,9 @@ public final class AlbumPickerStore: MVIStore {
             state.selectedPhoto = SelectedPhoto(
                 id: asset.localIdentifier,
                 asset: asset,
-                upload: nil,
                 thumbnail: thumbnail
             )
-        case let .recentUploadTapped(upload, _):
+        case .recentUploadTapped(let upload):
             onRecentUploadConfirmed?(upload)
         case .confirmReselectTapped, .selectionReset:
             state.selectedPhoto = nil
@@ -179,31 +176,25 @@ public final class AlbumPickerStore: MVIStore {
         case disappeared
         case reselectTapped
         case photoTapped(PHAsset, thumbnail: UIImage?)
-        case recentUploadTapped(StoredImage, thumbnail: UIImage?)
+        case recentUploadTapped(StoredImage)
         case confirmReselectTapped
         case selectionReset
         case confirmNextTapped
     }
 
-    /// 확인 화면(C-102-Confirm)에 표시할 선택 사진 — 기기 사진·최근 업로드 공용.
-    /// 썸네일은 셀 크기로만 디코딩된 플레이스홀더라, 확인 화면은 아래 원본 출처에서 화면 크기로 다시 로드한다.
+    /// 확인 화면(C-102-Confirm)에 표시할 선택한 기기 사진. 최근 업로드는 확인 화면 없이 바로 넘어간다.
+    /// 썸네일은 셀 크기로만 디코딩된 플레이스홀더라, 확인 화면은 `asset` 에서 화면 크기로 다시 로드한다.
     struct SelectedPhoto: Equatable {
-        /// matched geometry 전환 식별자 (기기 사진: localIdentifier, 최근 업로드: zoomIdentifier)
+        /// matched geometry 전환 식별자 (기기 사진 localIdentifier)
         let id: String
-        /// 고화질 후속 로드용 원본 출처 — 둘 중 하나만 채워진다.
+        /// 고화질 후속 로드용 원본. 프리뷰에서만 nil.
         let asset: PHAsset?
-        let upload: StoredImage?
         let thumbnail: UIImage?
 
         static func == (lhs: Self, rhs: Self) -> Bool {
             lhs.id == rhs.id && lhs.thumbnail === rhs.thumbnail
         }
     }
-}
-
-extension StoredImage {
-    /// 기기 사진 localIdentifier 와 겹치지 않는 matched geometry 식별자.
-    var zoomIdentifier: String { "recent-upload-\(id)" }
 }
 
 /// `PHPhotoLibraryChangeObserver` 는 NSObjectProtocol 이라 Store 가 직접 채택하지 않고

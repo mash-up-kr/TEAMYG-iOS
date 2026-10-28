@@ -14,7 +14,7 @@ struct CameraErrorScreen: View {
     let title: String
     let message: String
     let buttonTitle: String
-    var onCloseTap: (() -> Void)?
+    let onCloseTap: () -> Void
     let action: () -> Void
 
     var body: some View {
@@ -39,6 +39,8 @@ struct CameraErrorScreen: View {
     CameraErrorScreen(
         title: "카메라 권한이 없어요",
         message: "설정에서 카메라 권한을 허용해 주세요",
-        buttonTitle: "설정으로 이동"
-    ) {}
+        buttonTitle: "설정으로 이동",
+        onCloseTap: {},
+        action: {}
+    )
 }

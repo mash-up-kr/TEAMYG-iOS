@@ -120,10 +120,6 @@ public extension CanvasStore {
             calendar.selectedDate != calendar.today
         }
 
-        var toppingCount: Int {
-            canvasContent?.images.count ?? 0
-        }
-
         /// SY-001-New 안내 — 아직 안내하지 않은 마감 캔버스가 있을 때만 알린다. 마감 날짜당 한 번.
         /// 조회가 끝난 뒤에만 판단한다 — 로딩 중에는 직전 캔버스의 값이 남아
         /// 편집·토핑 저장 후 리로드 때마다 안내가 다시 떠 버린다.

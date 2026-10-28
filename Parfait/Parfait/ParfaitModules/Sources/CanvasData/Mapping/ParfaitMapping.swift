@@ -24,7 +24,6 @@ extension ParfaitDTO {
             id: parfaitId,
             groupName: groupName,
             date: date,
-            status: ParfaitStatus(serverValue: status),
             lastClosedDate: lastClosedDate.flatMap(ParfaitDate.init(isoText:)),
             members: groupMembers.map { $0.toEntity() },
             background: try background?.toEntity(),
@@ -76,7 +75,6 @@ extension ParfaitImageDTO {
         }
         return PlacedTopping(
             id: parfaitImageId,
-            imageID: imageId,
             imageURL: url,
             positionX: positionX,
             positionY: positionY,
@@ -120,7 +118,6 @@ extension PlacedToppingDTO {
         }
         return PlacedTopping(
             id: parfaitImageId,
-            imageID: imageId,
             imageURL: url,
             positionX: positionX,
             positionY: positionY,
@@ -157,16 +154,6 @@ extension UpdatedBorderDTO {
 
 private extension ParfaitMember {
     static let unknown = ParfaitMember(id: 0, nickname: "알 수 없음", nametagChip: .unassigned)
-}
-
-private extension ParfaitStatus {
-    init(serverValue: String) {
-        switch serverValue {
-        case "ACTIVE": self = .active
-        case "CLOSED": self = .closed
-        default: self = .empty
-        }
-    }
 }
 
 private extension NametagChip {

@@ -9,7 +9,6 @@ import Foundation
 
 public struct PlacedTopping: Identifiable, Equatable, Sendable {
     public let id: Int
-    public let imageID: Int
     public let imageURL: URL
     public let positionX: Double
     public let positionY: Double
@@ -23,7 +22,6 @@ public struct PlacedTopping: Identifiable, Equatable, Sendable {
 
     public init(
         id: Int,
-        imageID: Int,
         imageURL: URL,
         positionX: Double,
         positionY: Double,
@@ -36,7 +34,6 @@ public struct PlacedTopping: Identifiable, Equatable, Sendable {
         createdAt: Date?
     ) {
         self.id = id
-        self.imageID = imageID
         self.imageURL = imageURL
         self.positionX = positionX
         self.positionY = positionY

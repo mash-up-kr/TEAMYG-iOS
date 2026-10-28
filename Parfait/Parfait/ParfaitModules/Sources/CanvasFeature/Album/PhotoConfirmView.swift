@@ -45,13 +45,9 @@ struct PhotoConfirmView: View {
                 }
                 .task(id: imageAreaSize) {
                     guard imageAreaSize != .zero else { return }
-                    do {
-                        let loadedImage = try await loadFullImage()
-                        guard !Task.isCancelled else { return }
-                        fullImage = loadedImage
-                    } catch {
-                        return
-                    }
+                    let loadedImage = await loadFullImage()
+                    guard !Task.isCancelled else { return }
+                    fullImage = loadedImage
                 }
 
             HStack(spacing: .gap4) {
@@ -77,25 +73,20 @@ struct PhotoConfirmView: View {
         }
     }
 
-    private func loadFullImage() async throws -> UIImage? {
-        if let asset = photo.asset {
-            let targetSize = CGSize(
-                width: imageAreaSize.width * displayScale,
-                height: imageAreaSize.height * displayScale
-            )
-            return await asset.requestImage(targetSize: targetSize)
-        }
-        guard let upload = photo.upload else { return nil }
-        return try await upload.downsampledImage(
-            maxPixelSize: imageAreaSize.longEdgePixelSize(scale: displayScale)
+    private func loadFullImage() async -> UIImage? {
+        guard let asset = photo.asset else { return nil }
+        let targetSize = CGSize(
+            width: imageAreaSize.width * displayScale,
+            height: imageAreaSize.height * displayScale
         )
+        return await asset.requestImage(targetSize: targetSize)
     }
 }
 
 #Preview {
     @Previewable @Namespace var zoomNamespace
     PhotoConfirmView(
-        photo: .init(id: "preview", asset: nil, upload: nil, thumbnail: nil),
+        photo: .init(id: "preview", asset: nil, thumbnail: nil),
         zoomNamespace: zoomNamespace,
         onReselect: {},
         onNext: {}

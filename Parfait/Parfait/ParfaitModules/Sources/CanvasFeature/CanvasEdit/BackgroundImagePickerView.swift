@@ -80,7 +80,7 @@ struct BackgroundImagePickerView: View {
                     isCameraReady: store.cameraState.isReady,
                     showsToast: false,
                     previewSource: store.previewSource,
-                    onToastDismissed: { store.send(.cameraGuideDismissed) },
+                    onToastDismissed: {},
                     onFlashTap: { store.send(.flashTapped) },
                     onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
                     onSwitchCameraTap: { store.send(.cameraPositionTapped) },
@@ -122,14 +122,9 @@ struct BackgroundImagePickerView: View {
         case .gallery:
             AlbumView(
                 makeAlbumPickerStore: { isLimited in
-                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 — 섹션을 감추고
-                    // 핸들러도 주지 않는다. 핸들러를 남겨두면 섹션을 되살릴 때 검은 배경으로 조용히 돌아온다.
-                    makeAlbumPickerStore(
-                        isLimited,
-                        false,
-                        confirmGalleryPhoto,
-                        nil
-                    )
+                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 —
+                    // 핸들러를 주지 않아 최근 업로드 섹션을 감춘다.
+                    makeAlbumPickerStore(isLimited, confirmGalleryPhoto, nil)
                 },
                 showsSelectionGuide: false,
                 onCloseTap: { store.send(.closeTapped) }

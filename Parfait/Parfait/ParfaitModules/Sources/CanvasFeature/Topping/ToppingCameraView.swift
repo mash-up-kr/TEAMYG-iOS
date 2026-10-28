@@ -22,9 +22,8 @@ struct ToppingCameraView: View {
     let onSwitchCameraTap: () -> Void
     let zoomFactor: CGFloat
     let onZoomChange: (CGFloat) -> Void
-    var onCloseTap: (() -> Void)?
+    let onCloseTap: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
@@ -92,7 +91,7 @@ struct ToppingCameraView: View {
         HStack(spacing: 0) {
             ToppingDateBadge(dateText: dateText, weekdayText: weekdayText)
             Spacer(minLength: .gap4)
-            YGCircleButton(.icClose, variant: .secondary, action: onCloseTap ?? { dismiss() })
+            YGCircleButton(.icClose, variant: .secondary, action: onCloseTap)
         }
         .frame(height: 44)
     }

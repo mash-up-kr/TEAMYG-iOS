@@ -113,14 +113,9 @@ public struct AlbumPickerView: View {
                 .foregroundStyle(Color.gray900)
             LazyVGrid(columns: gridColumns, spacing: .gap4) {
                 ForEach(store.state.recentUploads) { upload in
-                    RecentUploadCell(
-                        upload: upload,
-                        zoomNamespace: zoomNamespace,
-                        isZoomSource: store.state.selectedPhoto == nil
-                    ) { thumbnail in
-                        withAnimation(.smooth(duration: 0.35)) {
-                            store.send(.recentUploadTapped(upload, thumbnail: thumbnail))
-                        }
+                    // 최근 업로드는 확인 화면 없이 바로 배치로 넘어간다.
+                    RecentUploadCell(upload: upload) {
+                        store.send(.recentUploadTapped(upload))
                     }
                 }
             }
@@ -157,10 +152,7 @@ public struct AlbumPickerView: View {
 /// 최근 업로드 셀 — 저장소가 넘긴 Data 를 실제 셀 크기(포인트) × 스케일 픽셀로 축소 디코딩해 표시.
 private struct RecentUploadCell: View {
     let upload: StoredImage
-    let zoomNamespace: Namespace.ID
-    /// 확인 화면이 떠 있는 동안 false — matched geometry 소스는 확인 화면 이미지 하나여야 한다.
-    let isZoomSource: Bool
-    let onTap: (UIImage?) -> Void
+    let onTap: () -> Void
 
     @State private var image: UIImage?
     @State private var cellSize = CGSize.zero
@@ -168,7 +160,7 @@ private struct RecentUploadCell: View {
 
     var body: some View {
         Button {
-            onTap(image)
+            onTap()
         } label: {
             Color.gray100
                 .aspectRatio(1, contentMode: .fit)
@@ -181,7 +173,6 @@ private struct RecentUploadCell: View {
                 }
                 .clipped()
                 .contentShape(.rect) // clipped 는 그리기만 자름 — 넘친 이미지가 이웃 셀 탭을 가로채지 않도록 히트 영역 제한
-                .matchedGeometryEffect(id: upload.zoomIdentifier, in: zoomNamespace, isSource: isZoomSource)
         }
         .buttonStyle(.plain)
         .onGeometryChange(for: CGSize.self) { proxy in
