@@ -52,7 +52,7 @@ struct CanvasBackgroundPalette: View {
                     .fill(.gray100)
 
                 if selectedImageSource == source {
-                    CanvasBackgroundThumbnail(background: background)
+                    CanvasBackgroundView(background: background, showsLoadingIndicator: false)
                         .clipShape(.circle)
                 }
 
@@ -110,69 +110,5 @@ struct CanvasColorChip: View {
                 .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct CanvasBackgroundThumbnail: View {
-    let background: CanvasStore.CanvasBackground
-
-    var body: some View {
-        switch background {
-        case .color(let hex):
-            Color(hex: hex)
-
-        case .image(let url):
-            YGImageView(url: url) { phase in
-                if case .success(let image) = phase {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.gray100
-                }
-            }
-
-        case .imageData(let imageData):
-            LocalBackgroundThumbnail(imageData: imageData)
-        }
-    }
-}
-
-private struct LocalBackgroundThumbnail: View {
-    let imageData: Data
-
-    @Environment(\.displayScale) private var displayScale
-    @State private var image: CGImage?
-
-    var body: some View {
-        GeometryReader { proxy in
-            Group {
-                if let image {
-                    Image(decorative: image, scale: 1)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.gray100
-                }
-            }
-            .task(id: DecodeRequest(imageData: imageData, size: proxy.size, displayScale: displayScale)) {
-                do {
-                    let decodedImage = try await ImageDownsampling.decodedImage(
-                        from: imageData,
-                        maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
-                    )
-                    guard !Task.isCancelled else { return }
-                    image = decodedImage
-                } catch {
-                    return
-                }
-            }
-        }
-    }
-
-    private struct DecodeRequest: Equatable {
-        let imageData: Data
-        let size: CGSize
-        let displayScale: CGFloat
     }
 }

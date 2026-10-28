@@ -50,7 +50,7 @@ struct CanvasContentView: View {
             ZStack {
                 // 저장본(`CanvasSnapshotView`)과 같은 가운데 크롭이 되도록 배경을 캔버스 크기에 고정한다.
                 // `scaledToFill` 결과를 캔버스보다 큰 채로 두면 ZStack 이 그만큼 커져 크롭 기준이 어긋난다.
-                background
+                CanvasBackgroundView(background: content.background)
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
 
@@ -95,10 +95,16 @@ struct CanvasContentView: View {
         guard let onImageTap else { return nil }
         return { onImageTap(canvasImage) }
     }
+}
 
-    @ViewBuilder
-    private var background: some View {
-        switch content.background {
+/// 캔버스 배경. 캔버스와 배경 팔레트 썸네일이 같이 쓴다.
+struct CanvasBackgroundView: View {
+    let background: CanvasStore.CanvasBackground
+    /// 원격 이미지를 받는 동안 로딩 애니메이션을 보일지. 작은 썸네일은 회색으로 둔다.
+    var showsLoadingIndicator = true
+
+    var body: some View {
+        switch background {
         case .color(let hex):
             Color(hex: hex)
 
@@ -109,10 +115,10 @@ struct CanvasContentView: View {
                     image
                         .resizable()
                         .scaledToFill()
-                case .empty:
+                case .empty where showsLoadingIndicator:
                     YGLottieView(.loadingDark)
                         .frame(width: 44, height: 44)
-                case .failure:
+                case .empty, .failure:
                     Color.gray100
                 }
             }
