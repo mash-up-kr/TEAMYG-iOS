@@ -17,8 +17,8 @@ import UIComponent
 final class TextToppingStore: MVIStore {
     private(set) var state: State
 
-    @ObservationIgnored let eventChannel = EventChannel<Event>()
-    let dependencies: Dependencies
+    @ObservationIgnored private let eventChannel = EventChannel<Event>()
+    private let dependencies: Dependencies
 
     init(state: State = State(), dependencies: Dependencies) {
         self.state = state
@@ -106,6 +106,7 @@ final class TextToppingStore: MVIStore {
     }
 
     /// 배치한 텍스트를 서버에 쌓고, 성공하면 닫는다 — 닫히면 캔버스가 다시 조회해 새 텍스트를 그린다.
+    /// 저장 중엔 화면을 막고, 성공하면 캔버스에 바로 반영한 뒤 닫는다.
     private func saveText() {
         // 이미 저장 중이면 조용히 무시한다 — 진행 중인 저장을 실패로 보고하면 안 된다.
         guard !state.isSaving else { return }
@@ -116,22 +117,15 @@ final class TextToppingStore: MVIStore {
             return
         }
 
-        save { dependencies in
-            let placed = try await dependencies.toppingUseCase.placeText(
-                draft,
-                groupID: dependencies.groupID,
-                parfaitID: parfaitID
-            )
-            return CanvasStore.CanvasText(placed)
-        }
-    }
-
-    /// 저장 중엔 화면을 막고, 성공하면 캔버스에 바로 반영한 뒤 닫는다.
-    private func save(_ operation: @escaping @Sendable (Dependencies) async throws -> CanvasStore.CanvasText) {
         state.isSaving = true
         Task { [weak self, dependencies] in
             do {
-                let text = try await operation(dependencies)
+                let placed = try await dependencies.toppingUseCase.placeText(
+                    draft,
+                    groupID: dependencies.groupID,
+                    parfaitID: parfaitID
+                )
+                let text = CanvasStore.CanvasText(placed)
                 guard let self else { return }
                 state.isSaving = false
                 dependencies.onSaved(text)
