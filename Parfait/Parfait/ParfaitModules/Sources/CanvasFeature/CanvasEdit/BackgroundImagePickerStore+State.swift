@@ -69,12 +69,8 @@ extension BackgroundImagePickerStore {
         case screenDisappeared
         case sceneBecameActive
         case sceneEnteredBackground
-        case flashTapped
-        case cameraPositionTapped
-        case cameraZoomChanged(CGFloat)
-        case shutterTapped(viewFinderRegion: ViewFinderRegion?)
-        case retakeTapped
-        case photoConfirmed
+        /// 촬영·촬영 확인 화면의 조작 (`CameraCaptureScreen`).
+        case camera(CameraCaptureScreen.Action)
         case galleryPhotoConfirmed(assetIdentifier: String)
         case cameraRetryTapped
         case settingsTapped

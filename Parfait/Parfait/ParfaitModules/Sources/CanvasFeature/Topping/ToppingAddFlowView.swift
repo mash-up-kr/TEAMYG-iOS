@@ -12,7 +12,6 @@ struct ToppingAddFlowView: View {
     @State private var store: ToppingAddStore
     @State private var toasts: [YGToastItem] = []
     @State private var areaSelectionToasts: [YGToastItem] = []
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
 
     private static let quitPopupDescription = "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?"
@@ -90,73 +89,38 @@ struct ToppingAddFlowView: View {
                 }
             }
         }
-        // `.inactive` 는 권한 다이얼로그·알림 배너·앱 스위처 등에서도 흔히 발생한다.
-        // 여기서 세션을 끄면 껐다 켜기가 잦아져 최초 권한 요청 플로우가 끊기므로 `.background` 만 처리한다.
-        // (백그라운드 진입 시엔 iOS 가 캡처 세션을 어차피 중단시킨다.)
-        .onChange(of: scenePhase) { _, newScenePhase in
-            switch newScenePhase {
-            case .active:
-                store.send(.sceneBecameActive)
-            case .background:
-                store.send(.sceneEnteredBackground)
-            case .inactive:
-                break
-            @unknown default:
-                break
-            }
-        }
+        .onCameraScenePhaseChange(
+            becameActive: { store.send(.sceneBecameActive) },
+            enteredBackground: { store.send(.sceneEnteredBackground) }
+        )
     }
 
     @ViewBuilder
     private var cameraFlow: some View {
         switch store.state.screen {
         case .camera, .cameraConfirmation:
-            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
-                ToppingCameraView(
-                    dateText: store.state.canvasDateText,
-                    weekdayText: store.state.canvasWeekdayText,
-                    flashMode: store.cameraState.flashMode,
-                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                    isCameraReady: store.cameraState.isReady,
-                    showsToast: store.state.showsToast,
-                    previewSource: store.previewSource,
-                    onToastDismissed: { store.send(.toastDismissed) },
-                    onFlashTap: { store.send(.flashTapped) },
-                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                    onSwitchCameraTap: { store.send(.cameraPositionTapped) },
-                    zoomFactor: store.cameraState.zoomFactor,
-                    onZoomChange: { store.send(.cameraZoomChanged($0)) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            } confirmation: {
-                ToppingCameraConfirmationView(
-                    previewFrame: store.cameraState.previewFrame,
-                    photoData: store.cameraState.capturedPhotoData,
-                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                    isNextEnabled: store.cameraState.hasCapture,
-                    onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            }
+            CameraCaptureScreen(
+                isConfirming: store.state.screen == .cameraConfirmation,
+                dateText: store.state.canvasDateText,
+                weekdayText: store.state.canvasWeekdayText,
+                cameraState: store.cameraState,
+                previewSource: store.previewSource,
+                isNextEnabled: store.cameraState.hasCapture,
+                showsToast: store.state.showsToast,
+                onToastDismissed: { store.send(.toastDismissed) },
+                onAction: { store.send(.camera($0)) }
+            )
 
         case .cameraPermissionError:
-            CameraErrorScreen(
-                title: "카메라 권한이 없어요",
-                message: "설정에서 카메라 권한을 허용해 주세요",
-                buttonTitle: "설정으로 이동",
+            CameraErrorScreen.permissionDenied(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.settingsTapped) }
+                onSettingsTap: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            CameraErrorScreen(
-                title: "카메라를 사용할 수 없어요",
-                message: "잠시 후 다시 시도해 주세요",
-                buttonTitle: "다시 시도",
+            CameraErrorScreen.unavailable(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.cameraRetryTapped) }
+                onRetryTap: { store.send(.cameraRetryTapped) }
             )
 
         default:

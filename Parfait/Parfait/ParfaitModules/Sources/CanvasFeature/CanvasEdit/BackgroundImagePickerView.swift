@@ -11,7 +11,6 @@ import UIComponent
 struct BackgroundImagePickerView: View {
     @State private var store: BackgroundImagePickerStore
     @State private var toasts: [YGToastItem] = []
-    @Environment(\.scenePhase) private var scenePhase
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
 
@@ -53,70 +52,36 @@ struct BackgroundImagePickerView: View {
             .onDisappear {
                 store.send(.screenDisappeared)
             }
-            .onChange(of: scenePhase) { _, newScenePhase in
-                switch newScenePhase {
-                case .active:
-                    store.send(.sceneBecameActive)
-                case .background:
-                    store.send(.sceneEnteredBackground)
-                case .inactive:
-                    break
-                @unknown default:
-                    break
-                }
-            }
+            .onCameraScenePhaseChange(
+                becameActive: { store.send(.sceneBecameActive) },
+                enteredBackground: { store.send(.sceneEnteredBackground) }
+            )
     }
 
     @ViewBuilder
     private var content: some View {
         switch store.state.screen {
         case .camera, .cameraConfirmation:
-            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
-                ToppingCameraView(
-                    dateText: store.state.dateText,
-                    weekdayText: store.state.weekdayText,
-                    flashMode: store.cameraState.flashMode,
-                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                    isCameraReady: store.cameraState.isReady,
-                    showsToast: false,
-                    previewSource: store.previewSource,
-                    onToastDismissed: {},
-                    onFlashTap: { store.send(.flashTapped) },
-                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                    onSwitchCameraTap: { store.send(.cameraPositionTapped) },
-                    zoomFactor: store.cameraState.zoomFactor,
-                    onZoomChange: { store.send(.cameraZoomChanged($0)) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            } confirmation: {
-                ToppingCameraConfirmationView(
-                    previewFrame: store.cameraState.previewFrame,
-                    photoData: store.cameraState.capturedPhotoData,
-                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                    isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
-                    onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            }
+            CameraCaptureScreen(
+                isConfirming: store.state.screen == .cameraConfirmation,
+                dateText: store.state.dateText,
+                weekdayText: store.state.weekdayText,
+                cameraState: store.cameraState,
+                previewSource: store.previewSource,
+                isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
+                onAction: { store.send(.camera($0)) }
+            )
 
         case .cameraPermissionError:
-            CameraErrorScreen(
-                title: "카메라 권한이 없어요",
-                message: "설정에서 카메라 권한을 허용해 주세요",
-                buttonTitle: "설정으로 이동",
+            CameraErrorScreen.permissionDenied(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.settingsTapped) }
+                onSettingsTap: { store.send(.settingsTapped) }
             )
 
         case .cameraUnavailable:
-            CameraErrorScreen(
-                title: "카메라를 사용할 수 없어요",
-                message: "잠시 후 다시 시도해 주세요",
-                buttonTitle: "다시 시도",
+            CameraErrorScreen.unavailable(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.cameraRetryTapped) }
+                onRetryTap: { store.send(.cameraRetryTapped) }
             )
 
         case .gallery:

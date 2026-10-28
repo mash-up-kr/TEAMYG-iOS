@@ -101,20 +101,8 @@ final class ToppingAddStore: MVIStore {
             logScreenViewIfChanged()
         case .toastDismissed:
             state.showsToast = false
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .cameraZoomChanged(let zoomFactor):
-            camera.zoom(to: zoomFactor)
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            dependencies.logAnalyticsEvent(.canvasCameraRetakeTapped)
-            state.screen = .camera
-        case .photoConfirmed:
-            proceedWithCapturedPhoto()
+        case .camera(let action):
+            handleCameraAction(action)
         case .galleryPhotoConfirmed(let assetIdentifier):
             dependencies.logAnalyticsEvent(.canvasCameraPhotoSelected(source: .album))
             confirmGalleryPhoto(assetIdentifier: assetIdentifier)
@@ -586,6 +574,27 @@ private extension ToppingAddStore {
 }
 
 private extension ToppingAddStore {
+    func handleCameraAction(_ action: CameraCaptureScreen.Action) {
+        switch action {
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .zoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { return }
+            dependencies.logAnalyticsEvent(.canvasCameraRetakeTapped)
+            state.screen = .camera
+        case .nextTapped:
+            proceedWithCapturedPhoto()
+        case .closeTapped:
+            requestQuit()
+        }
+    }
+
     func openSystemSettings() {
         Task {
             guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }

@@ -53,20 +53,8 @@ final class BackgroundImagePickerStore: MVIStore {
             camera.suspend()
         case .sceneEnteredBackground:
             camera.suspend()
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .cameraZoomChanged(let zoomFactor):
-            camera.zoom(to: zoomFactor)
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            cancelImagePreparation()
-            state.screen = .camera
-        case .photoConfirmed:
-            prepareCapturedPhoto()
+        case .camera(let action):
+            handleCameraAction(action)
         case .galleryPhotoConfirmed(let assetIdentifier):
             prepareGalleryPhoto(assetIdentifier: assetIdentifier)
         case .cameraRetryTapped:
@@ -145,6 +133,27 @@ final class BackgroundImagePickerStore: MVIStore {
 }
 
 private extension BackgroundImagePickerStore {
+    func handleCameraAction(_ action: CameraCaptureScreen.Action) {
+        switch action {
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .zoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { return }
+            cancelImagePreparation()
+            state.screen = .camera
+        case .nextTapped:
+            prepareCapturedPhoto()
+        case .closeTapped:
+            send(.closeTapped)
+        }
+    }
+
     func cancelImagePreparation() {
         imagePreparationTask?.cancel()
         imagePreparationTask = nil
