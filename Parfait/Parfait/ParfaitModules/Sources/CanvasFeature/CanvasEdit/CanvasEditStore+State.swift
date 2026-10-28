@@ -56,6 +56,11 @@ extension CanvasEditStore {
             }
         }
 
+        /// 팔레트에서 체크할 이미지 출처. 출처를 모르는 이미지 배경(서버에서 받은 것)은 갤러리로 본다.
+        var paletteImageSource: BackgroundImagePickerStore.PhotoSource? {
+            isImageSelected ? selectedBackgroundImageSource ?? .gallery : nil
+        }
+
         var activeToppings: [EditableTopping] {
             toppings.filter { !$0.isDeleted }
         }

@@ -42,9 +42,7 @@ struct CanvasBackgroundEditView: View {
                 CanvasBackgroundPalette(
                     background: store.state.background,
                     selectedColorHex: store.state.selectedColorHex,
-                    selectedImageSource: store.state.isImageSelected
-                        ? store.state.selectedBackgroundImageSource ?? .gallery
-                        : nil,
+                    selectedImageSource: store.state.paletteImageSource,
                     onColorSelect: { store.send(.colorSelected($0)) },
                     onImageSourceSelect: { store.send(.backgroundImageSourceTapped($0)) }
                 )
