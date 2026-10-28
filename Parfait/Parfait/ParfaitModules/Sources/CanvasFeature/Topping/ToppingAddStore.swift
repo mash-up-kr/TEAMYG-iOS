@@ -246,7 +246,7 @@ final class ToppingAddStore: MVIStore {
         renderBorderSilhouette()
     }
 
-    private func releaseExtractedTopping() {
+    private func resetToppingDraft() {
         borderRenderTask?.cancel()
         maskRenderTask?.cancel()
         cutoutApplyTask?.cancel()
@@ -262,10 +262,6 @@ final class ToppingAddStore: MVIStore {
         state.maskEditor.reset()
         state.placementEditor.reset()
         state.isRecentUpload = false
-    }
-
-    private func resetToppingDraft() {
-        releaseExtractedTopping()
         Task { [borderRenderer] in await borderRenderer.reset() }
     }
 
@@ -418,7 +414,8 @@ private extension ToppingAddStore {
         }
 
         analysisTask?.cancel()
-        releaseExtractedTopping()
+        // 실루엣 캐시는 후보 번호로만 구분한다 — 같은 후보를 다시 뽑아도 이전(브러시로 다듬은) 실루엣이 남지 않게 비운다.
+        resetToppingDraft()
         // 추출은 이미 분석된 세션에서 마스크만 뽑는 짧은 작업 — 후보 화면 위 오버레이로 보여준다.
         state.extractionState = .extracting
 

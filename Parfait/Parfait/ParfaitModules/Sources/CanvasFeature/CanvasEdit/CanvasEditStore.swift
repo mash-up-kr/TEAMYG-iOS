@@ -185,6 +185,9 @@ extension CanvasEditStore {
             return
         }
 
+        // 이미 떠 있던 갱신이 저장 도중 돌아와 저장 전 서버 값으로 초안·diff 기준을 덮지 않게 끊는다.
+        canvasRefreshTask?.cancel()
+        canvasRefreshTask = nil
         state.saveState = .saving
         Task { [self] in
             do {

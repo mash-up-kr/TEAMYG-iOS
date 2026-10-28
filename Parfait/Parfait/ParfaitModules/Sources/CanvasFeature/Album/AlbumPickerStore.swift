@@ -147,14 +147,18 @@ public final class AlbumPickerStore: MVIStore {
 
     /// 일부허용에서 더 많은 사진을 고르는 진입점. 픽커 종료 후 재조회한다.
     private func presentLimitedLibraryPicker() {
-        guard let rootViewController = UIApplication.shared.connectedScenes
+        guard var presenter = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
             .first?.rootViewController
         else { return }
+        // 앨범은 fullScreenCover 안에 있어 루트는 이미 다른 화면을 띄운 상태다 — 맨 위에서 띄워야 뜬다.
+        while let presented = presenter.presentedViewController {
+            presenter = presented
+        }
 
         limitedPickerTask?.cancel()
-        limitedPickerTask = Task { [weak self] in
-            await PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: rootViewController)
+        limitedPickerTask = Task { [weak self, presenter] in
+            await PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: presenter)
             guard !Task.isCancelled else { return }
             self?.send(.appeared)
         }
