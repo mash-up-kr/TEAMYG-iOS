@@ -24,10 +24,6 @@ extension CalendarDate {
     init(_ date: ParfaitDate) {
         self.init(year: date.year, month: date.month, day: date.day)
     }
-
-    var parfaitDate: ParfaitDate {
-        ParfaitDate(year: year, month: month, day: day)
-    }
 }
 
 extension NametagChip {
@@ -46,7 +42,8 @@ extension CanvasStore.CanvasContent {
     init(_ parfait: Parfait) {
         self.init(
             background: parfait.background.map(CanvasStore.CanvasBackground.init) ?? .unset,
-            images: parfait.toppings.map(CanvasStore.CanvasImage.init)
+            images: parfait.toppings.map(CanvasStore.CanvasImage.init),
+            texts: parfait.texts.map(CanvasStore.CanvasText.init)
         )
     }
 }
@@ -74,6 +71,27 @@ extension CanvasStore.CanvasImage {
             rotation: topping.rotation,
             border: CanvasStore.CanvasImageBorder(topping.border),
             isMine: topping.ownerType == .currentUser
+        )
+    }
+}
+
+extension CanvasStore.CanvasText {
+    /// 색이 깨졌으면 White, 팔레트 밖 색이면 글자색만 그대로 두고 배경은 White 짝을 쓴다.
+    init(_ placedText: PlacedText) {
+        let textHex = placedText.colorHex ?? TextToppingColor.white.textHex
+        self.init(
+            id: placedText.id,
+            text: placedText.text,
+            positionX: placedText.positionX,
+            positionY: placedText.positionY,
+            positionZ: Double(placedText.positionZ),
+            scale: placedText.scale,
+            rotation: placedText.rotation,
+            textHex: textHex,
+            fillHex: (TextToppingColor(textHex: textHex) ?? .white).fillHex,
+            type: TextToppingType(isFill: placedText.isFill, isStroke: placedText.isStroke),
+            alignment: placedText.alignment,
+            isMine: placedText.ownerType == .currentUser
         )
     }
 }

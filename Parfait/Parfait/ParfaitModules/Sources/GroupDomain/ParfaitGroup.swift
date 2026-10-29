@@ -12,8 +12,11 @@ public struct ParfaitGroup: Sendable, Identifiable, Hashable {
     public let id: String
     public let name: String
     /// 대표 토핑 이미지. 아직 토핑이 하나도 없는 그룹은 nil — UI 가 템플릿 그래픽으로 대체한다.
+    /// 마지막 토핑이 텍스트일 때도 nil 이다 (`latestToppingKind` 로 가른다).
     public let thumbnailURL: URL?
     public let thumbnailBorderColorHex: String?
+    /// 마지막 토핑 종류. 텍스트면 대표 이미지가 없어 UI 가 고정 그래픽으로 그린다. 토핑이 없거나 모르면 nil.
+    public let latestToppingKind: ToppingKind?
     /// 마지막 토핑 업로드 시각. 목록 정렬 기준이자 칩 타임스탬프의 기준이다.
     ///
     /// 아직 토핑이 하나도 없는 그룹은 nil — 칩이 타임스탬프 없이 이름만 보여준다.
@@ -28,6 +31,7 @@ public struct ParfaitGroup: Sendable, Identifiable, Hashable {
         name: String,
         thumbnailURL: URL?,
         thumbnailBorderColorHex: String?,
+        latestToppingKind: ToppingKind?,
         lastActivityAt: Date?,
         lastActorNametagType: NametagType?
     ) {
@@ -35,7 +39,15 @@ public struct ParfaitGroup: Sendable, Identifiable, Hashable {
         self.name = name
         self.thumbnailURL = thumbnailURL
         self.thumbnailBorderColorHex = thumbnailBorderColorHex
+        self.latestToppingKind = latestToppingKind
         self.lastActivityAt = lastActivityAt
         self.lastActorNametagType = lastActorNametagType
+    }
+}
+
+public extension ParfaitGroup {
+    enum ToppingKind: Sendable, Hashable {
+        case image
+        case text
     }
 }

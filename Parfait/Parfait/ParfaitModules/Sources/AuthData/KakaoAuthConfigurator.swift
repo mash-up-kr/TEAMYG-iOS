@@ -5,6 +5,7 @@
 //  Created by 김남수 on 7/6/26.
 //
 
+import Common
 import Foundation
 import KakaoSDKAuth
 import KakaoSDKCommon
@@ -16,7 +17,7 @@ public enum KakaoAuthConfigurator {
     @MainActor
     public static func initialize(appKey: String) {
         guard !appKey.isEmpty else {
-            print("KAKAO_NATIVE_APP_KEY 미설정 — 카카오 로그인 비활성 (Config/Secrets.xcconfig 확인)")
+            YGLogger.error("KAKAO_NATIVE_APP_KEY 미설정 — 카카오 로그인 비활성 (Config/Secrets.xcconfig 확인)")
             return
         }
         KakaoSDK.initSDK(appKey: appKey)

@@ -53,28 +53,12 @@ final class BackgroundImagePickerStore: MVIStore {
             camera.suspend()
         case .sceneEnteredBackground:
             camera.suspend()
-        case .cameraGuideDismissed:
-            state.showsCameraGuide = false
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .cameraZoomChanged(let zoomFactor):
-            camera.zoom(to: zoomFactor)
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            cancelImagePreparation()
-            state.screen = .camera
-        case .photoConfirmed:
-            prepareCapturedPhoto()
+        case .camera(let action):
+            handleCameraAction(action)
         case .galleryPhotoConfirmed(let assetIdentifier):
             prepareGalleryPhoto(assetIdentifier: assetIdentifier)
         case .cameraRetryTapped:
             camera.prepare()
-        case .settingsTapped:
-            openSystemSettings()
         case .closeTapped:
             guard state.screen == .cameraConfirmation else {
                 dependencies.onClose()
@@ -137,16 +121,30 @@ final class BackgroundImagePickerStore: MVIStore {
             dependencies.onImageSelected(jpegData, source)
         }
     }
-
-    private func openSystemSettings() {
-        Task {
-            guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-            await UIApplication.shared.open(settingsURL)
-        }
-    }
 }
 
 private extension BackgroundImagePickerStore {
+    func handleCameraAction(_ action: CameraCaptureScreen.Action) {
+        switch action {
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .zoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { return }
+            cancelImagePreparation()
+            state.screen = .camera
+        case .nextTapped:
+            prepareCapturedPhoto()
+        case .closeTapped:
+            send(.closeTapped)
+        }
+    }
+
     func cancelImagePreparation() {
         imagePreparationTask?.cancel()
         imagePreparationTask = nil

@@ -11,12 +11,12 @@ import UIComponent
 struct CanvasMenuBar: View {
     let isSourceOptionsPresented: Bool
     let onToppingAddTap: () -> Void
-    let onCanvasEditTap: () -> Void
+    let onBackgroundEditTap: () -> Void
 
     var body: some View {
         HStack(spacing: -1) {
             CanvasMenuButton(
-                "사진 추가",
+                "추가",
                 icon: .icPlus,
                 style: .primary,
                 action: onToppingAddTap
@@ -25,7 +25,7 @@ struct CanvasMenuBar: View {
                 "배경 변경",
                 icon: .icCaretRight,
                 style: isSourceOptionsPresented ? .dimmed : .primary,
-                action: onCanvasEditTap
+                action: onBackgroundEditTap
             )
         }
     }
@@ -49,11 +49,13 @@ struct CanvasClosedMenuBar: View {
 struct CanvasMenuSourceOptions: View {
     let onCameraOptionTap: () -> Void
     let onGalleryOptionTap: () -> Void
+    let onTextOptionTap: () -> Void
 
     var body: some View {
         VStack(spacing: -1) {
             CanvasMenuButton("카메라로 촬영", style: .option, action: onCameraOptionTap)
             CanvasMenuButton("갤러리에서 선택", style: .option, action: onGalleryOptionTap)
+            CanvasMenuButton("텍스트 입력", style: .option, action: onTextOptionTap)
         }
     }
 }

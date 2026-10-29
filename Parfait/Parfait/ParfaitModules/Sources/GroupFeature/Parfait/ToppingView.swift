@@ -28,7 +28,13 @@ struct ToppingView: View {
     }
 
     var body: some View {
-        ToppingFrameView(variant: variant, scale: scale, chip: chip) {
+        // 텍스트는 고정 그래픽이라 기울이지 않는다.
+        ToppingFrameView(
+            variant: variant,
+            scale: scale,
+            chip: chip,
+            isImageRotated: group.latestToppingKind != .text
+        ) {
             ToppingImage(group: group)
         }
         .contentShape(.rect)
@@ -55,6 +61,7 @@ struct ToppingFrameView<ImageContent: View>: View {
     let variant: ToppingVariant
     let scale: CGFloat
     let chip: YGGrouptagChip
+    var isImageRotated = true
     @ViewBuilder let imageContent: ImageContent
 
     var body: some View {
@@ -81,7 +88,7 @@ struct ToppingFrameView<ImageContent: View>: View {
             // 클립은 프레임이 확정된 여기서 걸어야 한다 — 그룹 이미지의 AsyncImage 안쪽에 걸면
             // AsyncImage 가 이미지 원본 크기를 자기 크기로 잡아 아무것도 안 잘린다.
             .clipShape(Rectangle().inset(by: -ToppingImage.borderWidth))
-            .rotationEffect(.degrees(variant.rotation))
+            .rotationEffect(.degrees(isImageRotated ? variant.rotation : 0))
             .offset(x: imageOffset.width * scale, y: imageOffset.height * scale)
     }
 
@@ -103,12 +110,15 @@ struct ToppingFrameView<ImageContent: View>: View {
     }
 }
 
-/// 토핑 이미지 자리. 대표 이미지 → 없으면 템플릿 그래픽 → 불러오기 실패면 물음표 그래픽.
+/// 토핑 이미지 자리. 마지막 토핑이 텍스트면 텍스트 템플릿 → 대표 이미지 → 없으면 템플릿 그래픽 → 불러오기 실패면 물음표 그래픽.
 private struct ToppingImage: View {
     let group: ParfaitGroup
 
     var body: some View {
-        if let thumbnailURL = group.thumbnailURL {
+        if group.latestToppingKind == .text {
+            // 텍스트는 대표 이미지가 없다 — 그룹마다 한 번 정해진 텍스트 템플릿을 보여 준다 (갱신해도 바뀌지 않게).
+            fitted(Self.textTemplates[StableAssignment.index(for: group.id, count: Self.textTemplates.count)])
+        } else if let thumbnailURL = group.thumbnailURL {
             YGImageView(url: thumbnailURL) { phase in
                 switch phase {
                 case .success(let image):
@@ -139,6 +149,8 @@ private struct ToppingImage: View {
     private static let templates: [Image] = [
         .template01, .template02, .template03, .template04, .template05, .template06
     ]
+
+    private static let textTemplates: [Image] = [.templateText01, .templateText02]
 
     static let borderWidth: CGFloat = 2
     private static let outlineDirectionCount = 16

@@ -24,11 +24,11 @@ extension ParfaitDTO {
             id: parfaitId,
             groupName: groupName,
             date: date,
-            status: ParfaitStatus(serverValue: status),
             lastClosedDate: lastClosedDate.flatMap(ParfaitDate.init(isoText:)),
             members: groupMembers.map { $0.toEntity() },
             background: try background?.toEntity(),
-            toppings: try (images ?? []).map { try $0.toEntity() }
+            toppings: try (images ?? []).map { try $0.toEntity() },
+            texts: (texts ?? []).map { $0.toEntity() }
         )
     }
 }
@@ -68,36 +68,28 @@ extension BackgroundDTO {
     }
 }
 
-extension ParfaitImageDTO {
-    func toEntity() throws -> PlacedTopping {
-        guard let url = URL(string: imageUrl) else {
-            throw ParfaitMappingError.malformedURL(imageUrl)
-        }
-        return PlacedTopping(
-            id: parfaitImageId,
-            imageID: imageId,
-            imageURL: url,
-            positionX: positionX,
-            positionY: positionY,
-            positionZ: positionZ,
-            scale: scale,
-            rotation: rotation,
-            border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
-            placedBy: placedBy?.toEntity() ?? .unknown,
-            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
-            createdAt: ServerDateTime.parse(createdAt)
-        )
-    }
+/// 배치된 이미지 응답의 공통 필드 — 오늘 조회(`ParfaitImageDTO`)와 배치 응답(`PlacedToppingDTO`).
+private protocol PlacedImageFields {
+    var parfaitImageId: Int { get }
+    var imageUrl: String { get }
+    var positionX: Double { get }
+    var positionY: Double { get }
+    var positionZ: Int { get }
+    var scale: Double { get }
+    var rotation: Double { get }
+    var placedBy: PlacedByDTO? { get }
 }
 
-extension PlacedToppingDTO {
-    func toEntity(border: ToppingBorderStyle) throws -> PlacedTopping {
+extension ParfaitImageDTO: PlacedImageFields {}
+extension PlacedToppingDTO: PlacedImageFields {}
+
+private extension PlacedImageFields {
+    func placedTopping(border: ToppingBorderStyle, createdAt: Date?) throws -> PlacedTopping {
         guard let url = URL(string: imageUrl) else {
             throw ParfaitMappingError.malformedURL(imageUrl)
         }
         return PlacedTopping(
             id: parfaitImageId,
-            imageID: imageId,
             imageURL: url,
             positionX: positionX,
             positionY: positionY,
@@ -107,8 +99,46 @@ extension PlacedToppingDTO {
             border: border,
             placedBy: placedBy?.toEntity() ?? .unknown,
             ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
-            createdAt: nil
+            createdAt: createdAt
         )
+    }
+}
+
+extension ParfaitImageDTO {
+    func toEntity() throws -> PlacedTopping {
+        try placedTopping(
+            border: ToppingBorderStyle(type: borderType, colorHex: borderColor, width: borderWidth),
+            createdAt: createdAt.flatMap(ServerDate.date(from:))
+        )
+    }
+}
+
+extension ParfaitTextDTO {
+    /// 색 형식이 깨졌으면 색만 떨어뜨린다 — 텍스트 하나 때문에 캔버스 전체 조회를 실패시키지 않는다.
+    func toEntity() -> PlacedText {
+        PlacedText(
+            id: parfaitTextId,
+            text: text,
+            positionX: positionX,
+            positionY: positionY,
+            positionZ: positionZ,
+            scale: scale,
+            rotation: rotation,
+            colorHex: HexColor.isValid(color) ? color : nil,
+            isFill: isFill,
+            isStroke: isStroke,
+            alignment: PlacedTextAlignment(serverValue: textAlign),
+            placedBy: placedBy?.toEntity() ?? .unknown,
+            ownerType: ToppingOwnerType(serverValue: placedBy?.ownerType),
+            createdAt: createdAt.flatMap(ServerDate.date(from:))
+        )
+    }
+}
+
+extension PlacedToppingDTO {
+    /// 보낸 테두리 값은 응답에 오지 않아 호출부가 넘긴다.
+    func toEntity(border: ToppingBorderStyle) throws -> PlacedTopping {
+        try placedTopping(border: border, createdAt: nil)
     }
 }
 
@@ -136,16 +166,6 @@ private extension ParfaitMember {
     static let unknown = ParfaitMember(id: 0, nickname: "알 수 없음", nametagChip: .unassigned)
 }
 
-private extension ParfaitStatus {
-    init(serverValue: String) {
-        switch serverValue {
-        case "ACTIVE": self = .active
-        case "CLOSED": self = .closed
-        default: self = .empty
-        }
-    }
-}
-
 private extension NametagChip {
     init(serverValue: String?) {
         guard let number = serverValue.flatMap({ NametagChipCode.number(from: $0) }) else {
@@ -165,6 +185,24 @@ private extension ToppingBorderStyle {
         }
         let range = Self.widthRange
         self = .solid(colorHex: colorHex, width: min(max(width, range.lowerBound), range.upperBound))
+    }
+}
+
+extension PlacedTextAlignment {
+    init(serverValue: String?) {
+        switch serverValue {
+        case "LEFT": self = .left
+        case "RIGHT": self = .right
+        default: self = .center
+        }
+    }
+
+    var serverValue: String {
+        switch self {
+        case .left: "LEFT"
+        case .center: "CENTER"
+        case .right: "RIGHT"
+        }
     }
 }
 

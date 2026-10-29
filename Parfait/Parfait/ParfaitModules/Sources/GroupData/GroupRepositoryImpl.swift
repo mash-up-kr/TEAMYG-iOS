@@ -20,7 +20,7 @@ public struct GroupRepositoryImpl: GroupRepository {
     /// 응답(`groupId`·`groupName`)은 참여 직후 그룹 속 닉네임을 정하는 화면이 쓴다.
     public func join(inviteCode: String) async throws -> JoinedGroup {
         do {
-            let joinedGroup: JoinedGroupDTO = try await request(JoinGroupEndpoint(inviteCode: inviteCode))
+            let joinedGroup: JoinedGroupDTO = try await networkClient.request(JoinGroupEndpoint(inviteCode: inviteCode))
             return joinedGroup.toEntity()
         } catch is CancellationError {
             // 화면 이탈로 취소된 요청은 실패가 아니다 — Store 의 `catch is CancellationError` 로 보낸다.
@@ -30,11 +30,11 @@ public struct GroupRepositoryImpl: GroupRepository {
         }
     }
 
-    /// 내가 속한 그룹 목록 (`GET /api/parfait-groups`).
+    /// 내가 속한 그룹 목록 (`GET /api/v2/parfait-groups`).
     ///
     /// 서버가 준 순서를 그대로 올린다 — 정렬은 UseCase 가 맡는다.
     public func fetchGroups() async throws -> [ParfaitGroup] {
-        let groups: [MyParfaitGroupDTO] = try await request(FetchGroupsEndpoint())
+        let groups: [MyParfaitGroupDTO] = try await networkClient.request(FetchGroupsEndpoint())
         return groups.map { $0.toEntity() }
     }
 
@@ -44,7 +44,7 @@ public struct GroupRepositoryImpl: GroupRepository {
     /// 생성 직후 화면이 그 그룹의 캔버스로 이어지고, 캔버스가 초대코드를 안내한다.
     public func create(_ draft: GroupDraft) async throws -> CreatedGroup {
         do {
-            let createdGroup: CreatedGroupDTO = try await request(CreateGroupEndpoint(draft: draft))
+            let createdGroup: CreatedGroupDTO = try await networkClient.request(CreateGroupEndpoint(draft: draft))
             return createdGroup.toEntity(memberCount: draft.memberCount)
         } catch is CancellationError {
             // 취소는 실패가 아니다. CreateGroupError 로 바꿔 버리면 호출부의
@@ -64,7 +64,7 @@ public struct GroupRepositoryImpl: GroupRepository {
     private static func serverMessage(from error: any Error) -> String? {
         guard
             let networkError = error as? NetworkError,
-            case .server(_, let message, _) = networkError
+            case .server(_, let message, _, _) = networkError
         else {
             return nil
         }
@@ -73,7 +73,7 @@ public struct GroupRepositoryImpl: GroupRepository {
 
     /// 그룹 상세 (`GET /api/parfait-groups/{groupId}`) — 사이드메뉴(S-101)가 그리는 단위.
     public func fetchDetail(groupID: String) async throws -> GroupDetail {
-        let detail: GroupDetailDTO = try await request(GroupDetailEndpoint(groupID: groupID))
+        let detail: GroupDetailDTO = try await networkClient.request(GroupDetailEndpoint(groupID: groupID))
         return detail.toEntity()
     }
 
@@ -82,7 +82,7 @@ public struct GroupRepositoryImpl: GroupRepository {
     /// 응답(`groupId`·`groupNickname`)은 방금 보낸 값이라 버린다 — 화면은 제출한 닉네임으로 갱신한다.
     public func changeMyNickname(groupID: String, nickname: String) async throws {
         do {
-            let _: EmptyDTO = try await request(
+            let _: EmptyDTO = try await networkClient.request(
                 ChangeGroupNicknameEndpoint(groupID: groupID, nickname: nickname)
             )
         } catch is CancellationError {
@@ -97,29 +97,13 @@ public struct GroupRepositoryImpl: GroupRepository {
     /// 그룹 나가기 (`DELETE /api/parfait-groups/{groupId}/members/me`).
     /// 응답(`groupId`)은 방금 나간 그룹이라 버린다.
     public func leave(groupID: String) async throws {
-        let _: EmptyDTO = try await request(LeaveGroupEndpoint(groupID: groupID))
+        let _: EmptyDTO = try await networkClient.request(LeaveGroupEndpoint(groupID: groupID))
     }
 
     /// 그룹 신고 (`POST /api/parfait-groups/{groupId}/reports`).
     /// 접수되면 서버가 탈퇴까지 처리한다 — 별도의 `leave` 호출이 필요 없다.
     /// 응답(`reportId`)은 화면에 쓰지 않아 버린다.
     public func report(groupID: String) async throws {
-        let _: EmptyDTO = try await request(ReportGroupEndpoint(groupID: groupID))
-    }
-}
-
-private extension GroupRepositoryImpl {
-    /// 취소를 `CancellationError` 로 되돌려 주는 요청 래퍼.
-    ///
-    /// Alamofire 는 취소를 `AFError` 로 감싸 던져서, 그대로 올리면 Store 의
-    /// `catch is CancellationError` 를 못 타고 실패 경로(에러 화면·실패 토스트)로 빠진다.
-    /// 화면 이탈로 취소된 요청은 실패가 아니므로 에러 타입 대신 Task 상태를 보고 갈아끼운다.
-    func request<Response: Decodable & Sendable>(_ endpoint: some Endpoint) async throws -> Response {
-        do {
-            return try await networkClient.request(endpoint)
-        } catch {
-            if Task.isCancelled { throw CancellationError() }
-            throw error
-        }
+        let _: EmptyDTO = try await networkClient.request(ReportGroupEndpoint(groupID: groupID))
     }
 }

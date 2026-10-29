@@ -49,6 +49,9 @@ public struct SettingView: View {
             switch route {
             case .accountInfo:
                 AccountInfoView(store: makeAccountInfoStore(store.state.nickname))
+            case .openSourceLicense:
+                // swiftlint:disable:next force_unwrapping
+                YGWebView(title: "오픈소스 라이선스", url: URL(string: "https://parfait-app.store/oss")!)
             }
         }
         .navigationDestination(for: Policy.self) { policy in
@@ -89,6 +92,7 @@ public struct SettingView: View {
             ForEach(store.state.policies) { policy in
                 navigationRow(policy.title, value: policy)
             }
+            navigationRow("오픈소스 라이선스", value: SettingRoute.openSourceLicense)
             versionRow
         }
     }
@@ -136,7 +140,7 @@ public struct SettingView: View {
     private var dangerZone: some View {
         YGDangerZone {
             YGActionItem("로그아웃") { store.send(.logoutTapped) }
-            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawTapped) }
+            YGActionItem("서비스 탈퇴하기") { store.send(.withdrawPopupVisibilityChanged(true)) }
         }
     }
 }

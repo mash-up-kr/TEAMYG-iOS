@@ -170,11 +170,6 @@ public final class GroupStore: MVIStore {
         public var emptyGuide = EmptyGuide.idle
         public var isAddGroupMenuPresented = false
 
-        public var groups: [ParfaitGroup] {
-            if case .loaded(let groups) = phase { return groups }
-            return []
-        }
-
         public var groupCount: Int? {
             guard case .loaded(let groups) = phase else { return nil }
             return groups.count
@@ -204,8 +199,6 @@ public final class GroupStore: MVIStore {
             case .idle, .dismissed: 0
             }
         }
-
-        public var isFailed: Bool { phase == .failed }
     }
 
     public enum Phase: Equatable {

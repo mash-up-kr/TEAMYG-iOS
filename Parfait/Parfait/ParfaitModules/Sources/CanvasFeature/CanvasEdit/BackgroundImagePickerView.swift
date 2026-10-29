@@ -11,7 +11,7 @@ import UIComponent
 struct BackgroundImagePickerView: View {
     @State private var store: BackgroundImagePickerStore
     @State private var toasts: [YGToastItem] = []
-    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     private let makeAlbumPickerStore: AlbumPickerStoreFactory
 
@@ -32,7 +32,7 @@ struct BackgroundImagePickerView: View {
                     BackgroundImagePickerStore.Intent.quitPopupVisibilityChanged
                 ),
                 title: "배경 변경을 그만둘까요?",
-                description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
+                description: canvasQuitPopupDescription,
                 secondaryTitle: "그만두기",
                 primaryTitle: "계속 편집",
                 secondaryAction: { store.send(.quitConfirmed) }
@@ -53,83 +53,44 @@ struct BackgroundImagePickerView: View {
             .onDisappear {
                 store.send(.screenDisappeared)
             }
-            .onChange(of: scenePhase) { _, newScenePhase in
-                switch newScenePhase {
-                case .active:
-                    store.send(.sceneBecameActive)
-                case .background:
-                    store.send(.sceneEnteredBackground)
-                case .inactive:
-                    break
-                @unknown default:
-                    break
-                }
-            }
+            .onCameraScenePhaseChange(
+                becameActive: { store.send(.sceneBecameActive) },
+                enteredBackground: { store.send(.sceneEnteredBackground) }
+            )
     }
 
     @ViewBuilder
     private var content: some View {
         switch store.state.screen {
         case .camera, .cameraConfirmation:
-            CameraCaptureContainer(isConfirming: store.state.screen == .cameraConfirmation) {
-                ToppingCameraView(
-                    dateText: store.state.dateText,
-                    weekdayText: store.state.weekdayText,
-                    flashMode: store.cameraState.flashMode,
-                    isFlashControlEnabled: store.cameraState.isFlashControlEnabled,
-                    isCameraReady: store.cameraState.isReady,
-                    showsToast: false,
-                    previewSource: store.previewSource,
-                    onToastDismissed: { store.send(.cameraGuideDismissed) },
-                    onFlashTap: { store.send(.flashTapped) },
-                    onShutterTap: { store.send(.shutterTapped(viewFinderRegion: $0)) },
-                    onSwitchCameraTap: { store.send(.cameraPositionTapped) },
-                    zoomFactor: store.cameraState.zoomFactor,
-                    onZoomChange: { store.send(.cameraZoomChanged($0)) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            } confirmation: {
-                ToppingCameraConfirmationView(
-                    previewFrame: store.cameraState.previewFrame,
-                    photoData: store.cameraState.capturedPhotoData,
-                    viewFinderRegion: store.cameraState.capturedViewFinderRegion,
-                    isRetakeEnabled: store.cameraState.isRetakeEnabled,
-                    isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
-                    onRetakeTap: { store.send(.retakeTapped) },
-                    onNextTap: { store.send(.photoConfirmed) },
-                    onCloseTap: { store.send(.closeTapped) }
-                )
-            }
+            CameraCaptureScreen(
+                isConfirming: store.state.screen == .cameraConfirmation,
+                dateText: store.state.dateText,
+                weekdayText: store.state.weekdayText,
+                cameraState: store.cameraState,
+                previewSource: store.previewSource,
+                isNextEnabled: store.cameraState.hasCapture && !store.state.isPreparingImage,
+                onAction: { store.send(.camera($0)) }
+            )
 
         case .cameraPermissionError:
-            CameraErrorScreen(
-                title: "카메라 권한이 없어요",
-                message: "설정에서 카메라 권한을 허용해 주세요",
-                buttonTitle: "설정으로 이동",
+            CameraErrorScreen.permissionDenied(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.settingsTapped) }
+                onSettingsTap: openURL.openAppSettings
             )
 
         case .cameraUnavailable:
-            CameraErrorScreen(
-                title: "카메라를 사용할 수 없어요",
-                message: "잠시 후 다시 시도해 주세요",
-                buttonTitle: "다시 시도",
+            CameraErrorScreen.unavailable(
                 onCloseTap: { store.send(.closeTapped) },
-                action: { store.send(.cameraRetryTapped) }
+                onRetryTap: { store.send(.cameraRetryTapped) }
             )
 
         case .gallery:
             AlbumView(
                 makeAlbumPickerStore: { isLimited in
-                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 — 섹션을 감추고
-                    // 핸들러도 주지 않는다. 핸들러를 남겨두면 섹션을 되살릴 때 검은 배경으로 조용히 돌아온다.
-                    makeAlbumPickerStore(
-                        isLimited,
-                        false,
-                        confirmGalleryPhoto,
-                        nil
-                    )
+                    // 최근 업로드는 알파 누끼라 JPEG 배경으로 만들면 투명 영역이 검게 굳는다 —
+                    // 핸들러를 주지 않아 최근 업로드 섹션을 감춘다.
+                    makeAlbumPickerStore(isLimited, confirmGalleryPhoto, nil)
                 },
                 showsSelectionGuide: false,
                 onCloseTap: { store.send(.closeTapped) }

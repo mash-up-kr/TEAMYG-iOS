@@ -28,35 +28,33 @@ struct CanvasBackgroundEditView: View {
         ZStack {
             Color.whiteFixed
                 .ignoresSafeArea()
+                .canvasEditChrome()
 
             VStack(spacing: 0) {
                 canvasBoard
                     .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
+                    .canvasBoardEntrance()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .padding(.horizontal, .padding7)
-                    .padding(.top, .padding4)
+                    // C-001 캔버스와 위쪽 끝을 맞춘다 — 전환 중 캔버스가 위로 올라가지 않고 아래·옆으로만 줄어든다.
+                    .padding(.top, .padding6)
 
                 CanvasBackgroundPalette(
                     background: store.state.background,
                     selectedColorHex: store.state.selectedColorHex,
-                    selectedImageSource: store.state.isImageSelected
-                        ? store.state.selectedBackgroundImageSource ?? .gallery
-                        : nil,
+                    selectedImageSource: store.state.paletteImageSource,
                     onColorSelect: { store.send(.colorSelected($0)) },
                     onImageSourceSelect: { store.send(.backgroundImageSourceTapped($0)) }
                 )
+                .canvasEditChrome()
             }
         }
-        .disabled(store.state.saveState == .saving)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            YGFloatingBar(.title("배경 변경"), onClose: { store.send(.closeTapped) })
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            YGButton("저장하기", variant: .large) { store.send(.confirmTapped) }
-                .padding(.horizontal, .padding7)
-                .padding(.top, .padding6)
-                .padding(.bottom, .padding1)
-        }
+        .canvasEditScaffold(
+            store: store,
+            title: "배경 변경",
+            confirmTitle: "저장하기",
+            exitPopupTitle: "배경 변경을 그만둘까요?"
+        )
         .environment(\.canvasToppingRenderer, toppingRenderer)
         .navigationDestination(item: backgroundImageSourceBinding) { source in
             BackgroundImagePickerView(
@@ -76,19 +74,7 @@ struct CanvasBackgroundEditView: View {
                 makeAlbumPickerStore: makeAlbumPickerStore
             )
         }
-        .canvasEditLifecycle(
-            isSaving: store.state.saveState == .saving,
-            send: { store.send($0) }
-        )
         .onAppear { store.send(.backgroundEditScreenAppeared) }
-        .ygPopup(
-            isPresented: store.binding(\.showsExitPopup, CanvasEditStore.Intent.exitPopupVisibilityChanged),
-            title: "배경 변경을 그만둘까요?",
-            description: "지금까지 진행한 내용은 저장되지 않아요.\n정말 그만두시겠어요?",
-            secondaryTitle: "그만두기",
-            primaryTitle: "계속 편집",
-            secondaryAction: { store.send(.discardTapped) }
-        )
         .ygToastOverlay($toasts)
         .task {
             for await event in store.eventStream() {
@@ -97,7 +83,7 @@ struct CanvasBackgroundEditView: View {
                     toasts.append(
                         YGToastItem(kind: .error, message: "편집 내용을 저장하지 못했어요, 잠시 후 다시 시도해 주세요")
                     )
-                case .otherToppingSelected:
+                case .otherToppingSelected, .otherTextSelected:
                     break
                 }
             }
@@ -110,7 +96,8 @@ struct CanvasBackgroundEditView: View {
             CanvasContentView(
                 content: CanvasStore.CanvasContent(
                     background: store.state.background,
-                    images: store.state.activeToppings.map(\.canvasImage)
+                    images: store.state.activeToppings.map(\.canvasImage),
+                    texts: store.state.activeTexts.map { $0.canvasText(placement: $0.placement) }
                 )
             )
         }

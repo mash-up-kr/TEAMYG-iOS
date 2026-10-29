@@ -11,17 +11,28 @@ import Foundation
 /// 통신 담당 추상화. Data 레이어는 이 프로토콜만 주입받는다 (테스트 목 지점).
 public protocol NetworkClient: Sendable {
     func request<Response: Decodable & Sendable>(_ endpoint: some Endpoint) async throws -> Response
+
+    /// `If-None-Match` 를 붙인 조건부 요청. 서버가 304 를 주면 본문 없이 `.notModified` 를 돌려준다.
+    func request<Response: Decodable & Sendable>(
+        _ endpoint: some Endpoint,
+        ifNoneMatch etag: String?
+    ) async throws -> ConditionalResponse<Response>
+}
+
+/// 조건부 요청 결과.
+public enum ConditionalResponse<Response: Sendable>: Sendable {
+    /// 304 — 보낸 ETag 의 응답이 그대로다.
+    case notModified
+    /// 새 응답과 그 ETag (서버가 안 주면 `nil`).
+    case modified(Response, etag: String?)
 }
 
 /// Alamofire 기반 구현체.
 public final class NetworkClientImpl: NetworkClient {
     private let session: Session
     private let interceptor: RequestInterceptor?
-    private let decoder: JSONDecoder = {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }()
+    /// 날짜는 DTO 가 문자열로 받아 `ServerDate` 로 옮긴다 — 디코더 날짜 전략은 쓰지 않는다.
+    private let decoder = JSONDecoder()
 
     /// - Parameters:
     ///   - session: 기본값은 로거 + 요청 타임아웃 10초 세션.
@@ -53,6 +64,40 @@ public final class NetworkClientImpl: NetworkClient {
         case .success(let data):
             return try unwrap(data)
         case .failure(let error):
+            // Alamofire 는 Task 취소를 `AFError` 로 감싸 던진다 — 그대로 올리면 호출부의
+            // `catch is CancellationError` 를 못 타고 실패 경로(에러 화면·토스트)로 빠진다.
+            try Task.checkCancellation()
+            throw mapFailure(error, data: response.data)
+        }
+    }
+
+    public func request<Response: Decodable & Sendable>(
+        _ endpoint: some Endpoint,
+        ifNoneMatch etag: String?
+    ) async throws -> ConditionalResponse<Response> {
+        var urlRequest = try makeURLRequest(for: endpoint)
+        urlRequest.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        // 304 를 URLCache 가 가로채지 않고 그대로 받도록 로컬 캐시를 건너뛴다.
+        urlRequest.cachePolicy = .reloadIgnoringLocalCacheData
+        let response = await session.request(
+            urlRequest,
+            interceptor: endpoint.requiresAuth ? interceptor : nil
+        )
+        .validate(statusCode: Array(200..<300) + [304])
+        .serializingData(emptyResponseCodes: [200, 204, 205, 304])
+        .response
+
+        switch response.result {
+        case .success(let data):
+            if response.response?.statusCode == 304 {
+                return .notModified
+            }
+            return .modified(
+                try unwrap(data),
+                etag: response.response?.value(forHTTPHeaderField: "ETag")
+            )
+        case .failure(let error):
+            try Task.checkCancellation() // 위 request 와 같은 이유
             throw mapFailure(error, data: response.data)
         }
     }
@@ -101,7 +146,8 @@ private extension NetworkClientImpl {
             throw NetworkError.server(
                 code: envelope.code,
                 message: envelope.message,
-                errorDetail: envelope.errorDetail
+                errorDetail: envelope.errorDetail,
+                statusCode: nil
             )
         }
         if let payload = envelope.data {
@@ -126,7 +172,8 @@ private extension NetworkClientImpl {
             return .server(
                 code: envelope.code,
                 message: envelope.message,
-                errorDetail: envelope.errorDetail
+                errorDetail: envelope.errorDetail,
+                statusCode: error.responseCode
             )
         }
         return .transport(error)

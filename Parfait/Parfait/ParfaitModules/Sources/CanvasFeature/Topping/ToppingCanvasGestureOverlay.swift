@@ -15,7 +15,6 @@ struct ToppingCanvasGestureOverlay: UIViewRepresentable {
     let onBrushCancelled: () -> Void
     let onMagnify: (CGFloat) -> Void
     let onPan: (CGSize) -> Void
-    let onTransformEnded: () -> Void
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
@@ -88,8 +87,6 @@ struct ToppingCanvasGestureOverlay: UIViewRepresentable {
             case .changed:
                 overlay.onMagnify(recognizer.scale)
                 recognizer.scale = 1
-            case .ended, .cancelled, .failed:
-                overlay.onTransformEnded()
             default:
                 break
             }
@@ -103,8 +100,6 @@ struct ToppingCanvasGestureOverlay: UIViewRepresentable {
                 let translation = recognizer.translation(in: recognizer.view)
                 overlay.onPan(CGSize(width: translation.x, height: translation.y))
                 recognizer.setTranslation(.zero, in: recognizer.view)
-            case .ended, .cancelled, .failed:
-                overlay.onTransformEnded()
             default:
                 break
             }

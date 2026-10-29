@@ -43,7 +43,8 @@ struct ToppingHandleIcon: View {
 struct ToppingDeleteHandle: View {
     let placement: ToppingPlacement
     let canvasSize: CGSize
-    let toppingPixelSize: CGSize
+    /// 변형 중인 배치에서 그려지는 크기 — 이미지·텍스트가 크기를 재는 방식이 달라 부르는 쪽이 정한다.
+    let renderedSize: (ToppingPlacement) -> CGSize
     let draft: ToppingTransformDraft
     let onDeleteTap: () -> Void
 
@@ -57,12 +58,10 @@ struct ToppingDeleteHandle: View {
 
     private var handleCenter: CGPoint {
         let previewPlacement = draft.applied(to: placement, in: canvasSize)
-        let renderedSize = previewPlacement.renderedSize(toppingPixelSize: toppingPixelSize, canvasSize: canvasSize)
-
         return previewPlacement.handleCenter(
             horizontal: -1,
             vertical: -1,
-            frameSize: ToppingSelectionFrame.size(around: renderedSize),
+            frameSize: ToppingSelectionFrame.size(around: renderedSize(previewPlacement)),
             cornerOffset: ToppingHandle.cornerOffset,
             in: canvasSize
         )

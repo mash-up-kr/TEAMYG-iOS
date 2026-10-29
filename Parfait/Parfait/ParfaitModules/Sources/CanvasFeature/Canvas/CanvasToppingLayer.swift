@@ -48,6 +48,30 @@ struct CanvasToppingLayer: View {
     }
 }
 
+extension CanvasToppingLayer {
+    /// 저장된 토핑(`CanvasImage`)을 그릴 때 — 테두리 값을 색·두께로 풀어 넘긴다.
+    init(
+        topping: CGImage,
+        silhouette: CGImage?,
+        border: CanvasStore.CanvasImageBorder?,
+        placement: ToppingPlacement,
+        canvasSize: CGSize,
+        isSelected: Bool = false,
+        onTap: (() -> Void)? = nil
+    ) {
+        self.init(
+            topping: topping,
+            silhouette: silhouette,
+            borderColor: border.map { Color(hex: $0.colorHex) },
+            borderWidth: border.map { CGFloat($0.width) } ?? 0,
+            placement: placement,
+            canvasSize: canvasSize,
+            isSelected: isSelected,
+            onTap: onTap
+        )
+    }
+}
+
 struct ToppingBorderedImage: View {
     let topping: CGImage
     let silhouette: CGImage?

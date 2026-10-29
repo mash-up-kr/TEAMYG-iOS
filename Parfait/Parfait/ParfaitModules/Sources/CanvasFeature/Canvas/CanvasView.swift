@@ -14,6 +14,10 @@ import UIComponent
 public struct CanvasView: View {
     @State private var store: CanvasStore
     @State private var toasts: [YGToastItem] = []
+    /// 텍스트 입력(C-106)이 캔버스를 같은 자리에 겹쳐 그리도록 넘기는 캔버스 패널 화면 좌표.
+    @State private var canvasBoardFrame: CGRect = .zero
+    /// 지금 덮고 있는 편집 화면. Store 값이 비어도 페이드아웃이 끝날 때까지 남겨 둔다.
+    @State private var presentedEditDestination: CanvasStore.CanvasEditDestination?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -65,10 +69,13 @@ public struct CanvasView: View {
 
                 CanvasContainer(
                     state: store.state,
-                    send: { store.send($0) }
+                    send: { store.send($0) },
+                    onBoardFrameChange: { canvasBoardFrame = $0 }
                 )
                 .ygToastOverlay($toasts)
             }
+            // 이 화면엔 입력 필드가 없다 — 텍스트 입력(C-106)이 위에 떠 키보드를 올려도 캔버스가 밀려 줄었다 늘지 않게 한다.
+            .ignoresSafeArea(.keyboard)
 
             loadingOverlay
         }
@@ -125,13 +132,35 @@ public struct CanvasView: View {
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
             case .gallery(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .gallery)
+            case .text:
+                textToppingFlow()
             }
+        }
+        // 편집 화면도 텍스트 입력 화면(C-106)처럼 밀어 올리지 않고 캔버스 위에서 페이드로 띄우고 내린다.
+        .onChange(of: store.state.canvasEditDestination) { _, destination in
+            guard let destination else { return }
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { presentedEditDestination = destination }
         }
         .fullScreenCover(item: canvasEditDestinationBinding) { destination in
             // 내부에서 배경 이미지 피커를 push 하므로(CanvasBackgroundEditView) 스택이 필요하다.
             NavigationStack {
-                canvasEditFlow(destination)
+                // 페이드는 스택 안에서 건다 — 밖에서 걸면 캔버스 이동 신호(환경값)가 스택을 거쳐 늦게 닿아
+                // 페이드가 끝난 뒤에야 캔버스가 줄어들었다.
+                CanvasFadeCover(
+                    isPresented: store.state.canvasEditDestination != nil,
+                    canvasFrame: canvasBoardFrame,
+                    onFadedOut: {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) { presentedEditDestination = nil }
+                    },
+                    content: { canvasEditFlow(destination) }
+                )
+                .containerBackground(.clear, for: .navigation)
             }
+            .presentationBackground(.clear)
         }
         // 푸시가 아니라 덮어 씌운다 — 캔버스 화면을 밀어내면 저장 결과 Toast 를 받을 이벤트 구독이
         // 끊겨 돌아왔을 때 알림이 사라진다.
@@ -200,6 +229,24 @@ public struct CanvasView: View {
         )
     }
 
+    /// C-001 캔버스 자리만 뚫린 채 위에 겹쳐 뜬다 — 화면 전환 없이 그 자리에서 딤과 키보드만 올라오는 것처럼 보인다.
+    private func textToppingFlow() -> some View {
+        TextToppingView(
+            store: TextToppingStore(
+                dependencies: .init(
+                    groupID: store.groupID,
+                    parfaitID: store.state.parfaitID,
+                    nextZOrder: store.state.canvasContent?.nextZOrder ?? 1,
+                    toppingUseCase: toppingUseCase,
+                    onSaved: { [store] in store.send(.textToppingSaved($0)) },
+                    logAnalyticsEvent: store.logAnalyticsEvent
+                )
+            ),
+            canvasFrame: canvasBoardFrame
+        )
+        .presentationBackground(.clear)
+    }
+
     private func toppingAddFlow(
         canvasDate: CalendarDate,
         photoSource: ToppingAddStore.PhotoSource
@@ -243,7 +290,8 @@ public struct CanvasView: View {
                     dateText: store.state.dateText,
                     weekdayText: store.state.weekdayText,
                     canvasContent: store.state.canvasContent ?? .empty,
-                    selectedToppingID: destination.selectedToppingID
+                    selectedToppingID: destination.selectedToppingID,
+                    selectedTextID: destination.selectedTextID
                 ),
                 dependencies: .init(
                     groupID: store.groupID,
@@ -253,7 +301,7 @@ public struct CanvasView: View {
                     imageUploadRepository: imageUploadRepository,
                     onDismiss: { store.send(.canvasEditFlowDismissed) },
                     onSaved: { store.send(.canvasEditSaved) },
-                    isToppingEdit: destination.selectedToppingID != nil,
+                    isToppingEdit: destination != .background,
                     logAnalyticsEvent: store.logAnalyticsEvent
                 )
             )
@@ -273,9 +321,10 @@ public struct CanvasView: View {
 
     private var canvasEditDestinationBinding: Binding<CanvasStore.CanvasEditDestination?> {
         Binding(
-            get: { store.state.canvasEditDestination },
+            get: { presentedEditDestination },
             set: { destination in
-                if destination == nil {
+                presentedEditDestination = destination
+                if destination == nil, store.state.canvasEditDestination != nil {
                     store.send(.canvasEditFlowDismissed)
                 }
             }

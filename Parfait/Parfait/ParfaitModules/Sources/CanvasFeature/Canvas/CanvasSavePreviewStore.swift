@@ -69,7 +69,7 @@ final class CanvasSavePreviewStore: MVIStore {
             if isSaved {
                 dependencies.logAnalyticsEvent(.canvasSaveGallerySaved(format: .image))
             }
-            close(.saved(isSaved))
+            close(.saveFinished(isSuccess: isSaved))
         }
     }
 
@@ -89,7 +89,7 @@ final class CanvasSavePreviewStore: MVIStore {
             if isSaved {
                 dependencies.logAnalyticsEvent(.canvasSaveGallerySaved(format: .video))
             }
-            close(.saved(isSaved))
+            close(.saveFinished(isSuccess: isSaved))
         }
     }
 
@@ -144,8 +144,8 @@ extension CanvasStore.SavePreviewCloseReason {
             return nil
         case .composeFailed:
             return .savePreviewRenderFailed
-        case .saved(let isSaved):
-            guard isSaved, let dateText else { return .gallerySaveFailed }
+        case .saveFinished(let isSuccess):
+            guard isSuccess, let dateText else { return .gallerySaveFailed }
             return .gallerySaveSucceeded(dateText: dateText)
         }
     }

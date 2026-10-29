@@ -29,7 +29,9 @@ struct CanvasBackgroundPalette: View {
                 sourceChip(icon: .icCamera, source: .camera)
 
                 ForEach(Self.colors, id: \.self) { hex in
-                    colorChip(hex)
+                    CanvasColorChip(hex: hex, isSelected: CanvasPalette.matches(selectedColorHex, hex)) {
+                        onColorSelect(hex)
+                    }
                 }
             }
             .padding(.vertical, .padding2)
@@ -50,7 +52,7 @@ struct CanvasBackgroundPalette: View {
                     .fill(.gray100)
 
                 if selectedImageSource == source {
-                    CanvasBackgroundThumbnail(background: background)
+                    CanvasBackgroundView(background: background, showsLoadingIndicator: false)
                         .clipShape(.circle)
                 }
 
@@ -78,11 +80,16 @@ struct CanvasBackgroundPalette: View {
         }
         .buttonStyle(.plain)
     }
+}
 
-    private func colorChip(_ hex: String) -> some View {
-        Button {
-            onColorSelect(hex)
-        } label: {
+/// 원형 색 칩 — 배경 팔레트와 텍스트 색 팝오버가 같은 모양을 쓴다.
+struct CanvasColorChip: View {
+    let hex: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
             Circle()
                 .fill(Color(hex: hex))
                 .overlay {
@@ -90,7 +97,7 @@ struct CanvasBackgroundPalette: View {
                         .strokeBorder(.black5, lineWidth: 1)
                 }
                 .overlay {
-                    if CanvasPalette.matches(selectedColorHex, hex) {
+                    if isSelected {
                         Circle()
                             .fill(.black25)
                         Image.icCheck
@@ -103,69 +110,5 @@ struct CanvasBackgroundPalette: View {
                 .frame(width: 36, height: 36)
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct CanvasBackgroundThumbnail: View {
-    let background: CanvasStore.CanvasBackground
-
-    var body: some View {
-        switch background {
-        case .color(let hex):
-            Color(hex: hex)
-
-        case .image(let url):
-            YGImageView(url: url) { phase in
-                if case .success(let image) = phase {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.gray100
-                }
-            }
-
-        case .imageData(let imageData):
-            LocalBackgroundThumbnail(imageData: imageData)
-        }
-    }
-}
-
-private struct LocalBackgroundThumbnail: View {
-    let imageData: Data
-
-    @Environment(\.displayScale) private var displayScale
-    @State private var image: CGImage?
-
-    var body: some View {
-        GeometryReader { proxy in
-            Group {
-                if let image {
-                    Image(decorative: image, scale: 1)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Color.gray100
-                }
-            }
-            .task(id: DecodeRequest(imageData: imageData, size: proxy.size, displayScale: displayScale)) {
-                do {
-                    let decodedImage = try await ImageDownsampling.decodedImage(
-                        from: imageData,
-                        maxPixelSize: proxy.size.longEdgePixelSize(scale: displayScale)
-                    )
-                    guard !Task.isCancelled else { return }
-                    image = decodedImage
-                } catch {
-                    return
-                }
-            }
-        }
-    }
-
-    private struct DecodeRequest: Equatable {
-        let imageData: Data
-        let size: CGSize
-        let displayScale: CGFloat
     }
 }

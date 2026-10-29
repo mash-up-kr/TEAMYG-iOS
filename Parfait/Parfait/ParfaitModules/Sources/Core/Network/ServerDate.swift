@@ -13,7 +13,7 @@ import Foundation
 /// 못 읽는 값이 하나 섞여도 그 항목의 시각만 nil 이 되고 나머지는 그대로 그려진다 —
 /// 디코더에 맡기면 응답 전체가 날아간다.
 ///
-/// 그룹 목록과 캔버스(`TodayParfaitImageResponse.createdAt`)가 같은 파서를 쓴다.
+/// 그룹 목록과 캔버스(토핑 `createdAt`)가 같은 파서를 쓴다.
 public enum ServerDate {
     /// ISO 8601 을 읽는다. 오프셋(`Z`·`+09:00`)이 붙어 있으면 그대로 따르고,
     /// 없으면 ISO 8601 의 local time 규정대로 **기기 시간대**로 읽는다.

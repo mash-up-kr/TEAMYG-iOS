@@ -54,7 +54,7 @@ public final class GroupSideMenuStore: MVIStore {
             setExitPopupVisibility(exitAction, isPresented: false)
             beginExit(exitAction)
         case .exitFinished(let exitAction):
-            // 실패(nil)는 화면에 머무른다 — 안내 디자인 미정(API 도 미정)이라 다시 시도만 열어 둔다.
+            // 실패(nil)는 화면에 머무른다 — 실패 안내 디자인 미정이라 다시 시도만 열어 둔다.
             if exitAction == .leave {
                 logAnalyticsEvent(.groupMenuLeft)
             }
@@ -137,7 +137,7 @@ public final class GroupSideMenuStore: MVIStore {
 
     private func applyNicknameChangeResult(_ savedNickname: String?) {
         state.isSavingNickname = false
-        // 실패(nil) 안내 디자인 미정(API 도 미정) — 입력은 그대로 두고 다시 제출할 수 있게만 한다.
+        // 실패(nil) 안내 디자인 미정 — 입력은 그대로 두고 다시 제출할 수 있게만 한다.
         guard let savedNickname, case .loaded(let detail) = state.phase else { return }
         logAnalyticsEvent(.groupMenuNicknameChanged)
         state.phase = .loaded(detail.updatingMyNickname(savedNickname))

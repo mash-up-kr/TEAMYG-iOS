@@ -154,7 +154,6 @@ public struct CreateGroupView: View {
 
     private var createErrorMessage: String {
         switch store.state.createError {
-        case .duplicatedName: "같은 이름의 그룹을 이미 만들었어요"
         case .server(let message): message
         default: "잠시 후 다시 시도해 주세요"
         }

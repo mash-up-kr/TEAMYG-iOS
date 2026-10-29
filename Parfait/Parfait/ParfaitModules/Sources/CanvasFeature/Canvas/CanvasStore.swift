@@ -33,6 +33,8 @@ public final class CanvasStore: MVIStore {
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
     /// Spotlight Toast 문구에만 쓰는 작성자 정보 — 렌더링 모델(`CanvasImage`)과 분리해 둔다.
     private var toppingAuthorsByID: [Int: ToppingAuthor] = [:]
+    /// 텍스트 id 는 이미지와 따로 매겨져 겹칠 수 있어 따로 든다.
+    private var textAuthorsByID: [Int: ToppingAuthor] = [:]
     /// 마지막으로 보낸 `screen_view`. 하위 화면이 떠 있던 동안은 `nil` — 돌아오면 다시 보낸다.
     @ObservationIgnored private var loggedScreenName: AnalyticsEvent.ScreenName?
 
@@ -71,7 +73,7 @@ public final class CanvasStore: MVIStore {
             loadInitialDataIfNeeded()
             startCanvasRefreshTicker()
         case .sceneBecameActive:
-            state.spotlightedToppingID = nil
+            state.spotlightedLayerID = nil
             reloadIfDayChanged()
             startCanvasRefreshTicker()
         case .sceneEnteredBackground:
@@ -85,20 +87,22 @@ public final class CanvasStore: MVIStore {
             refreshCanvasSilently()
         case .toppingTapped(let toppingID):
             handleToppingTap(toppingID)
+        case .textTapped(let textID):
+            handleTextTap(textID)
+        case .textToppingSaved(let text):
+            // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다.
+            state.canvasContent = (state.canvasContent ?? .empty).adding(text)
+            if state.contentState == .empty { state.contentState = .filled }
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
         case .toppingImageLoadFailed(let toppingID):
             state.failedToppingImageIDs.insert(toppingID)
         case .spotlightDismissed:
-            state.spotlightedToppingID = nil
-        case .canvasEditTapped:
+            state.spotlightedLayerID = nil
+        case .backgroundEditTapped:
             guard !state.isClosedCanvas else { return }
-            state.calendar.close()
-            state.menuState = .collapsed
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            dismissOverlays()
+            guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .background
         case .canvasEditFlowDismissed:
             state.canvasEditDestination = nil
@@ -109,15 +113,14 @@ public final class CanvasStore: MVIStore {
         case .toppingAddTapped:
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            guard ensureCanvasReady() else { return }
             state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
         case .cameraOptionTapped:
-            openToppingAddFlow { .camera(canvasDate: $0) }
+            openToppingAddFlow(.camera) { .camera(canvasDate: $0) }
         case .galleryOptionTapped:
-            openToppingAddFlow { .gallery(canvasDate: $0) }
+            openToppingAddFlow(.gallery) { .gallery(canvasDate: $0) }
+        case .textOptionTapped:
+            openToppingAddFlow(.text) { _ in .text }
         case .menuDimTapped:
             // 캘린더 dim 과 같다 — 바깥을 누르면 닫힌다.
             state.menuState = .collapsed
@@ -150,8 +153,7 @@ public final class CanvasStore: MVIStore {
         case .refreshRequested:
             refreshCanvas()
         case .savePreviewRequested:
-            state.calendar.close()
-            state.menuState = .collapsed
+            dismissOverlays()
             guard let canvasContent = state.canvasContent else {
                 eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
                 return
@@ -170,22 +172,38 @@ public final class CanvasStore: MVIStore {
             logAnalyticsEvent(.canvasCalendarPastParfaitTapped(groupID: String(groupID)))
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
-            state.calendar.close()
-            state.menuState = .collapsed
+            dismissOverlays()
         }
     }
 
-    private func openToppingAddFlow(_ makeSource: (CalendarDate) -> ToppingAddSource) {
-        guard !state.isClosedCanvas, state.parfaitID != nil else { return }
+    /// 캘린더·토핑 추가 메뉴 오버레이를 걷는다.
+    private func dismissOverlays() {
         state.calendar.close()
         state.menuState = .collapsed
+    }
+
+    /// 캔버스 ID 를 아직 못 받았으면 안내하고 `false`.
+    private func ensureCanvasReady() -> Bool {
+        guard state.parfaitID != nil else {
+            eventChannel.send(.canvasNotReady)
+            return false
+        }
+        return true
+    }
+
+    private func openToppingAddFlow(
+        _ type: AnalyticsEvent.ToppingAddType,
+        _ makeSource: (CalendarDate) -> ToppingAddSource
+    ) {
+        guard !state.isClosedCanvas, state.parfaitID != nil else { return }
+        logAnalyticsEvent(.canvasMainToppingAddTapped(type: type))
+        dismissOverlays()
         state.toppingAddSource = makeSource(CalendarDate(canvasDayContaining: dependencies.now()))
     }
 
     private func refreshCanvas() {
-        state.spotlightedToppingID = nil
-        state.menuState = .collapsed
-        state.calendar.close()
+        state.spotlightedLayerID = nil
+        dismissOverlays()
         reload(state.calendar.selectedDate)
     }
 
@@ -246,11 +264,12 @@ public final class CanvasStore: MVIStore {
 
         state.contentState = .loading
         state.canvasContent = nil
-        state.spotlightedToppingID = nil
+        state.spotlightedLayerID = nil
         state.loadedToppingImageIDs = []
         state.failedToppingImageIDs = []
         state.awaitedToppingImageIDs = []
         toppingAuthorsByID = [:]
+        textAuthorsByID = [:]
         // 조회가 끝나기 전에는 쓸 대상이 없다. 남겨 두면 캔버스를 전환하는 동안 토핑 추가·편집이
         // **이전 캔버스** 로 나간다 (과거 → 오늘 전환 직후가 특히 위험하다).
         state.parfaitID = nil
@@ -353,18 +372,31 @@ private extension CanvasStore {
     func handleToppingTap(_ toppingID: Int) {
         guard let topping = state.tappableTopping(toppingID) else { return }
         logAnalyticsEvent(.canvasToppingEditorChecked(isMine: topping.isMine))
-        state.calendar.close()
-        state.menuState = .collapsed
+        dismissOverlays()
 
         if topping.isMine, !state.isClosedCanvas {
-            guard state.parfaitID != nil else {
-                eventChannel.send(.canvasNotReady)
-                return
-            }
+            guard ensureCanvasReady() else { return }
             state.canvasEditDestination = .toppings(selectedToppingID: toppingID)
         } else {
-            state.spotlightedToppingID = toppingID
+            state.spotlightedLayerID = .image(toppingID)
             guard let author = toppingAuthorsByID[toppingID] else { return }
+            eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
+        }
+    }
+
+    /// 내 텍스트는 사진과 같은 토핑 편집 화면으로 열고, 남의 텍스트는 사진처럼 Spotlight 하고 작성자 토스트를 띄운다.
+    func handleTextTap(_ textID: Int) {
+        guard state.spotlightedLayerID == nil,
+              let text = state.canvasContent?.texts.first(where: { $0.id == textID })
+        else { return }
+        dismissOverlays()
+
+        if text.isMine, !state.isClosedCanvas {
+            guard ensureCanvasReady() else { return }
+            state.canvasEditDestination = .toppings(selectedTextID: textID)
+        } else {
+            state.spotlightedLayerID = .text(textID)
+            guard let author = textAuthorsByID[textID] else { return }
             eventChannel.send(.toppingSpotlighted(SpotlightToast(author: author, now: dependencies.now())))
         }
     }
@@ -397,7 +429,7 @@ private extension CanvasStore {
         guard !state.isClosedCanvas,
               silentRefreshTask == nil,
               state.loadingOverlay == .hidden,
-              state.spotlightedToppingID == nil,
+              state.spotlightedLayerID == nil,
               state.toppingAddSource == nil,
               state.canvasEditDestination == nil,
               state.savePreview == nil
@@ -444,11 +476,13 @@ private extension CanvasStore {
             state.contentState = .empty
             state.canvasContent = nil
             toppingAuthorsByID = [:]
+            textAuthorsByID = [:]
             return
         }
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
         toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
+        textAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.texts.map { ($0.id, ToppingAuthor($0)) })
     }
 
     func cancelTasks() {

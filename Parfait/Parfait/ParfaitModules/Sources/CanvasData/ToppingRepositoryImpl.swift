@@ -37,11 +37,17 @@ public struct ToppingRepositoryImpl: ToppingRepository {
 
     public func updatePlacements(
         _ updates: [Int: ToppingPlacementUpdate],
+        textUpdates: [Int: ToppingPlacementUpdate],
         groupID: Int,
         parfaitID: Int
     ) async throws {
         let _: EmptyDTO = try await networkClient.request(
-            UpdateToppingPlacementsEndpoint(groupID: groupID, parfaitID: parfaitID, updates: updates)
+            UpdateToppingPlacementsEndpoint(
+                groupID: groupID,
+                parfaitID: parfaitID,
+                updates: updates,
+                textUpdates: textUpdates
+            )
         )
     }
 
@@ -65,6 +71,19 @@ public struct ToppingRepositoryImpl: ToppingRepository {
     public func delete(toppingID: Int, groupID: Int, parfaitID: Int) async throws {
         let _: EmptyDTO = try await networkClient.request(
             DeleteToppingEndpoint(groupID: groupID, parfaitID: parfaitID, toppingID: toppingID)
+        )
+    }
+
+    public func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText {
+        let dto: ParfaitTextDTO = try await networkClient.request(
+            PlaceTextEndpoint(groupID: groupID, parfaitID: parfaitID, draft: draft)
+        )
+        return dto.toEntity()
+    }
+
+    public func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws {
+        let _: EmptyDTO = try await networkClient.request(
+            DeleteTextEndpoint(groupID: groupID, parfaitID: parfaitID, textID: textID)
         )
     }
 }

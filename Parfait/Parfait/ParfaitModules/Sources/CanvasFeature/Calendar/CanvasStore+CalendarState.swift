@@ -172,7 +172,6 @@ public extension CanvasStore {
                 let hasRecord = recordedDates.contains(calendarDate)
                 return CalendarDay(
                     date: calendarDate,
-                    isInExploredMonth: calendarDate.year == exploredYear && calendarDate.month == exploredMonth,
                     hasRecord: hasRecord,
                     isEnabled: isSelectable(calendarDate),
                     isSelected: calendarDate == selectedDate,
@@ -272,7 +271,6 @@ public extension CanvasStore {
     struct CalendarDay: Equatable, Identifiable, Sendable {
         public var id: CalendarDate { date }
         let date: CalendarDate
-        let isInExploredMonth: Bool
         let hasRecord: Bool
         let isEnabled: Bool
         let isSelected: Bool

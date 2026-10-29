@@ -1,6 +1,6 @@
 //  앱 전역 네비게이션 목적지 = 모든 화면 전환의 단일 진실 소스.
-//  페이로드는 Domain 엔티티(또는 원시값)로 넘긴다 — 목적지 피처가 소유한 타입은 금지(형제 import 유발).
-//  엔티티가 생기면:  case group(Group)  처럼 바꾸고, Package.swift 의 Routing 의존에 "Domain" 추가.
+//  페이로드는 원시값으로 넘긴다 — Routing 이 Domain 에 의존하지 않게 하고,
+//  목적지 피처가 소유한 타입도 금지(형제 import 유발).
 public enum AppRoute: Hashable {
     /// 로그인 — 세션 만료(리프레시 토큰 거절) 시 `replaceStack(with: .login)` 으로 되돌아오는 목적지.
     case login
@@ -11,10 +11,8 @@ public enum AppRoute: Hashable {
     case setting
     /// 캔버스(C-001) — 어느 그룹의 파르페인지 들고 간다.
     ///
-    /// 그룹 목록(G-001)에서 토핑을 누르면 이 목적지로 온다. 페이로드는 `ParfaitGroup.id`·`name` 이다.
-    /// 엔티티가 아니라 원시값으로 넘긴다 — Routing 이 GroupDomain 에 의존하지 않게 하려는 것이다.
-    /// 그룹명은 캔버스 API 응답(`groupName`)에서 받아 채운다 — 라우트는 ID 와 진입 맥락만 들고 간다.
-    /// 이름을 모르는 진입점(푸시 탭)은 빈 문자열로 온다.
+    /// 그룹 목록(G-001)·푸시 탭 등에서 온다. 그룹명은 캔버스 API 응답(`groupName`)에서 받아 채운다 —
+    /// 라우트는 그룹 ID 와 진입 맥락만 들고 간다.
     case canvas(groupID: String, entry: CanvasEntry = .regular)
     /// 그룹 사이드메뉴(S-101) — 캔버스(C-001) 상단 바 더보기(⋯)로 진입한다. `groupName` 은 상단 바 제목.
     case groupSideMenu(groupID: String, groupName: String)

@@ -118,11 +118,8 @@ public struct InviteCodeView: View {
     /// 실패 사유별 안내 문구. `nil`(비실패 상태)은 숨겨진 채 공간만 차지하므로 아무 문구나 무방.
     private var errorMessageText: String {
         switch store.state.joinError {
-        case .invalidInviteCode, nil: "유효하지 않은 초대코드예요"
-        case .groupFull: "이미 최대 인원이 모두 참여한 그룹이에요"
-        case .alreadyJoined: "이미 참여한 그룹이에요"
         case .server(let message): message
-        case .unknown: "잠시 후 다시 시도해 주세요"
+        case .unknown, nil: "잠시 후 다시 시도해 주세요"
         }
     }
 }
@@ -139,7 +136,10 @@ public struct InviteCodeView: View {
 
 #Preview("실패 - 최대 인원") {
     InviteCodeView(
-        store: InviteCodeStore(groupUseCase: PreviewGroupUseCase(joinError: .groupFull), logAnalyticsEvent: { _ in }),
+        store: InviteCodeStore(
+            groupUseCase: PreviewGroupUseCase(joinError: .server(message: "이미 최대 인원이 모두 참여한 그룹이에요")),
+            logAnalyticsEvent: { _ in }
+        ),
         makeJoinGroupNicknameStore: {
             JoinGroupNicknameStore(group: $0, groupUseCase: PreviewGroupUseCase())
         },

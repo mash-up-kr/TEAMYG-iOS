@@ -57,7 +57,7 @@ public final class AccountInfoStore: MVIStore {
                     eventContinuation?.yield(.nicknameSaved)
                 } catch {
                     // 에러 UI 정책 미정 — 로그만 남긴다
-                    print("닉네임 변경 실패: \(error)")
+                    YGLogger.error("닉네임 변경 실패: \(error)")
                 }
             }
         }

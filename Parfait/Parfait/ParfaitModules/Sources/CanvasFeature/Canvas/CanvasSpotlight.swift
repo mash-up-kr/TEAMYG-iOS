@@ -21,6 +21,12 @@ extension CanvasStore {
             nametagChip = topping.placedBy.nametagChip
             placedAt = topping.createdAt
         }
+
+        init(_ text: PlacedText) {
+            nickname = text.placedBy.nickname
+            nametagChip = text.placedBy.nametagChip
+            placedAt = text.createdAt
+        }
     }
 
     public struct SpotlightToast: Equatable, Sendable {
@@ -38,7 +44,7 @@ extension CanvasStore {
 
 extension CanvasStore.State {
     func tappableTopping(_ toppingID: Int) -> CanvasStore.CanvasImage? {
-        guard spotlightedToppingID == nil else { return nil }
+        guard spotlightedLayerID == nil else { return nil }
         return canvasContent?.images.first { $0.id == toppingID }
     }
 }

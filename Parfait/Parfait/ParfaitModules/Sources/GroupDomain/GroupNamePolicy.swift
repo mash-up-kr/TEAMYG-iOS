@@ -39,10 +39,6 @@ public enum GroupNamePolicy {
         return nil
     }
 
-    public static func isValid(_ name: String) -> Bool {
-        validate(name) == nil
-    }
-
     /// 한글(조합 중 자모 입력 포함), 영문, 숫자, 공백만 허용. 특수문자·이모지 불가.
     ///
     /// `NicknameValidator.isAllowedCharacter(_:)` 와 같은 판정이다. 스칼라 범위로 넓게 잡지 않는

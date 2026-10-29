@@ -187,6 +187,23 @@ struct AppDependencies {
         }
     }
 
+    /// Analytics 사용자 ID 를 서버 memberId 로 맞춘다 — 세션이 생기는 시점에 App 루트가 호출한다.
+    /// 로그인·가입 응답엔 memberId 가 없어 내 계정 조회로 받는다.
+    func setAnalyticsUserID() async {
+        do {
+            let account = try await makeMemberUseCase().fetchMyAccount()
+            Analytics.setUserID(String(account.id))
+        } catch {
+            // 실패해도 다음 로그인·앱 실행 때 다시 맞춘다
+            YGLogger.error("Analytics 사용자 ID 설정 실패: \(error)")
+        }
+    }
+
+    /// 세션 종료(로그아웃·탈퇴·리프레시 만료) 시 사용자 ID 를 지운다 — 다음 사용자 이벤트가 이전 회원에 붙지 않게.
+    func clearAnalyticsUserID() {
+        Analytics.setUserID(nil)
+    }
+
     private func makeMemberUseCase() -> MemberUseCaseImpl {
         MemberUseCaseImpl(
             memberRepository: MemberRepositoryImpl(
@@ -222,13 +239,11 @@ struct AppDependencies {
 
     func makeAlbumPickerStore(
         isLimited: Bool,
-        showsRecentUploads: Bool,
         onPhotoConfirmed: @escaping (_ assetIdentifier: String) -> Void,
         onRecentUploadConfirmed: ((StoredImage) -> Void)?
     ) -> AlbumPickerStore {
         AlbumPickerStore(
             isLimited: isLimited,
-            showsRecentUploads: showsRecentUploads,
             recentUploadsRepository: recentUploadsRepository,
             onPhotoConfirmed: onPhotoConfirmed,
             onRecentUploadConfirmed: onRecentUploadConfirmed

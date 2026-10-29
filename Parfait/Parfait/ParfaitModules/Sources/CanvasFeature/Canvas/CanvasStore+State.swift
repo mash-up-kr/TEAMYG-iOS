@@ -75,7 +75,7 @@ public extension CanvasStore {
         public var lastClosedDate: CalendarDate?
         /// 그 마감 캔버스에 토핑을 올린 인원. `lastClosedDate` 와 함께 채운다.
         var lastClosedParticipantCount = 0
-        var spotlightedToppingID: Int?
+        var spotlightedLayerID: CanvasLayer.LayerID?
         /// 다운로드가 끝난 토핑 이미지 — 캔버스의 토핑이 전부 모여야 로딩 딤(C-001-Loading)을 걷는다.
         var loadedToppingImageIDs: Set<Int> = []
         /// 다운로드에 실패한 토핑 이미지 — 하나라도 있으면 에러 딤(C-001-Error)으로 바꾼다.
@@ -118,10 +118,6 @@ public extension CanvasStore {
 
         var isClosedCanvas: Bool {
             calendar.selectedDate != calendar.today
-        }
-
-        var toppingCount: Int {
-            canvasContent?.images.count ?? 0
         }
 
         /// SY-001-New 안내 — 아직 안내하지 않은 마감 캔버스가 있을 때만 알린다. 마감 날짜당 한 번.
@@ -225,8 +221,8 @@ public extension CanvasStore {
         case dismissed
         /// 저장본을 못 그려 열자마자 접었다.
         case composeFailed
-        /// 앨범 저장까지 마쳤다.
-        case saved(Bool)
+        /// 앨범 저장을 시도했다 — 성공 여부를 함께 싣는다.
+        case saveFinished(isSuccess: Bool)
     }
 
     struct Member: Equatable, Identifiable, Sendable {
@@ -262,10 +258,24 @@ public extension CanvasStore {
     struct CanvasContent: Equatable, Sendable {
         public let background: CanvasBackground
         public let images: [CanvasImage]
+        public let texts: [CanvasText]
 
-        public init(background: CanvasBackground, images: [CanvasImage] = []) {
+        public init(background: CanvasBackground, images: [CanvasImage] = [], texts: [CanvasText] = []) {
             self.background = background
             self.images = images.sorted { $0.positionZ < $1.positionZ }
+            self.texts = texts.sorted { $0.positionZ < $1.positionZ }
+        }
+
+        /// 이미지·텍스트는 같은 `positionZ` 축을 쓴다 — 합쳐서 오름차순으로 쌓는다.
+        var layers: [CanvasLayer] {
+            (images.map(CanvasLayer.image) + texts.map(CanvasLayer.text))
+                .sorted { $0.positionZ < $1.positionZ }
+        }
+
+        /// 새 토핑을 맨 위에 얹을 `positionZ`.
+        var nextZOrder: Int {
+            let highest = layers.last?.positionZ ?? 0
+            return Int(highest.rounded()) + 1
         }
     }
 
@@ -324,15 +334,18 @@ public extension CanvasStore {
         case screenChanged
         case canvasRefreshTicked
         case toppingTapped(Int)
+        case textTapped(Int)
+        case textToppingSaved(CanvasText)
         case toppingImageLoaded(Int)
         case toppingImageLoadFailed(Int)
         case spotlightDismissed
-        case canvasEditTapped
+        case backgroundEditTapped
         case canvasEditFlowDismissed
         case canvasEditSaved
         case toppingAddTapped
         case cameraOptionTapped
         case galleryOptionTapped
+        case textOptionTapped
         case menuDimTapped
         case toppingAddFlowDismissed
         case toppingSaved

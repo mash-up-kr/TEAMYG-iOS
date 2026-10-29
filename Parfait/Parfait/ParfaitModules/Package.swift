@@ -10,6 +10,7 @@ let designSystemResources: [Resource] = [
     .process("Resources/Colors.xcassets"),
     .process("Resources/Assets.xcassets"),
     .copy("Resources/SUIT-ttf"), // 폰트: 폴더째 복사(하위경로 유지) → 런타임 등록
+    .copy("Resources/LINESeed"), // SUIT 에 없는 일본어·중국어 폴백 폰트
     // 로띠 애니메이션(.lottie = zip) — 압축 그대로 복사, 런타임에 DotLottieFile 이 해제.
     .copy("Resources/Lottie_Loading_Light.lottie"),
     .copy("Resources/Lottie_Loading_Dark.lottie"),

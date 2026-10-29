@@ -9,10 +9,12 @@ import Core
 import Foundation
 import GroupDomain
 
-/// `MyParfaitGroupResponse` 스키마 대응 (`GET /api/parfait-groups`).
+/// `MyParfaitGroupV2Response` 스키마 대응 (`GET /api/v2/parfait-groups`).
 struct MyParfaitGroupDTO: Decodable, Sendable {
     let groupId: Int
     let groupName: String
+    /// 마지막 토핑 종류 (`IMAGE`·`TEXT`). 텍스트면 `recentImageUrl` 이 null 이다.
+    let recentToppingType: String?
     let recentImageUrl: String?
     let recentImageBorderType: String?
     let recentImageBorderColor: String?
@@ -30,11 +32,20 @@ extension MyParfaitGroupDTO {
             name: groupName,
             thumbnailURL: recentImageUrl.flatMap { URL(string: $0) },
             thumbnailBorderColorHex: thumbnailBorderColorHex,
+            latestToppingKind: latestToppingKind,
             lastActivityAt: recentImageUploadedAt.flatMap { ServerDate.date(from: $0) },
             lastActorNametagType: lastPlacedByNameTagChip
                 .flatMap { NametagChipCode.number(from: $0) }
                 .flatMap { NametagType(rawValue: $0) }
         )
+    }
+
+    private var latestToppingKind: ParfaitGroup.ToppingKind? {
+        switch recentToppingType {
+        case "IMAGE": .image
+        case "TEXT": .text
+        default: nil
+        }
     }
 
     private var thumbnailBorderColorHex: String? {

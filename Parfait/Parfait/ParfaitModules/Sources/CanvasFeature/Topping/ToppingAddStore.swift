@@ -42,7 +42,6 @@ final class ToppingAddStore: MVIStore {
     private var borderRenderTask: Task<Void, Never>?
     private var maskRenderTask: Task<Void, Never>?
     private var cutoutApplyTask: Task<Void, Never>?
-    private var saveTask: Task<Void, Never>?
     @ObservationIgnored private let canvasRefreshTicker = CanvasRefreshTicker()
     private var canvasRefreshTask: Task<Void, Never>?
     /// 마지막으로 보낸 screen_view — 같은 단위 안의 화면 전환(촬영 → 촬영 확인 등)은 다시 보내지 않는다.
@@ -70,7 +69,7 @@ final class ToppingAddStore: MVIStore {
         let onRecentUploadConfirmed: (StoredImage) -> Void = { [weak self] upload in
             self?.send(.recentUploadConfirmed(upload))
         }
-        let albumPickerStore = makeAlbumPickerStore(isLimited, true, onPhotoConfirmed, onRecentUploadConfirmed)
+        let albumPickerStore = makeAlbumPickerStore(isLimited, onPhotoConfirmed, onRecentUploadConfirmed)
         albumPicker = (isLimited, albumPickerStore)
         return albumPickerStore
     }
@@ -102,20 +101,8 @@ final class ToppingAddStore: MVIStore {
             logScreenViewIfChanged()
         case .toastDismissed:
             state.showsToast = false
-        case .flashTapped:
-            camera.toggleFlash()
-        case .cameraPositionTapped:
-            camera.switchCamera()
-        case .cameraZoomChanged(let zoomFactor):
-            camera.zoom(to: zoomFactor)
-        case .shutterTapped(let viewFinderRegion):
-            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
-        case .retakeTapped:
-            guard camera.retake() else { break }
-            dependencies.logAnalyticsEvent(.canvasCameraRetakeTapped)
-            state.screen = .camera
-        case .photoConfirmed:
-            proceedWithCapturedPhoto()
+        case .camera(let action):
+            handleCameraAction(action)
         case .galleryPhotoConfirmed(let assetIdentifier):
             dependencies.logAnalyticsEvent(.canvasCameraPhotoSelected(source: .album))
             confirmGalleryPhoto(assetIdentifier: assetIdentifier)
@@ -124,8 +111,6 @@ final class ToppingAddStore: MVIStore {
             openRecentUpload(upload)
         case .cameraRetryTapped:
             camera.prepare()
-        case .settingsTapped:
-            openSystemSettings()
         case .analysisCancelled:
             cancelAnalysis()
             eventChannel.send(.dismissRequested)
@@ -208,9 +193,13 @@ final class ToppingAddStore: MVIStore {
         }
     }
 
-    /// 촬영·사진 선택·대상 감지(C101·C102·C104)는 canvas_camera, 배치·테두리(C105)는 canvas_edit.
+    /// 배치·테두리(C105)는 canvas_edit. 그 전 화면(사진 선택·대상 감지)은 진입 경로를 따라 canvas_camera / canvas_gallery.
     private func logScreenViewIfChanged() {
-        let screenName: AnalyticsEvent.ScreenName = state.screen == .placement ? .canvasEdit : .canvasCamera
+        let screenName: AnalyticsEvent.ScreenName = switch (state.screen, state.photoSource) {
+        case (.placement, _): .canvasEdit
+        case (_, .camera): .canvasCamera
+        case (_, .gallery): .canvasGallery
+        }
         guard screenName != loggedScreenName else { return }
         loggedScreenName = screenName
         dependencies.logAnalyticsEvent(.screenView(screenName))
@@ -242,7 +231,7 @@ final class ToppingAddStore: MVIStore {
         renderBorderSilhouette()
     }
 
-    private func releaseExtractedTopping() {
+    private func resetToppingDraft() {
         borderRenderTask?.cancel()
         maskRenderTask?.cancel()
         cutoutApplyTask?.cancel()
@@ -258,10 +247,6 @@ final class ToppingAddStore: MVIStore {
         state.maskEditor.reset()
         state.placementEditor.reset()
         state.isRecentUpload = false
-    }
-
-    private func resetToppingDraft() {
-        releaseExtractedTopping()
         Task { [borderRenderer] in await borderRenderer.reset() }
     }
 
@@ -414,7 +399,8 @@ private extension ToppingAddStore {
         }
 
         analysisTask?.cancel()
-        releaseExtractedTopping()
+        // 실루엣 캐시는 후보 번호로만 구분한다 — 같은 후보를 다시 뽑아도 이전(브러시로 다듬은) 실루엣이 남지 않게 비운다.
+        resetToppingDraft()
         // 추출은 이미 분석된 세션에서 마스크만 뽑는 짧은 작업 — 후보 화면 위 오버레이로 보여준다.
         state.extractionState = .extracting
 
@@ -586,10 +572,24 @@ private extension ToppingAddStore {
 }
 
 private extension ToppingAddStore {
-    func openSystemSettings() {
-        Task {
-            guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
-            await UIApplication.shared.open(settingsURL)
+    func handleCameraAction(_ action: CameraCaptureScreen.Action) {
+        switch action {
+        case .flashTapped:
+            camera.toggleFlash()
+        case .cameraPositionTapped:
+            camera.switchCamera()
+        case .zoomChanged(let zoomFactor):
+            camera.zoom(to: zoomFactor)
+        case .shutterTapped(let viewFinderRegion):
+            camera.capturePhoto(viewFinderRegion: viewFinderRegion)
+        case .retakeTapped:
+            guard camera.retake() else { return }
+            dependencies.logAnalyticsEvent(.canvasCameraRetakeTapped)
+            state.screen = .camera
+        case .nextTapped:
+            proceedWithCapturedPhoto()
+        case .closeTapped:
+            requestQuit()
         }
     }
 }
@@ -619,7 +619,7 @@ private extension ToppingAddStore {
         let border = state.border.style
         state.saveState = .saving
 
-        saveTask = Task { [weak self, dependencies] in
+        Task { [weak self, dependencies] in
             guard let upload = await Self.encodedUpload(from: topping.image) else {
                 guard let self else { return }
                 state.saveState = .idle
@@ -664,10 +664,9 @@ private extension ToppingAddStore {
         return (pngData, scaleFactor)
     }
 
-    /// 새 토핑은 항상 맨 위에 얹는다.
+    /// 새 토핑은 항상 맨 위(텍스트 포함)에 얹는다.
     var nextZOrder: Int {
-        let highest = state.canvasContent?.images.map(\.positionZ).max() ?? 0
-        return Int(highest.rounded()) + 1
+        state.canvasContent?.nextZOrder ?? 1
     }
 }
 

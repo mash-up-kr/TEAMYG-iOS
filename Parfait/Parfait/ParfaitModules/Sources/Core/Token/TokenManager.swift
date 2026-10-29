@@ -44,14 +44,13 @@ public actor TokenManager {
         keychain.save(refreshToken, for: .refreshToken)
     }
 
-    public func clear() {
+    private func clear() {
         keychain.delete(.accessToken)
         keychain.delete(.refreshToken)
     }
 
     /// 세션 종료 — 토큰을 지우고 만료 이벤트를 보낸다.
-    /// 서버가 리프레시 토큰 자체를 거절해 재로그인 외에 방법이 없을 때 호출한다.
-    /// (로그아웃처럼 호출자가 직접 화면 전환하는 경우는 `clear()` 를 쓸 것)
+    /// 리프레시 토큰이 거절됐을 때와 로그아웃·탈퇴 때 호출한다 — App 루트가 이벤트를 받아 로그인 화면으로 되돌린다.
     public func expireSession() {
         clear()
         sessionExpirationContinuation.yield()
