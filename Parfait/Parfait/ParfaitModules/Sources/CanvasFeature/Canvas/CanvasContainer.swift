@@ -34,12 +34,12 @@ struct CanvasContainer: View {
                             canvasContent: state.canvasContent,
                             spotlightedLayerID: state.spotlightedLayerID,
                             isDimmed: state.menuState == .sourceOptions,
-                            onCalendarTap: { send(.calendarTapped) },
-                            onSaveTap: { send(.savePreviewRequested) },
-                            onToppingTap: { send(.toppingTapped($0)) },
-                            onTextTap: { send(.textTapped($0)) },
-                            onSpotlightDismiss: { send(.spotlightDismissed) },
-                            onDimTap: { send(.menuDimTapped) },
+                            onCalendarTap: { perform(.calendarTapped) },
+                            onSaveTap: { perform(.savePreviewRequested) },
+                            onToppingTap: { perform(.toppingTapped($0)) },
+                            onTextTap: { perform(.textTapped($0)) },
+                            onSpotlightDismiss: { perform(.spotlightDismissed) },
+                            onDimTap: { perform(.menuDimTapped) },
                             onToppingImageLoaded: { send(.toppingImageLoaded($0)) },
                             onToppingImageLoadFailed: { send(.toppingImageLoadFailed($0)) }
                         )
@@ -52,16 +52,16 @@ struct CanvasContainer: View {
                         .overlay(alignment: .bottom) {
                             if state.menuState == .sourceOptions {
                                 CanvasMenuSourceOptions(
-                                    onCameraOptionTap: { send(.cameraOptionTapped) },
-                                    onGalleryOptionTap: { send(.galleryOptionTapped) },
+                                    onCameraOptionTap: { perform(.cameraOptionTapped) },
+                                    onGalleryOptionTap: { perform(.galleryOptionTapped) },
                                     onTextOptionTap: {
                                         // 메뉴는 C-106 이 페이드인하는 동안 캔버스 위에서 같이 페이드아웃한다 — 한 번에 접으면
                                         // 메뉴 딤이 꺼져 밝아졌다가 C-106 딤으로 다시 어두워지며 번쩍였다.
-                                        withAnimation(.easeInOut(duration: 0.2)) { send(.menuDimTapped) }
+                                        withAnimation(.easeInOut(duration: 0.2)) { perform(.menuDimTapped) }
                                         // 텍스트는 같은 캔버스 위에 바로 쓰는 동작이라 새 화면처럼 밀어 올리지 않는다 — C-106 이 직접 페이드인한다.
                                         var transaction = Transaction()
                                         transaction.disablesAnimations = true
-                                        withTransaction(transaction) { send(.textOptionTapped) }
+                                        withTransaction(transaction) { perform(.textOptionTapped) }
                                     }
                                 )
                             }
@@ -76,7 +76,7 @@ struct CanvasContainer: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollBounceBehavior(.always)
-                .refreshable { send(.refreshRequested) }
+                .refreshable { perform(.refreshRequested) }
             }
             // 캘린더 레이어보다 아래에 두려고 ZStack 이 아니라 보드 쪽에 단다.
             .ygAlert(isPresented: isNudgePresented) { nudge }
@@ -98,6 +98,12 @@ struct CanvasContainer: View {
         )
     }
 
+    /// 사용자 조작은 상단 안내를 닫고 보낸다 — 띄운 채 텍스트 입력(C-106) 등으로 넘어가면 안내가 화면 위에 걸려 잘린다.
+    private func perform(_ intent: CanvasStore.Intent) {
+        isNudgeDismissed = true
+        send(intent)
+    }
+
     @ViewBuilder
     private var nudge: some View {
         if let entryNudge = state.entryNudge {
@@ -105,7 +111,7 @@ struct CanvasContainer: View {
                 .padding(.top, .padding6)
         } else if let pastParfaitNudge = state.pastParfaitNudge {
             CanvasPastParfaitNudge(nudge: pastParfaitNudge) {
-                send(.pastParfaitNudgeTapped)
+                perform(.pastParfaitNudgeTapped)
             }
             .padding(.top, .padding6)
         }
@@ -115,20 +121,20 @@ struct CanvasContainer: View {
     private var menuBar: some View {
         if state.isClosedCanvas {
             CanvasClosedMenuBar(
-                onTodayParfaitTap: { send(.todayParfaitTapped) }
+                onTodayParfaitTap: { perform(.todayParfaitTapped) }
             )
         } else {
             CanvasMenuBar(
                 isSourceOptionsPresented: state.menuState == .sourceOptions,
-                onToppingAddTap: { send(.toppingAddTapped) },
-                onBackgroundEditTap: { send(.backgroundEditTapped) }
+                onToppingAddTap: { perform(.toppingAddTapped) },
+                onBackgroundEditTap: { perform(.backgroundEditTapped) }
             )
         }
     }
 
     private var calendarLayer: some View {
         ZStack(alignment: .top) {
-            Button { send(.calendarDimTapped) } label: {
+            Button { perform(.calendarDimTapped) } label: {
                 Color.clear
                     .contentShape(.rect)
             }
@@ -142,12 +148,12 @@ struct CanvasContainer: View {
 
             CanvasCalendar(
                 state: state.calendar,
-                onMonthTap: { send(.calendarMonthTapped) },
-                onYearTap: { send(.calendarYearTapped) },
-                onMonthSelect: { send(.calendarMonthSelected($0)) },
-                onYearSelect: { send(.calendarYearSelected($0)) },
-                onDateSelect: { send(.calendarDateSelected($0)) },
-                onDropdownDismiss: { send(.calendarDimTapped) }
+                onMonthTap: { perform(.calendarMonthTapped) },
+                onYearTap: { perform(.calendarYearTapped) },
+                onMonthSelect: { perform(.calendarMonthSelected($0)) },
+                onYearSelect: { perform(.calendarYearSelected($0)) },
+                onDateSelect: { perform(.calendarDateSelected($0)) },
+                onDropdownDismiss: { perform(.calendarDimTapped) }
             )
             .padding(.horizontal, .padding7 + 1)
         }
