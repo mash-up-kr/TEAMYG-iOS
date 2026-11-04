@@ -21,13 +21,12 @@ struct ToppingCameraView: View {
     let onShutterTap: (ViewFinderRegion?) -> Void
     let onSwitchCameraTap: () -> Void
     let zoomFactor: CGFloat
-    let onZoomChange: (CGFloat) -> Void
+    let onZoomTap: () -> Void
     let onCloseTap: () -> Void
 
     @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
-    @State private var pinchStartZoomFactor: CGFloat?
 
     var body: some View {
         ZStack {
@@ -58,19 +57,6 @@ struct ToppingCameraView: View {
             .padding(.horizontal, .padding7)
             .safeAreaPadding(.top, .padding6)
         }
-        .simultaneousGesture(pinchToZoom)
-    }
-
-    private var pinchToZoom: some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                let startZoomFactor = pinchStartZoomFactor ?? zoomFactor
-                pinchStartZoomFactor = startZoomFactor
-                onZoomChange(startZoomFactor * value.magnification)
-            }
-            .onEnded { _ in
-                pinchStartZoomFactor = nil
-            }
     }
 
     @ViewBuilder
@@ -102,6 +88,10 @@ struct ToppingCameraView: View {
                 geometry.frame(in: .global)
             } action: { frame in
                 viewFinderFrame = frame
+            }
+            .overlay(alignment: .bottom) {
+                CameraZoomButton(zoomFactor: zoomFactor, action: onZoomTap)
+                    .padding(.bottom, .padding4)
             }
             .ygToastOverlay($guideToasts)
             .padding(.top, .padding3)
@@ -227,6 +217,37 @@ private struct CameraControlBar: View {
                 .opacity(isCameraReady ? 1 : 0.5)
         }
         .frame(height: 56)
+    }
+}
+
+/// 뷰파인더 하단 가운데 배율 버튼. 탭할 때마다 1x → 2x → 0.5x 로 돈다.
+private struct CameraZoomButton: View {
+    let zoomFactor: CGFloat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("\(zoomFactor.formatted())x")
+        }
+        .buttonStyle(CameraZoomButtonStyle())
+    }
+}
+
+/// 누르는 동안 배경이 `black50` → `black75` 로 짙어진다.
+private struct CameraZoomButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .suit(.caption01Medium)
+            .foregroundStyle(.whiteFixed)
+            .frame(width: 36, height: 36)
+            .background(configuration.isPressed ? .black75 : .black50, in: .circle)
+            .overlay {
+                Circle()
+                    .strokeBorder(.white25, lineWidth: 1.5)
+            }
+            // 36pt 원 바깥 4pt 까지 탭 영역 (Figma 44pt 프레임).
+            .padding(.padding2)
+            .contentShape(.circle)
     }
 }
 

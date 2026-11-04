@@ -32,6 +32,14 @@ actor CameraSession {
         previewSource = DefaultCameraPreviewSource(captureSession: captureSession)
     }
 
+    /// 0.5배(초광각)를 내려면 초광각을 품은 가상 장치가 필요하다. 없으면(전면·초광각 없는 기기) 광각 단독 —
+    /// 이때 0.5배 요청은 1배로 잘린다.
+    private static let preferredDeviceTypes: [AVCaptureDevice.DeviceType] = [
+        .builtInTripleCamera,
+        .builtInDualWideCamera,
+        .builtInWideAngleCamera
+    ]
+
     func start(generation: Int) -> Bool {
         guard acceptsRequest(generation) else { return false }
 
@@ -97,15 +105,13 @@ actor CameraSession {
         return nextPosition
     }
 
-    /// 장치가 허용하는 범위로 잘라 적용한다. 미리보기·저장 프레임이 함께 확대된다.
-    func setZoomFactor(_ zoomFactor: CGFloat, request: Int) {
-        guard request > latestZoomRequest else { return }
+    /// 화면 배율(0.5 = 초광각)을 적용하고 실제 적용된 화면 배율을 돌려준다. 미리보기·저장 프레임이 함께 바뀐다.
+    /// 늦게 도착한 요청이거나 적용에 실패하면 `nil`.
+    func setZoomFactor(_ zoomFactor: CGFloat, request: Int) -> CGFloat? {
+        guard request > latestZoomRequest else { return nil }
         latestZoomRequest = request
-        guard let device = videoInput?.device else { return }
-        let range = CameraFlowState.zoomFactorRange
-        let minimumZoomFactor = max(device.minAvailableVideoZoomFactor, range.lowerBound)
-        let maximumZoomFactor = min(device.maxAvailableVideoZoomFactor, range.upperBound)
-        applyZoomFactor(min(max(zoomFactor, minimumZoomFactor), maximumZoomFactor), to: device)
+        guard let device = videoInput?.device else { return nil }
+        return applyZoomFactor(zoomFactor, to: device)
     }
 
     /// 셔터 순간의 프레임. 사진 출력(AVCapturePhotoOutput)은 요청 뒤 프레임을 찍어 지연이 생기므로 쓰지 않는다.
@@ -158,24 +164,31 @@ actor CameraSession {
     }
 
     private func makeVideoInput(position: CameraPosition) -> AVCaptureDeviceInput? {
-        guard let device = AVCaptureDevice.default(
-            .builtInWideAngleCamera,
-            for: .video,
-            position: position.avFoundationPosition
-        ) else { return nil }
+        guard let device = Self.preferredDeviceTypes.lazy.compactMap({ deviceType in
+            AVCaptureDevice.default(deviceType, for: .video, position: position.avFoundationPosition)
+        }).first else { return nil }
         // 장치 객체는 앱 전역에서 공유돼 이전 화면의 줌이 남아 있다. 상태(1배)와 맞춰 둔다.
         applyZoomFactor(1, to: device)
         return try? AVCaptureDeviceInput(device: device)
     }
 
-    private func applyZoomFactor(_ zoomFactor: CGFloat, to device: AVCaptureDevice) {
+    /// `zoomFactor` 는 화면 배율. 초광각을 품은 가상 장치는 `videoZoomFactor` 1 이 초광각(화면 0.5배)이라
+    /// `displayVideoZoomFactorMultiplier` 로 장치 값으로 바꾸고, 장치 범위를 넘으면 잘라 적용한다.
+    @discardableResult
+    private func applyZoomFactor(_ zoomFactor: CGFloat, to device: AVCaptureDevice) -> CGFloat? {
+        let multiplier = device.displayVideoZoomFactorMultiplier
+        let deviceZoomFactor = min(
+            max(zoomFactor / multiplier, device.minAvailableVideoZoomFactor),
+            device.maxAvailableVideoZoomFactor
+        )
         do {
             try device.lockForConfiguration()
         } catch {
-            return
+            return nil
         }
-        device.videoZoomFactor = zoomFactor
+        device.videoZoomFactor = deviceZoomFactor
         device.unlockForConfiguration()
+        return deviceZoomFactor * multiplier
     }
 
     private func configureVideoDataOutput() {

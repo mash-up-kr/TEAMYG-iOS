@@ -69,15 +69,20 @@ final class CameraFlow {
         }
     }
 
-    func zoom(to zoomFactor: CGFloat) {
+    /// 다음 단계 배율로 바꾼다. 장치가 못 내는 배율(초광각 없는 기기의 0.5배)은 세션이 잘라 적용하고,
+    /// 버튼에는 실제 적용된 배율이 보인다 — 그런 기기에선 1배 ↔ 2배로만 돈다.
+    func cycleZoom() {
         guard state.isReady else { return }
-        let range = CameraFlowState.zoomFactorRange
-        let clampedZoomFactor = min(max(zoomFactor, range.lowerBound), range.upperBound)
-        state.zoomFactor = clampedZoomFactor
+        let steps = CameraFlowState.zoomFactorSteps
+        let currentIndex = steps.firstIndex(of: state.zoomFactor) ?? 0
+        let nextZoomFactor = steps[(currentIndex + 1) % steps.count]
         zoomRequest += 1
-        // 핀치마다 Task 가 생기는데 actor 도착 순서는 보장되지 않는다 — 번호로 늦게 온 배율을 버린다.
-        Task { [session, zoomRequest] in
-            await session.setZoomFactor(clampedZoomFactor, request: zoomRequest)
+        // 연속 탭마다 Task 가 생기는데 actor 도착 순서는 보장되지 않는다 — 번호로 늦게 온 배율을 버린다.
+        Task { [weak self, session, zoomRequest] in
+            guard let appliedZoomFactor = await session.setZoomFactor(nextZoomFactor, request: zoomRequest) else {
+                return
+            }
+            self?.state.zoomFactor = appliedZoomFactor
         }
     }
 
