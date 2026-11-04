@@ -31,7 +31,7 @@ struct ToppingBrush: Equatable, Sendable {
 
 struct ToppingMaskEditor: Equatable, Sendable {
     static let minimumScale: CGFloat = 1
-    static let maximumScale: CGFloat = 3
+    static let maximumScale: CGFloat = 12
     static let viewportMargin: CGFloat = 10
 
     private(set) var brush = ToppingBrush()
