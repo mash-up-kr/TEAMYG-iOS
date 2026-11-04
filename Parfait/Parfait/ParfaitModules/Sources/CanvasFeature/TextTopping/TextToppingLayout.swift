@@ -17,7 +17,7 @@ enum TextToppingLayout {
     static let lineHeightMultiple: CGFloat = 1.4
     /// 자간 퍼센트. -1.1% → 글자 크기 × -0.011
     static let letterSpacingPercent: CGFloat = -1.1
-    static let characterLimit = 100
+    static let characterLimit = 500
     static let placeholder = "텍스트를 입력해 주세요"
 
     /// 크기를 잴 글 — 비어 있으면 플레이스홀더 크기로 잡는다.
