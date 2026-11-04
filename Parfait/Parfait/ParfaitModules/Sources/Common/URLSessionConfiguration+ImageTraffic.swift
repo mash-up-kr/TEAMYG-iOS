@@ -18,9 +18,11 @@ extension URLSessionConfiguration {
         configuration.timeoutIntervalForRequest = 15
         configuration.timeoutIntervalForResource = 60
         configuration.requestCachePolicy = .returnCacheDataElseLoad
+        // 폴더를 안 주면 `URLCache.shared`(디스크 약 10MB)와 같은 Cache.db 를 써서 이미지가 그 한도로 밀려난다.
         configuration.urlCache = URLCache(
             memoryCapacity: 16 * 1_024 * 1_024,
-            diskCapacity: 256 * 1_024 * 1_024
+            diskCapacity: 256 * 1_024 * 1_024,
+            directory: URL.cachesDirectory.appending(path: "ImageCache")
         )
         return configuration
     }
