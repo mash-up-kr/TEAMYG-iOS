@@ -46,8 +46,8 @@ public final class GroupSideMenuStore: MVIStore {
             beginNicknameChange()
         case .nicknameChangeFinished(let savedNickname):
             applyNicknameChangeResult(savedNickname)
-        case .inviteCodeCopied:
-            logAnalyticsEvent(.groupMenuInviteCodeCopied)
+        case .inviteCodeShared:
+            logAnalyticsEvent(.groupMenuInviteCodeShared)
         case .exitPopupVisibilityChanged(let exitAction, let isPresented):
             setExitPopupVisibility(exitAction, isPresented: isPresented)
         case .exitConfirmed(let exitAction):
@@ -275,8 +275,8 @@ public final class GroupSideMenuStore: MVIStore {
         case nicknameSubmitted
         /// `requestNicknameChange` 완료 결과 — Store 내부에서만 보낸다. `nil` 이면 변경 실패.
         case nicknameChangeFinished(savedNickname: String?)
-        /// 초대 카드의 복사 버튼 — 복사 자체는 카드(`YGInviteCard`)가 한다.
-        case inviteCodeCopied
+        /// 초대 카드의 공유 버튼 — 공유 시트는 카드(`YGInviteCard`)가 띄운다.
+        case inviteCodeShared
         /// 나가기/신고/수정 취소 확인 팝업의 표시 여부 — 진입 탭(true)과 그만두기·닫힘(false)이 모두 여기로 온다.
         case exitPopupVisibilityChanged(ExitAction, Bool)
         case exitConfirmed(ExitAction)

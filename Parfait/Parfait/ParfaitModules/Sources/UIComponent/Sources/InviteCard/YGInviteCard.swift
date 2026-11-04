@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// 그룹 초대 코드 카드. 코드 노출 + 초대 메시지 복사.
+/// 그룹 초대 코드 카드. 코드 노출 + 초대 메시지 시스템 공유.
 public struct YGInviteCard: View {
     public enum Status: Equatable {
         /// 초대 가능. `remainingCount` = 남은 인원 수.
@@ -18,16 +18,13 @@ public struct YGInviteCard: View {
 
     private let code: String
     private let status: Status
-    /// 복사 직후 호출 — 호출부가 이벤트 수집 등에 쓴다.
-    private let onCopy: (() -> Void)?
+    /// 공유 버튼 탭 시 호출 — 호출부가 이벤트 수집 등에 쓴다.
+    private let onShare: (() -> Void)?
 
-    @State private var showsCopied = false
-    @State private var revertTask: Task<Void, Never>?
-
-    public init(code: String, status: Status, onCopy: (() -> Void)? = nil) {
+    public init(code: String, status: Status, onShare: (() -> Void)? = nil) {
         self.code = code
         self.status = status
-        self.onCopy = onCopy
+        self.onShare = onShare
     }
 
     private var isActive: Bool { status != .invalid }
@@ -48,7 +45,7 @@ public struct YGInviteCard: View {
                     .frame(height: 42)
                     .frame(maxWidth: .infinity)
                     .background(isActive ? Color.cherry100 : .gray200)
-                copyButton
+                shareButton
             }
         }
         .padding(.padding6)
@@ -57,32 +54,27 @@ public struct YGInviteCard: View {
             Rectangle()
                 .strokeBorder(isActive ? Color.cherry100 : .gray100, lineWidth: 1)
         )
-        .onDisappear { revertTask?.cancel() }
     }
 
     private var statusLabel: some View {
-        let (text, color): (String, Color) = switch (showsCopied, status) {
-        case (true, _): ("복사됨", .gray600)
-        case (false, .active(let remainingCount)): ("\(remainingCount)명 남음", .gray600)
-        case (false, .invalid): ("최대 인원 도달", .cherry600)
+        let (text, color): (String, Color) = switch status {
+        case .active(let remainingCount): ("\(remainingCount)명 남음", .gray600)
+        case .invalid: ("최대 인원 도달", .cherry600)
         }
         return Text(text)
             .suit(.body02Regular)
             .foregroundStyle(color)
     }
 
-    private var copyButton: some View {
-        Button(action: copy) {
-            HStack(spacing: .gap1) {
-                Text("복사")
-                    .suit(.body02SemiBold)
-                Image.icCopy
-                    .resizable()
-                    .frame(width: 24, height: 24)
-            }
+    private var shareButton: some View {
+        ShareLink(item: Self.inviteMessage(code: code)) {
+            Text("공유하기")
+                .suit(.body02SemiBold)
         }
-        .buttonStyle(CopyButtonStyle())
+        .buttonStyle(ShareButtonStyle())
         .disabled(!isActive)
+        // 공유 시트 완료 여부는 ShareLink 가 알려 주지 않는다 — 탭 시점에 알린다.
+        .simultaneousGesture(TapGesture().onEnded { onShare?() })
     }
 
     /// 초대 메시지 — 링크를 탭하면 앱이 열려 코드가 채워진 초대코드 화면으로 간다(유니버설 링크).
@@ -90,22 +82,10 @@ public struct YGInviteCard: View {
     public static func inviteMessage(code: String) -> String {
         "친구가 파르페에 초대했어요.\n체리 올리러 가볼까요?\nhttps://parfait-app.store/link?inviteCode=\(code)"
     }
-
-    private func copy() {
-        UIPasteboard.general.string = Self.inviteMessage(code: code)
-        onCopy?()
-        revertTask?.cancel()
-        showsCopied = true
-        revertTask = Task {
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            showsCopied = false
-        }
-    }
 }
 
-/// 색은 YGButton large 와 동일, 크기만 코드 영역(높이 42)에 맞춘 복사 버튼.
-private struct CopyButtonStyle: ButtonStyle {
+/// 색은 YGButton large 와 동일, 크기만 코드 영역(높이 42)에 맞춘 공유 버튼.
+private struct ShareButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
