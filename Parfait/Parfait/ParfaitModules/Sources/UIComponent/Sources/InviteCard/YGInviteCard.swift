@@ -91,7 +91,7 @@ private struct ShareButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundStyle(isEnabled ? .whiteFixed : .gray500)
-            .padding(.init(top: 10, leading: 12, bottom: 8, trailing: 10))
+            .padding(.init(top: 10, leading: 12, bottom: 10, trailing: 10))
             .background(
                 backgroundColor(isPressed: configuration.isPressed)
             )
