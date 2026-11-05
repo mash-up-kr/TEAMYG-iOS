@@ -24,7 +24,7 @@ struct ToppingAnalysisLoadingView: View {
                     .suit(.title03SemiBold)
                     .foregroundStyle(.gray900)
 
-                Text("잠시만 기다려주세요 ⋯")
+                Text("잠시만 기다려주세요...")
                     .suit(.body02Regular)
                     .foregroundStyle(.gray500)
             }

@@ -62,8 +62,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case groupListInviteCodePasted
     /// 새로고침
     case groupListRefreshed
-    /// 초대코드 복사
-    case groupMenuInviteCodeCopied
+    /// 초대코드 공유
+    case groupMenuInviteCodeShared
     /// 그룹 나가기 완료
     case groupMenuLeft
     /// 그룹 닉네임 변경 완료
@@ -144,7 +144,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .groupListJoined: "group_list_joined"
         case .groupListInviteCodePasted: "group_list_invite_code_pasted"
         case .groupListRefreshed: "group_list_refreshed"
-        case .groupMenuInviteCodeCopied: "group_menu_invite_code_copied"
+        case .groupMenuInviteCodeShared: "group_menu_invite_code_share"
         case .groupMenuLeft: "group_menu_left"
         case .groupMenuNicknameChanged: "group_menu_nickname_changed"
         }
@@ -184,7 +184,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
              .groupListJoined,
              .groupListInviteCodePasted,
              .groupListRefreshed,
-             .groupMenuInviteCodeCopied,
+             .groupMenuInviteCodeShared,
              .groupMenuLeft,
              .groupMenuNicknameChanged:
             nil

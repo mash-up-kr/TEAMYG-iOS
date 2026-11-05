@@ -12,7 +12,7 @@ import SwiftUI
 import UIComponent
 import UIKit
 
-/// 그룹 사이드메뉴 (S-101). 그룹 속 내 닉네임 수정 · 그룹원 목록 · 초대 코드 복사 · 나가기/신고를 담는다.
+/// 그룹 사이드메뉴 (S-101). 그룹 속 내 닉네임 수정 · 그룹원 목록 · 초대 코드 공유 · 나가기/신고를 담는다.
 ///
 /// 닉네임 변경(S-102)은 키보드 엔터 또는 키보드 위 확인 버튼으로 제출한다 — 확인 버튼은
 /// 키보드가 올라와 있을 때만 노출되고, 유효성 검사를 통과하지 못하면 비활성화된다.
@@ -121,7 +121,7 @@ public struct GroupSideMenuView: View {
                 nicknameField
                 memberList(detail)
                 YGInviteCard(code: detail.inviteCode, status: inviteCardStatus(detail)) {
-                    store.send(.inviteCodeCopied)
+                    store.send(.inviteCodeShared)
                 }
                 dangerZone
             }
@@ -182,7 +182,7 @@ public struct GroupSideMenuView: View {
 
     // MARK: - 초대 코드
 
-    /// 남은 자리가 없으면 "최대 인원 도달" 상태로 — 복사 버튼도 함께 비활성화된다.
+    /// 남은 자리가 없으면 "최대 인원 도달" 상태로 — 공유 버튼도 함께 비활성화된다.
     private func inviteCardStatus(_ detail: GroupDetail) -> YGInviteCard.Status {
         detail.remainingSeatCount > 0 ? .active(remainingCount: detail.remainingSeatCount) : .invalid
     }

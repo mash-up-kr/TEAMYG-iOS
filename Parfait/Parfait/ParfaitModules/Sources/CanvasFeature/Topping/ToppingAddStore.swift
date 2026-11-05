@@ -578,8 +578,8 @@ private extension ToppingAddStore {
             camera.toggleFlash()
         case .cameraPositionTapped:
             camera.switchCamera()
-        case .zoomChanged(let zoomFactor):
-            camera.zoom(to: zoomFactor)
+        case .zoomTapped:
+            camera.cycleZoom()
         case .shutterTapped(let viewFinderRegion):
             camera.capturePhoto(viewFinderRegion: viewFinderRegion)
         case .retakeTapped:

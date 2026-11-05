@@ -12,7 +12,7 @@ struct CameraCaptureScreen: View {
     enum Action {
         case flashTapped
         case cameraPositionTapped
-        case zoomChanged(CGFloat)
+        case zoomTapped
         case shutterTapped(ViewFinderRegion?)
         case retakeTapped
         case nextTapped
@@ -44,7 +44,7 @@ struct CameraCaptureScreen: View {
                 onShutterTap: { onAction(.shutterTapped($0)) },
                 onSwitchCameraTap: { onAction(.cameraPositionTapped) },
                 zoomFactor: cameraState.zoomFactor,
-                onZoomChange: { onAction(.zoomChanged($0)) },
+                onZoomTap: { onAction(.zoomTapped) },
                 onCloseTap: { onAction(.closeTapped) }
             )
         } confirmation: {
