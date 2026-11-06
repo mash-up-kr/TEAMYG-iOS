@@ -15,8 +15,26 @@ struct ToppingTransformDraft: Equatable {
     private(set) var translation: CGSize = .zero
     private(set) var scaleFactor: Double = 1
     private(set) var rotationDegrees: Double = 0
+    /// 회전 인식기가 아직 돌고 있는지 — 회전만 끝나고 이동이 이어질 수 있다.
+    private(set) var isRotating = false
 
+    /// 스냅까지 반영한 배치 — 손을 떼면 이 값 그대로 저장된다.
     func applied(to placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingPlacement {
+        snap(for: placement, in: canvasSize).applied(to: followingFinger(placement, in: canvasSize))
+    }
+
+    /// 변형 중일 때만 붙는다 — 가만히 있는 토핑이나 시스템이 옮긴 토핑(테두리 패널의 가운데 이동)엔 걸지 않는다.
+    func snap(for placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingSnap {
+        guard self != Self() else { return .none }
+        return ToppingSnap(
+            placement: followingFinger(placement, in: canvasSize),
+            canvasSize: canvasSize,
+            hasRotated: rotationDegrees != 0,
+            isRotating: isRotating
+        )
+    }
+
+    private func followingFinger(_ placement: ToppingPlacement, in canvasSize: CGSize) -> ToppingPlacement {
         placement
             .magnified(by: scaleFactor)
             .moved(by: translation, in: canvasSize)
@@ -36,6 +54,7 @@ struct ToppingTransformDraft: Equatable {
 
     mutating func rotate(byDegrees degrees: Double, pivotOffset: CGSize) {
         rotationDegrees += degrees
+        isRotating = true
 
         let rotatedOffset = pivotOffset.applying(CGAffineTransform(rotationAngle: CGFloat(degrees * .pi / 180)))
         translation.width += rotatedOffset.width - pivotOffset.width
@@ -50,10 +69,15 @@ struct ToppingTransformDraft: Equatable {
         return committed
     }
 
+    mutating func endRotation() {
+        isRotating = false
+    }
+
     private mutating func resetTransform() {
         translation = .zero
         scaleFactor = 1
         rotationDegrees = 0
+        isRotating = false
     }
 }
 
@@ -114,11 +138,11 @@ final class ToppingTransformRecognizers: NSObject {
 
     @objc private func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
         handle(recognizer) {
-            draft.rotate(
-                byDegrees: Double(recognizer.rotation) * 180 / .pi,
-                pivotOffset: pivotOffset(recognizer, draft)
-            )
+            let degrees = Double(recognizer.rotation) * 180 / .pi
             recognizer.rotation = 0
+            // 한 손가락만 남으면 회전이 아니다 — 남은 값을 비워 두 번째 손가락이 다시 닿을 때 튀지 않게 한다.
+            guard recognizer.numberOfTouches >= 2 else { return }
+            draft.rotate(byDegrees: degrees, pivotOffset: pivotOffset(recognizer, draft))
         }
     }
 
@@ -130,6 +154,10 @@ final class ToppingTransformRecognizers: NSObject {
             onBegin()
         case .changed:
             change()
+            // 회전 인식기는 두 손가락을 다 떼야 끝난다 — 한 손가락으로 이어 끌 때 회전이 끝났다고 직접 판단한다.
+            if recognizers.contains(where: { $0 is UIRotationGestureRecognizer && $0.numberOfTouches < 2 }) {
+                draft.endRotation()
+            }
             onChange(draft)
         case .ended, .cancelled, .failed:
             commitIfIdle()
