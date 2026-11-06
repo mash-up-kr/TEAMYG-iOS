@@ -67,7 +67,14 @@ struct ToppingPlacementBorderView: View {
 
             Color.black25
 
+            ToppingSnapGuides(
+                snap: snap,
+                center: previewPlacement.center(in: editor.canvasSize),
+                canvasSize: editor.canvasSize
+            )
+
             placedTopping
+                .animation(ToppingSnap.motion, value: snap)
 
             ToppingTransformGestureOverlay(
                 draft: $draft,
@@ -89,10 +96,18 @@ struct ToppingPlacementBorderView: View {
             silhouette: silhouette,
             borderColor: border.color.strokeColor,
             borderWidth: CGFloat(border.width),
-            placement: draft.applied(to: editor.placement, in: editor.canvasSize),
+            placement: previewPlacement,
             canvasSize: editor.canvasSize,
             isSelected: true
         )
+    }
+
+    private var previewPlacement: ToppingPlacement {
+        draft.applied(to: editor.placement, in: editor.canvasSize)
+    }
+
+    private var snap: ToppingSnap {
+        draft.snap(for: editor.placement, in: editor.canvasSize)
     }
 
     @ViewBuilder
