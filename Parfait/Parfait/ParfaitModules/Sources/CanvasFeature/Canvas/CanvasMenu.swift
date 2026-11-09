@@ -60,6 +60,19 @@ struct CanvasMenuSourceOptions: View {
     }
 }
 
+/// 날짜 바의 저장 버튼 아래로 펼치는 저장 형식 선택.
+struct CanvasMenuSaveOptions: View {
+    let onImageOptionTap: () -> Void
+    let onVideoOptionTap: () -> Void
+
+    var body: some View {
+        VStack(spacing: -1) {
+            CanvasMenuButton("사진으로 저장", style: .option, action: onImageOptionTap)
+            CanvasMenuButton("영상으로 저장", style: .option, action: onVideoOptionTap)
+        }
+    }
+}
+
 private struct CanvasMenuButton: View {
     enum Style {
         case primary

@@ -33,9 +33,11 @@ struct CanvasContainer: View {
                             contentState: state.contentState,
                             canvasContent: state.canvasContent,
                             spotlightedLayerID: state.spotlightedLayerID,
-                            isDimmed: state.menuState == .sourceOptions,
+                            isDimmed: state.menuState != .collapsed,
+                            isSaveOptionsPresented: state.menuState == .saveOptions,
                             onCalendarTap: { perform(.calendarTapped) },
-                            onSaveTap: { perform(.savePreviewRequested) },
+                            onSaveTap: { perform(.saveOptionsTapped) },
+                            onSaveFormatTap: { perform(.savePreviewRequested($0)) },
                             onToppingTap: { perform(.toppingTapped($0)) },
                             onTextTap: { perform(.textTapped($0)) },
                             onSpotlightDismiss: { perform(.spotlightDismissed) },
@@ -68,6 +70,15 @@ struct CanvasContainer: View {
                         }
 
                         menuBar
+                            .overlay {
+                                // 저장 옵션이 펼쳐지면 하단 메뉴도 캔버스와 같이 덮는다 — 누르면 옵션이 접힌다.
+                                if state.menuState == .saveOptions {
+                                    Button { perform(.menuDimTapped) } label: {
+                                        Color.black25
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
                     }
                     .frame(width: CanvasArea.width(fitting: contentSize))
                     .frame(maxWidth: .infinity, minHeight: contentSize.height)
@@ -168,8 +179,10 @@ private struct CanvasBoard: View {
     let canvasContent: CanvasStore.CanvasContent?
     let spotlightedLayerID: CanvasLayer.LayerID?
     let isDimmed: Bool
+    let isSaveOptionsPresented: Bool
     let onCalendarTap: () -> Void
     let onSaveTap: () -> Void
+    let onSaveFormatTap: (CanvasStore.SaveFormat) -> Void
     let onToppingTap: (Int) -> Void
     let onTextTap: (Int) -> Void
     let onSpotlightDismiss: () -> Void
@@ -212,7 +225,8 @@ private struct CanvasBoard: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            VStack(spacing: 0) {
+            // 저장 옵션은 날짜 바에서 펼쳐지는 메뉴라 날짜 바째로 딤 위에 둔다 — 추가 메뉴는 날짜 바까지 덮는다.
+            VStack(spacing: -1) {
                 CanvasDateHeader(
                     dateText: dateText,
                     weekdayText: weekdayText,
@@ -220,8 +234,16 @@ private struct CanvasBoard: View {
                     onSaveTap: onSaveTap
                 )
 
+                if isSaveOptionsPresented {
+                    CanvasMenuSaveOptions(
+                        onImageOptionTap: { onSaveFormatTap(.image) },
+                        onVideoOptionTap: { onSaveFormatTap(.video) }
+                    )
+                }
+
                 Spacer(minLength: 0)
             }
+            .zIndex(isSaveOptionsPresented ? 1 : 0)
 
             if isDimmed {
                 Button(action: onDimTap) {
@@ -253,7 +275,7 @@ private struct CanvasBoard: View {
 
 /// 캔버스 위에 얹히는 날짜 바(`Bar-Canvas`).
 ///
-/// 왼쪽은 캘린더 아이콘·날짜(탭하면 캘린더), 오른쪽 끝은 저장 미리보기로 가는 `Ic_Save`.
+/// 왼쪽은 캘린더 아이콘·날짜(탭하면 캘린더), 오른쪽 끝은 저장 형식 선택을 펼치는 `Ic_Save`.
 struct CanvasDateHeader: View {
     static let height: CGFloat = 44
 

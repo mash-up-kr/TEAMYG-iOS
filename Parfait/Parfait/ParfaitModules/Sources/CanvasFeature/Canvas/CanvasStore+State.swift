@@ -211,6 +211,8 @@ public extension CanvasStore {
         /// 저장 완료 Toast 문구가 쓰는 날짜.
         let date: CalendarDate
         let canvasContent: CanvasContent
+        /// 날짜 바의 저장 옵션에서 고른 형식 — 미리보기 제목·저장 버튼이 따라간다.
+        let format: SaveFormat
 
         public var id: CalendarDate { date }
     }
@@ -323,7 +325,11 @@ public extension CanvasStore {
     enum MenuState: Equatable, Sendable {
         case collapsed
         case sourceOptions
+        /// 날짜 바의 저장 버튼 아래로 펼친 `사진으로 저장`·`영상으로 저장`.
+        case saveOptions
     }
+
+    typealias SaveFormat = AnalyticsEvent.SaveFormat
 
     enum Intent {
         case screenAppeared
@@ -357,7 +363,8 @@ public extension CanvasStore {
         case calendarYearSelected(Int)
         case calendarDateSelected(CalendarDate)
         case refreshRequested
-        case savePreviewRequested
+        case saveOptionsTapped
+        case savePreviewRequested(SaveFormat)
         case savePreviewClosed(SavePreviewCloseReason)
         case todayParfaitTapped
         case pastParfaitNudgeTapped

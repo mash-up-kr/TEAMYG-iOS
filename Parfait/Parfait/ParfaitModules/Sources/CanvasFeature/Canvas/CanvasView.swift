@@ -205,6 +205,7 @@ public struct CanvasView: View {
         CanvasSavePreviewView(
             store: CanvasSavePreviewStore(
                 state: .init(
+                    format: savePreview.format,
                     dateText: store.state.dateText,
                     weekdayText: store.state.weekdayText
                 ),
