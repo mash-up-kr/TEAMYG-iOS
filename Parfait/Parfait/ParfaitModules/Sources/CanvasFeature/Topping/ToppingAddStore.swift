@@ -580,6 +580,8 @@ private extension ToppingAddStore {
             camera.switchCamera()
         case .zoomTapped:
             camera.cycleZoom()
+        case .zoomPinched(let zoomFactor):
+            camera.pinchZoom(to: zoomFactor)
         case .shutterTapped(let viewFinderRegion):
             camera.capturePhoto(viewFinderRegion: viewFinderRegion)
         case .retakeTapped:
