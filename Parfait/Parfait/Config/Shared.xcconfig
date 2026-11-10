@@ -4,4 +4,5 @@
 //  파일이 없어도 빌드는 된다 — 카카오 로그인만 비활성.
 //
 KAKAO_NATIVE_APP_KEY =
+FACEBOOK_APP_ID =
 #include? "Secrets.xcconfig"
