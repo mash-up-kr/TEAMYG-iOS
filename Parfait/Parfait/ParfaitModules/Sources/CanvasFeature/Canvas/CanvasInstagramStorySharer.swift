@@ -27,6 +27,13 @@ enum CanvasInstagramStorySharer {
     }
 
     static func share(_ background: Background) async -> Bool {
+        // 어느 guard 에서 빠져도 지운다 — 영상은 대지에 올릴 때 이미 메모리로 읽어 둔다.
+        defer {
+            if case .video(let fileURL) = background {
+                try? FileManager.default.removeItem(at: fileURL)
+            }
+        }
+
         guard let appID = Bundle.main.object(forInfoDictionaryKey: "FACEBOOK_APP_ID") as? String,
               !appID.isEmpty,
               let url = URL(string: "instagram-stories://share?source_application=\(appID)"),
@@ -46,7 +53,6 @@ enum CanvasInstagramStorySharer {
         case .image(let image):
             return image.pngData().map { ["com.instagram.sharedSticker.backgroundImage": $0] }
         case .video(let fileURL):
-            defer { try? FileManager.default.removeItem(at: fileURL) }
             return (try? Data(contentsOf: fileURL)).map { ["com.instagram.sharedSticker.backgroundVideo": $0] }
         }
     }
