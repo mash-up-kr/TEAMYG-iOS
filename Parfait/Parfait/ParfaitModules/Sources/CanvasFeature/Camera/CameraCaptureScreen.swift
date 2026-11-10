@@ -13,6 +13,7 @@ struct CameraCaptureScreen: View {
         case flashTapped
         case cameraPositionTapped
         case zoomTapped
+        case zoomPinched(CGFloat)
         case shutterTapped(ViewFinderRegion?)
         case retakeTapped
         case nextTapped
@@ -45,6 +46,7 @@ struct CameraCaptureScreen: View {
                 onSwitchCameraTap: { onAction(.cameraPositionTapped) },
                 zoomFactor: cameraState.zoomFactor,
                 onZoomTap: { onAction(.zoomTapped) },
+                onZoomPinch: { onAction(.zoomPinched($0)) },
                 onCloseTap: { onAction(.closeTapped) }
             )
         } confirmation: {

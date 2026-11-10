@@ -114,7 +114,7 @@ public final class CanvasStore: MVIStore {
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
             guard ensureCanvasReady() else { return }
-            state.menuState = state.menuState == .collapsed ? .sourceOptions : .collapsed
+            state.menuState = state.menuState == .sourceOptions ? .collapsed : .sourceOptions
         case .cameraOptionTapped:
             openToppingAddFlow(.camera) { .camera(canvasDate: $0) }
         case .galleryOptionTapped:
@@ -152,13 +152,27 @@ public final class CanvasStore: MVIStore {
             }
         case .refreshRequested:
             refreshCanvas()
-        case .savePreviewRequested:
+        case .saveOptionsTapped:
+            let isPresented = state.menuState == .saveOptions
+            dismissOverlays()
+            guard !isPresented else { return }
+            // 저장할 그림이 없으면 옵션을 펼치지 않고 바로 알린다.
+            guard state.canvasContent != nil else {
+                eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
+                return
+            }
+            state.menuState = .saveOptions
+        case .savePreviewRequested(let format):
             dismissOverlays()
             guard let canvasContent = state.canvasContent else {
                 eventChannel.send(state.contentState == .empty ? .canvasEmpty : .canvasNotReady)
                 return
             }
-            state.savePreview = SavePreview(date: state.calendar.selectedDate, canvasContent: canvasContent)
+            state.savePreview = SavePreview(
+                date: state.calendar.selectedDate,
+                canvasContent: canvasContent,
+                format: format
+            )
         case .savePreviewClosed(let reason):
             let savedDate = state.savePreview?.date
             state.savePreview = nil

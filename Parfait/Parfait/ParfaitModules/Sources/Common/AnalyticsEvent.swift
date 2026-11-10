@@ -92,6 +92,9 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case topping = "TOPPING"
         case remindAM = "REMIND_AM"
         case remindPM = "REMIND_PM"
+        case background = "BACKGROUND"
+        case text = "TEXT"
+        case activityDigest = "ACTIVITY_DIGEST"
     }
 
     public enum AppLinkDestination: String, Sendable {

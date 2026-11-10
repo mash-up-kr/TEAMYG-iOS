@@ -18,6 +18,7 @@ struct CanvasSavePreviewView: View {
     private static let imageHeight: CGFloat = 352
 
     @State private var store: CanvasSavePreviewStore
+    @State private var toasts: [YGToastItem] = []
 
     init(store: CanvasSavePreviewStore) {
         _store = State(initialValue: store)
@@ -39,26 +40,41 @@ struct CanvasSavePreviewView: View {
                 Spacer(minLength: 0)
 
                 VStack(spacing: .gap3) {
-                    YGButton("사진으로 저장", variant: .large) {
+                    YGButton(store.state.format == .image ? "사진으로 저장" : "영상으로 저장", variant: .large) {
                         store.send(.saveTapped)
                     }
-                    YGButton("영상으로 저장", variant: .mediumSecondary, fillsWidth: true) {
-                        store.send(.saveVideoTapped)
+                    YGButton("인스타그램 스토리 공유", variant: .mediumSecondary, fillsWidth: true) {
+                        store.send(.instagramShareTapped)
                     }
                 }
-                .disabled(store.state.image == nil || store.state.isSaving)
+                .disabled(store.state.image == nil || store.state.isProcessing)
                 .padding(.top, .padding6)
             }
             .padding(.horizontal, .padding7)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             YGFloatingBar(
-                .title("이미지 미리보기"),
+                .title(store.state.format == .image ? "사진 미리보기" : "영상 미리보기"),
                 onClose: { store.send(.closeTapped) }
             )
         }
+        .ygToastOverlay($toasts)
         .task {
             store.send(.screenAppeared)
+        }
+        .task {
+            for await event in store.eventStream() {
+                switch event {
+                case .instagramNotInstalled:
+                    toasts.append(
+                        YGToastItem(kind: .warning, message: "인스타그램 앱이 설치되어 있지 않아요")
+                    )
+                case .instagramShareFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "인스타그램 공유에 실패했어요, 잠시 후 다시 시도해 주세요")
+                    )
+                }
+            }
         }
     }
 
@@ -92,13 +108,13 @@ struct CanvasSavePreviewView: View {
                     .foregroundStyle(.gray900)
                 Text(store.state.weekdayText)
                     .foregroundStyle(.gray300)
-                Text("의 캔버스를 갤러리에 저장할까요?")
+                Text("의 캔버스를 저장할까요?")
                     .foregroundStyle(.gray900)
             }
             .suit(.body02Regular)
             .padding(.vertical, .padding1)
 
-            Text("이 이미지 그대로 갤러리에 저장돼요\n파르페는 인스타그램 스토리 규격에 최적화되어 있어요")
+            Text("이 \(store.state.format == .image ? "이미지" : "영상") 그대로 갤러리에 저장돼요\n인스타그램 스토리에 바로 공유할 수 있어요")
                 .suit(.caption01Medium)
                 .foregroundStyle(.gray500)
                 .multilineTextAlignment(.center)
@@ -109,7 +125,7 @@ struct CanvasSavePreviewView: View {
 #Preview("합성 완료") {
     CanvasSavePreviewView(
         store: CanvasSavePreviewStore(
-            state: .init(dateText: "May 20", weekdayText: "(Wed)", image: .parfaitCup),
+            state: .init(format: .image, dateText: "May 20", weekdayText: "(Wed)", image: .parfaitCup),
             dependencies: .init(
                 canvasContent: .init(background: .color(hex: "#FFDDE5")),
                 canvasImageExporter: CanvasImageExporter(
@@ -126,7 +142,7 @@ struct CanvasSavePreviewView: View {
 #Preview("합성 중") {
     CanvasSavePreviewView(
         store: CanvasSavePreviewStore(
-            state: .init(dateText: "May 20", weekdayText: "(Wed)"),
+            state: .init(format: .video, dateText: "May 20", weekdayText: "(Wed)"),
             dependencies: .init(
                 canvasContent: .init(background: .color(hex: "#FFDDE5")),
                 canvasImageExporter: CanvasImageExporter(

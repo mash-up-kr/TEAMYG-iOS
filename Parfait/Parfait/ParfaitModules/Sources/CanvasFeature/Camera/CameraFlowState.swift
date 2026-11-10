@@ -16,6 +16,8 @@ struct CameraFlowState: Equatable, Sendable {
     var zoomFactor: CGFloat = 1
     /// 줌 버튼 탭 순서: 1배 → 2배 → 0.5배 → 1배.
     static let zoomFactorSteps: [CGFloat] = [1, 2, 0.5]
+    /// 핀치 줌 범위. 버튼 단계의 최소·최대와 같다.
+    static let zoomFactorRange: ClosedRange<CGFloat> = 0.5...2
     var capturePhase: PhotoCapturePhase = .idle
     var capturedViewFinderRegion: ViewFinderRegion?
     var isSwitching = false

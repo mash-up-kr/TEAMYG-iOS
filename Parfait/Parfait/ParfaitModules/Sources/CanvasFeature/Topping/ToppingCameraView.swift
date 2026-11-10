@@ -22,11 +22,14 @@ struct ToppingCameraView: View {
     let onSwitchCameraTap: () -> Void
     let zoomFactor: CGFloat
     let onZoomTap: () -> Void
+    let onZoomPinch: (CGFloat) -> Void
     let onCloseTap: () -> Void
 
     @State private var previewFrame: CGRect = .zero
     @State private var viewFinderFrame: CGRect = .zero
     @State private var guideToasts: [YGToastItem] = []
+    /// 핀치를 시작할 때의 배율. 손가락 벌린 비율을 여기에 곱한다.
+    @State private var pinchStartZoomFactor: CGFloat?
 
     var body: some View {
         ZStack {
@@ -57,6 +60,19 @@ struct ToppingCameraView: View {
             .padding(.horizontal, .padding7)
             .safeAreaPadding(.top, .padding6)
         }
+        .simultaneousGesture(zoomPinchGesture)
+    }
+
+    private var zoomPinchGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let startZoomFactor = pinchStartZoomFactor ?? zoomFactor
+                pinchStartZoomFactor = startZoomFactor
+                onZoomPinch(startZoomFactor * value.magnification)
+            }
+            .onEnded { _ in
+                pinchStartZoomFactor = nil
+            }
     }
 
     @ViewBuilder
@@ -221,13 +237,14 @@ private struct CameraControlBar: View {
 }
 
 /// 뷰파인더 하단 가운데 배율 버튼. 탭할 때마다 1x → 2x → 0.5x 로 돈다.
+/// 핀치 배율은 소수 첫째 자리까지 버림으로 보여 준다 — 탭 시 버림 배율로 가는 규칙과 맞춘다 (1.48 → 1.4x).
 private struct CameraZoomButton: View {
     let zoomFactor: CGFloat
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Text("\(zoomFactor.formatted())x")
+            Text("\(Double(zoomFactor).formatted(.number.precision(.fractionLength(0...1)).rounded(rule: .down)))x")
         }
         .buttonStyle(CameraZoomButtonStyle())
     }
