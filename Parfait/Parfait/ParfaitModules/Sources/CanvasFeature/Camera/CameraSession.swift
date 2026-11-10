@@ -43,7 +43,8 @@ actor CameraSession {
     func start(generation: Int) -> Bool {
         guard acceptsRequest(generation) else { return false }
 
-        if !isConfigured, !configureSession(position: cameraPosition) {
+        let isFirstStart = !isConfigured
+        if isFirstStart, !configureSession(position: cameraPosition) {
             return false
         }
 
@@ -53,6 +54,10 @@ actor CameraSession {
 
         previewFrameReceiver.resume()
         if let device = videoInput?.device {
+            if isFirstStart {
+                // 세션에 붙어 포맷이 정해지면 장치 줌이 1(초광각 = 화면 0.5배)로 초기화된다 — 그 뒤에 1배로 맞춘다.
+                applyZoomFactor(1, to: device)
+            }
             updateRotationCoordinator(for: device)
         }
         applyTorch(flashMode)
@@ -97,6 +102,7 @@ actor CameraSession {
         videoInput = nextInput
         cameraPosition = nextPosition
         captureSession.commitConfiguration()
+        applyZoomFactor(1, to: nextInput.device)
         updateRotationCoordinator(for: nextInput.device)
         if nextPosition == .front {
             flashMode = .off
@@ -167,8 +173,6 @@ actor CameraSession {
         guard let device = Self.preferredDeviceTypes.lazy.compactMap({ deviceType in
             AVCaptureDevice.default(deviceType, for: .video, position: position.avFoundationPosition)
         }).first else { return nil }
-        // 장치 객체는 앱 전역에서 공유돼 이전 화면의 줌이 남아 있다. 상태(1배)와 맞춰 둔다.
-        applyZoomFactor(1, to: device)
         return try? AVCaptureDeviceInput(device: device)
     }
 
