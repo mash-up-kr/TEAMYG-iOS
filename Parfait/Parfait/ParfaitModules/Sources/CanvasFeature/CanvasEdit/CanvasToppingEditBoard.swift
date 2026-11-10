@@ -50,6 +50,7 @@ struct CanvasToppingEditBoard: View {
                     .canvasEditChrome()
 
                 myLayerStack(canvasSize: proxy.size)
+                    .animation(ToppingSnap.motion, value: snap(in: proxy.size))
 
                 ToppingTransformGestureOverlay(
                     draft: $draft,
@@ -73,6 +74,7 @@ struct CanvasToppingEditBoard: View {
                         draft: draft,
                         onDeleteTap: onBorderPanelDismiss ?? { onDeleteTap(selectedTopping.id) }
                     )
+                    .animation(ToppingSnap.motion, value: snap(in: proxy.size))
                 } else if let selectedText {
                     ToppingDeleteHandle(
                         placement: selectedText.placement,
@@ -86,6 +88,7 @@ struct CanvasToppingEditBoard: View {
                         draft: draft,
                         onDeleteTap: { onTextDeleteTap(selectedText.id) }
                     )
+                    .animation(ToppingSnap.motion, value: snap(in: proxy.size))
                 }
             }
             .animation(Self.borderPanelAnimation, value: onBorderPanelDismiss != nil)
@@ -124,6 +127,15 @@ struct CanvasToppingEditBoard: View {
                     isSelected: text.id == selectedTextID
                 )
                 .zIndex(text.id == selectedTextID ? Self.selectedZIndex : Double(order[.text(text.id)] ?? 0))
+            }
+            if let selectedPlacement = selectedPlacement(in: canvasSize) {
+                // 이동 중 토핑 바로 아래, 내 다른 토핑 위.
+                ToppingSnapGuides(
+                    snap: snap(in: canvasSize),
+                    center: selectedPlacement.center(in: canvasSize),
+                    canvasSize: canvasSize
+                )
+                .zIndex(Self.selectedZIndex - 1)
             }
         }
     }
@@ -183,6 +195,19 @@ private extension CanvasToppingEditBoard {
         topping.id == selectedToppingID
             ? draft.applied(to: displayPlacement(of: topping), in: canvasSize)
             : topping.placement
+    }
+
+    /// 변형 전 선택된 것의 배치 — 스냅 판정의 기준.
+    func selectedBasePlacement() -> ToppingPlacement? {
+        selectedTopping.map(displayPlacement(of:)) ?? selectedText?.placement
+    }
+
+    func selectedPlacement(in canvasSize: CGSize) -> ToppingPlacement? {
+        selectedBasePlacement().map { draft.applied(to: $0, in: canvasSize) }
+    }
+
+    func snap(in canvasSize: CGSize) -> ToppingSnap {
+        selectedBasePlacement().map { draft.snap(for: $0, in: canvasSize) } ?? .none
     }
 
     func displayPlacement(of topping: CanvasEditStore.EditableTopping) -> ToppingPlacement {

@@ -232,6 +232,8 @@ struct TextToppingView: View {
         let boxSize = TextToppingBox.boxSize(textSize: textSize, fontSize: fontSize, type: state.displayType)
 
         return ZStack {
+            ToppingSnapGuides(snap: snap, center: placement.center(in: canvasSize), canvasSize: canvasSize)
+
             TextToppingBox(
                 text: text,
                 fontSize: fontSize,
@@ -257,6 +259,8 @@ struct TextToppingView: View {
             )
             .rotationEffect(.degrees(placement.rotationDegrees))
             .position(placement.center(in: canvasSize))
+            // 아래 `transaction` 이 끊는 애니메이션보다 안쪽이라 스냅이 붙고 떨어질 때만 움직임이 산다.
+            .animation(ToppingSnap.motion, value: snap)
             // 키보드가 오르내리는 동안의 암묵적 애니메이션을 끊는다 — 전환 모습은 아래 변환만 움직인다.
             .transaction { $0.animation = nil }
             .modifier(TextToppingTransitionEffect(center: placement.center(in: canvasSize), transition: transition))
@@ -292,6 +296,7 @@ struct TextToppingView: View {
         ToppingSelectionFrame(renderedSize: boxSize)
             .rotationEffect(.degrees(placement.rotationDegrees))
             .position(placement.center(in: canvasSize))
+            .animation(ToppingSnap.motion, value: snap)
             .allowsHitTesting(false)
     }
 
@@ -317,6 +322,12 @@ struct TextToppingView: View {
                 onAlignmentTap: { store.send(.alignmentButtonTapped) }
             )
         }
+    }
+}
+
+private extension TextToppingView {
+    var snap: ToppingSnap {
+        draft.snap(for: state.displayPlacement, in: state.canvasSize)
     }
 }
 
