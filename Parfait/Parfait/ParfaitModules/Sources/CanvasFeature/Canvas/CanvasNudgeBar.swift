@@ -9,10 +9,16 @@ import SwiftUI
 import UIComponent
 
 struct CanvasNudgeBar: View {
+    enum ActionKind {
+        case tap(() -> Void)
+        /// 탭하면 공유 시트를 띄운다.
+        case share(String)
+    }
+
     struct Action {
         let title: String
-        let icon: Image
-        let handler: () -> Void
+        var icon: Image?
+        let kind: ActionKind
     }
 
     let titleText: String
@@ -49,26 +55,43 @@ struct CanvasNudgeBar: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
     private func actionButton(_ action: Action) -> some View {
-        Button(action: action.handler) {
-            HStack(spacing: .gap2) {
-                Text(action.title)
-                    .suit(.body02Regular)
-                    .foregroundStyle(.gray950)
+        switch action.kind {
+        case .tap(let handler):
+            Button(action: handler) {
+                actionLabel(action)
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+        case .share(let item):
+            ShareLink(item: item) {
+                actionLabel(action)
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+        }
+    }
 
-                action.icon
+    private func actionLabel(_ action: Action) -> some View {
+        HStack(spacing: .gap2) {
+            Text(action.title)
+                .suit(.body02Regular)
+                .foregroundStyle(.gray950)
+
+            if let icon = action.icon {
+                icon
                     .renderingMode(.template)
                     .resizable()
                     .foregroundStyle(.gray950)
                     .frame(width: 16, height: 16)
             }
-            .padding(.leading, .padding5)
-            .padding(.trailing, .padding3)
-            .padding(.vertical, .padding2)
-            .background(.cherry100, in: .capsule)
-            .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
-        .fixedSize()
+        .padding(.leading, .padding5)
+        // 아이콘이 없으면 양옆 대칭
+        .padding(.trailing, action.icon == nil ? .padding5 : .padding3)
+        .padding(.vertical, .padding2)
+        .background(.cherry100, in: .capsule)
+        .contentShape(.capsule)
     }
 }

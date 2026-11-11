@@ -144,8 +144,8 @@ public extension CanvasStore {
             case .joined:
                 return .joined(groupName: groupName)
             case .created(let inviteCode, let memberCount):
-                guard memberCount > 1 else { return .joined(groupName: groupName) }
-                return .created(groupName: groupName, inviteCode: inviteCode)
+                // 1인 그룹은 초대할 사람이 없어 초대코드를 내보이지 않는다.
+                return .created(groupName: groupName, inviteCode: memberCount > 1 ? inviteCode : nil)
             }
         }
 
@@ -183,7 +183,7 @@ public extension CanvasStore {
 
     enum EntryNudge: Equatable, Sendable {
         case joined(groupName: String)
-        case created(groupName: String, inviteCode: String)
+        case created(groupName: String, inviteCode: String?)
 
         var titleText: String {
             switch self {
@@ -194,8 +194,9 @@ public extension CanvasStore {
 
         var descriptionText: String {
             switch self {
-            case .joined: "+ 버튼을 눌러 캔버스를 꾸며 보세요"
-            case .created(_, let inviteCode): "초대코드는 \(inviteCode)이에요"
+            case .joined: "추가 버튼을 눌러 캔버스를 꾸며 보세요"
+            case .created(_, let inviteCode):
+                inviteCode.map { "초대코드는 \($0)이에요" } ?? "추가 버튼을 눌러 캔버스를 꾸며 보세요"
             }
         }
 

@@ -16,7 +16,11 @@ struct CanvasPastParfaitNudge: View {
         CanvasNudgeBar(
             titleText: nudge.titleText,
             descriptionText: nudge.descriptionText,
-            action: CanvasNudgeBar.Action(title: "보러가기", icon: .icCaretRight, handler: onOpenTap)
+            action: CanvasNudgeBar.Action(
+                title: "보러가기",
+                icon: .icCaretRight,
+                kind: .tap(onOpenTap)
+            )
         )
     }
 }

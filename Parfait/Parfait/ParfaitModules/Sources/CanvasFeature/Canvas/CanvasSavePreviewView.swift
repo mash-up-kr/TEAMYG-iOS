@@ -67,7 +67,7 @@ struct CanvasSavePreviewView: View {
                 switch event {
                 case .instagramNotInstalled:
                     toasts.append(
-                        YGToastItem(kind: .warning, message: "인스타그램 앱이 설치되어 있지 않아요")
+                        YGToastItem(kind: .error, message: "스토리 공유에 실패했어요, 나중에 다시 시도해 주세요")
                     )
                 case .instagramShareFailed:
                     toasts.append(
