@@ -23,6 +23,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case appLinkOpened(destination: AppLinkDestination)
     /// 계정정보에서 닉네임 변경 완료
     case appAccountNicknameChanged
+    case appSettingNoticeTapped
+    case appNoticeItemTapped(noticeID: Int, isNew: Bool)
 
     // MARK: canvas
 
@@ -73,6 +75,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
     public enum ScreenName: String, Sendable {
         case appSetting = "app_setting"
         case appAccount = "app_account"
+        case appNotice = "app_notice"
+        case appNoticeDetail = "app_notice_detail"
         case canvasMain = "canvas_main"
         case canvasCamera = "canvas_camera"
         case canvasGallery = "canvas_gallery"
@@ -128,6 +132,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .appPushOpened: "app_push_opened"
         case .appLinkOpened: "AppLink"
         case .appAccountNicknameChanged: "app_account_nickname_changed"
+        case .appSettingNoticeTapped: "app_setting_notice_tapped"
+        case .appNoticeItemTapped: "app_notice_item_tapped"
         case .canvasMainToppingAddTapped: "canvas_main_topping_add_tapped"
         case .canvasCameraRetakeTapped: "canvas_camera_retake_tapped"
         case .canvasCameraPhotoSelected: "canvas_camera_photo_selected"
@@ -159,6 +165,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
             ["type": type.rawValue]
         case let .appLinkOpened(destination):
             ["destination": destination.rawValue]
+        case let .appNoticeItemTapped(noticeID, isNew):
+            ["notice_id": String(noticeID), "is_new": String(isNew)]
         case let .canvasMainToppingAddTapped(type):
             ["type": type.rawValue]
         case let .canvasCameraPhotoSelected(source):
@@ -178,6 +186,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case let .canvasSaveGallerySaved(format):
             ["format": format.rawValue]
         case .appAccountNicknameChanged,
+             .appSettingNoticeTapped,
              .canvasCameraRetakeTapped,
              .canvasEditBorderTapped,
              .groupListCreated,
