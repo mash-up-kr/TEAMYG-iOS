@@ -8,6 +8,7 @@
 import AuthDomain
 import Common
 import MemberDomain
+import NoticeDomain
 import SwiftUI
 import UIComponent
 
@@ -17,6 +18,7 @@ public final class SettingStore: MVIStore {
 
     private let memberUseCase: any MemberUseCase
     private let authUseCase: any AuthUseCase
+    private let noticeUseCase: any NoticeUseCase
     private let logAnalyticsEvent: AnalyticsEventLogger
     /// 진행 중 작업 핸들 — 재진입 시 중복 실행 방지 (mvi.md)
     @ObservationIgnored private var loadTask: Task<Void, Never>?
@@ -25,11 +27,13 @@ public final class SettingStore: MVIStore {
     public init(
         memberUseCase: any MemberUseCase,
         authUseCase: any AuthUseCase,
+        noticeUseCase: any NoticeUseCase,
         logAnalyticsEvent: @escaping AnalyticsEventLogger,
         state: State = State()
     ) {
         self.memberUseCase = memberUseCase
         self.authUseCase = authUseCase
+        self.noticeUseCase = noticeUseCase
         self.logAnalyticsEvent = logAnalyticsEvent
         self.state = state
     }
@@ -39,6 +43,8 @@ public final class SettingStore: MVIStore {
         case .appeared:
             logAnalyticsEvent(.screenView(.appSetting))
             beginLoad()
+        case .noticeTapped:
+            logAnalyticsEvent(.appSettingNoticeTapped)
         case .logoutTapped:
             guard actionTask == nil else { return }
             actionTask = Task {
@@ -80,6 +86,12 @@ public final class SettingStore: MVIStore {
                 // 에러 UI 정책 미정 — 로그만 남긴다
                 YGLogger.error("내 계정 조회 실패: \(error)")
             }
+            do {
+                state.hasNewNotice = try await noticeUseCase.fetchNotices().contains(where: \.isNew)
+            } catch {
+                state.hasNewNotice = false
+                YGLogger.error("공지 목록 조회 실패: \(error)")
+            }
             // 약관 내용은 바뀌지 않으므로 한 번만 조회한다.
             guard state.policies.isEmpty else { return }
             do {
@@ -98,6 +110,7 @@ public final class SettingStore: MVIStore {
         public var isWithdrawPopupPresented: Bool
         /// 서버가 내려준 약관 목록 — 설정 목록의 약관 행이 그대로 쓴다.
         public var policies: [Policy] = []
+        public var hasNewNotice = false
 
         public init(
             nickname: String = "",
@@ -115,6 +128,7 @@ public final class SettingStore: MVIStore {
     public enum Intent {
         /// 화면 진입 — 내 계정 정보를 조회한다.
         case appeared
+        case noticeTapped
         case logoutTapped
         case withdrawPopupVisibilityChanged(Bool)
         case withdrawConfirmed

@@ -21,6 +21,8 @@ import GroupFeature
 import LoginFeature
 import MemberData
 import MemberDomain
+import NoticeData
+import NoticeDomain
 import Routing
 import SettingFeature
 import UIComponent
@@ -35,6 +37,7 @@ struct AppDependencies {
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
     /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
     private let imageProvider = ImageProvider()
+    private let noticeUseCase: NoticeUseCaseImpl
     /// `YGImageView` 환경에 얹는 로더 — UIComponent 가 Core 를 모르므로 여기서 클로저로 감싼다.
     let ygImageLoader: YGImageLoader
     /// 사용자 이벤트 전송 — 피처는 Firebase 를 모르므로 환경(`logAnalyticsEvent`)으로 얹는다.
@@ -68,6 +71,9 @@ struct AppDependencies {
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
         canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
+        noticeUseCase = NoticeUseCaseImpl(
+            noticeRepository: NoticeRepositoryImpl(networkClient: networkClient)
+        )
         ygImageLoader = { [imageProvider] url, maxPixelSize in
             await imageProvider.image(at: url, maxPixelSize: maxPixelSize)
         }
@@ -153,6 +159,7 @@ struct AppDependencies {
         SettingStore(
             memberUseCase: makeMemberUseCase(),
             authUseCase: makeAuthUseCase(),
+            noticeUseCase: noticeUseCase,
             logAnalyticsEvent: Self.logAnalyticsEvent,
             state: .init(appVersion: installedAppVersion())
         )
@@ -163,6 +170,17 @@ struct AppDependencies {
             return ""
         }
         return "\(version)v"
+    }
+
+    func makeNoticeListStore() -> NoticeListStore {
+        NoticeListStore(
+            noticeUseCase: noticeUseCase,
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
+    }
+
+    func makeNoticeDetailStore(notice: Notice) -> NoticeDetailStore {
+        NoticeDetailStore(notice: notice, logAnalyticsEvent: Self.logAnalyticsEvent)
     }
 
     func makeAccountInfoStore(nickname: String) -> AccountInfoStore {
