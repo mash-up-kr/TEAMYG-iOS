@@ -6,6 +6,7 @@
 //
 
 import AuthDomain
+import NoticeDomain
 import SwiftUI
 import UIComponent
 
@@ -13,13 +14,19 @@ public struct SettingView: View {
     @State private var store: SettingStore
     /// 계정 정보 화면 store 팩토리 — UseCase 주입은 App(Composition Root)이 담당한다.
     private let makeAccountInfoStore: (String) -> AccountInfoStore
+    private let makeNoticeListStore: () -> NoticeListStore
+    private let makeNoticeDetailStore: (Notice) -> NoticeDetailStore
 
     public init(
         store: SettingStore,
-        makeAccountInfoStore: @escaping (String) -> AccountInfoStore
+        makeAccountInfoStore: @escaping (String) -> AccountInfoStore,
+        makeNoticeListStore: @escaping () -> NoticeListStore,
+        makeNoticeDetailStore: @escaping (Notice) -> NoticeDetailStore
     ) {
         _store = State(initialValue: store)
         self.makeAccountInfoStore = makeAccountInfoStore
+        self.makeNoticeListStore = makeNoticeListStore
+        self.makeNoticeDetailStore = makeNoticeDetailStore
     }
 
     public var body: some View {
@@ -49,6 +56,10 @@ public struct SettingView: View {
             switch route {
             case .accountInfo:
                 AccountInfoView(store: makeAccountInfoStore(store.state.nickname))
+            case .notices:
+                NoticeListView(store: makeNoticeListStore())
+            case .noticeDetail(let notice):
+                NoticeDetailView(store: makeNoticeDetailStore(notice))
             case .openSourceLicense:
                 // swiftlint:disable:next force_unwrapping
                 YGWebView(title: "오픈소스 라이선스", url: URL(string: "https://parfait-app.store/oss")!)
@@ -88,6 +99,7 @@ public struct SettingView: View {
     private var settingList: some View {
         VStack(spacing: .gap3) {
             navigationRow("계정 정보", value: SettingRoute.accountInfo)
+            noticeRow
             // 약관 행은 서버 목록(제목·원문 주소) 그대로 — 로드 전에는 표시하지 않는다.
             ForEach(store.state.policies) { policy in
                 navigationRow(policy.title, value: policy)
@@ -104,12 +116,31 @@ public struct SettingView: View {
         .buttonStyle(.plain)
     }
 
-    private func navigationRowLabel(_ title: String) -> some View {
+    private var noticeRow: some View {
+        NavigationLink(value: SettingRoute.notices) {
+            navigationRowLabel("공지사항", isNew: store.state.hasNewNotice)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture().onEnded { store.send(.noticeTapped) })
+    }
+
+    private func navigationRowLabel(_ title: String, isNew: Bool = false) -> some View {
         HStack(spacing: .gap2) {
             rowTitle(title)
+            if isNew {
+                Text("NEW")
+                    .suit(.caption01Medium)
+                    .foregroundStyle(.cherry700)
+                    .padding(.horizontal, .padding2)
+                    .padding(.vertical, .padding1)
+                    .background(.cherry100)
+                    .fixedSize()
+            }
             Spacer(minLength: 0)
             Image.icCaretRight
-                .frame(width: 44, height: 44)
+                .resizable()
+                .frame(width: 24, height: 24)
+                .padding(.padding4)
                 .foregroundStyle(.gray300)
         }
         .padding(.horizontal, .padding7)
@@ -142,29 +173,5 @@ public struct SettingView: View {
             YGActionItem("로그아웃") { store.send(.logoutTapped) }
             YGActionItem("서비스 탈퇴하기") { store.send(.withdrawPopupVisibilityChanged(true)) }
         }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        SettingView(
-            store: SettingStore(
-                memberUseCase: PreviewMemberUseCase(),
-                authUseCase: PreviewAuthUseCase(),
-                logAnalyticsEvent: { _ in },
-                state: .init(
-                    nickname: "아니야나그런데기니야",
-                    loginProvider: "Kakao",
-                    appVersion: "1.0.1v"
-                )
-            ),
-            makeAccountInfoStore: { nickname in
-                AccountInfoStore(
-                    state: .init(nickname: nickname),
-                    memberUseCase: PreviewMemberUseCase(),
-                    logAnalyticsEvent: { _ in }
-                )
-            }
-        )
     }
 }
