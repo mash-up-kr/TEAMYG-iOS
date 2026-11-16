@@ -53,7 +53,7 @@ struct NoticeListView: View {
                             .foregroundStyle(.gray800)
                             .lineLimit(1)
                         if notice.isNew {
-                            newChip
+                            NoticeNewChip()
                         }
                     }
                     Text(notice.publishedDateText)
@@ -73,15 +73,5 @@ struct NoticeListView: View {
         }
         .buttonStyle(.plain)
         .simultaneousGesture(TapGesture().onEnded { store.send(.noticeTapped(notice)) })
-    }
-    
-    private var newChip: some View {
-        Text("NEW")
-            .suit(.caption01Medium)
-            .foregroundStyle(.cherry700)
-            .padding(.horizontal, .padding2)
-            .padding(.vertical, .padding1)
-            .background(.cherry100)
-            .fixedSize()
     }
 }

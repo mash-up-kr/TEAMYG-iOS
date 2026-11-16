@@ -36,7 +36,7 @@ struct NoticeDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.padding6)
             .background(.white75)
-            .border(.gray100, width: 1)
+            .border(.cherry100, width: 1)
             .padding(.horizontal, .padding7)
         }
         .ygTopBar(.detail(title: "공지사항"))

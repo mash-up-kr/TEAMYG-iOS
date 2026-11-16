@@ -128,13 +128,7 @@ public struct SettingView: View {
         HStack(spacing: .gap2) {
             rowTitle(title)
             if isNew {
-                Text("NEW")
-                    .suit(.caption01Medium)
-                    .foregroundStyle(.cherry700)
-                    .padding(.horizontal, .padding2)
-                    .padding(.vertical, .padding1)
-                    .background(.cherry100)
-                    .fixedSize()
+                NoticeNewChip()
             }
             Spacer(minLength: 0)
             Image.icCaretRight
