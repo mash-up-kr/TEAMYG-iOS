@@ -13,5 +13,6 @@ public enum SettingRoute: Hashable {
     case accountInfo
     case notices
     case noticeDetail(Notice)
+    case notificationSetting
     case openSourceLicense
 }

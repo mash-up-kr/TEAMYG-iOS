@@ -6,7 +6,6 @@
 //
 
 import AuthDomain
-import NoticeDomain
 import SwiftUI
 import UIComponent
 
@@ -16,17 +15,20 @@ public struct SettingView: View {
     private let makeAccountInfoStore: (String) -> AccountInfoStore
     private let makeNoticeListStore: () -> NoticeListStore
     private let makeNoticeDetailStore: (Notice) -> NoticeDetailStore
+    private let makeNotificationSettingStore: () -> NotificationSettingStore
 
     public init(
         store: SettingStore,
         makeAccountInfoStore: @escaping (String) -> AccountInfoStore,
         makeNoticeListStore: @escaping () -> NoticeListStore,
         makeNoticeDetailStore: @escaping (Notice) -> NoticeDetailStore
+        makeNotificationSettingStore: @escaping () -> NotificationSettingStore
     ) {
         _store = State(initialValue: store)
         self.makeAccountInfoStore = makeAccountInfoStore
         self.makeNoticeListStore = makeNoticeListStore
         self.makeNoticeDetailStore = makeNoticeDetailStore
+        self.makeNotificationSettingStore = makeNotificationSettingStore
     }
 
     public var body: some View {
@@ -60,6 +62,8 @@ public struct SettingView: View {
                 NoticeListView(store: makeNoticeListStore())
             case .noticeDetail(let notice):
                 NoticeDetailView(store: makeNoticeDetailStore(notice))
+            case .notificationSetting:
+                NotificationSettingView(store: makeNotificationSettingStore())
             case .openSourceLicense:
                 // swiftlint:disable:next force_unwrapping
                 YGWebView(title: "오픈소스 라이선스", url: URL(string: "https://parfait-app.store/oss")!)
@@ -99,6 +103,8 @@ public struct SettingView: View {
     private var settingList: some View {
         VStack(spacing: .gap3) {
             navigationRow("계정 정보", value: SettingRoute.accountInfo)
+            navigationRow("알림 설정", value: SettingRoute.notificationSetting)
+                .simultaneousGesture(TapGesture().onEnded { store.send(.notificationSettingTapped) })
             noticeRow
             // 약관 행은 서버 목록(제목·원문 주소) 그대로 — 로드 전에는 표시하지 않는다.
             ForEach(store.state.policies) { policy in
@@ -167,5 +173,35 @@ public struct SettingView: View {
             YGActionItem("로그아웃") { store.send(.logoutTapped) }
             YGActionItem("서비스 탈퇴하기") { store.send(.withdrawPopupVisibilityChanged(true)) }
         }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SettingView(
+            store: SettingStore(
+                memberUseCase: PreviewMemberUseCase(),
+                authUseCase: PreviewAuthUseCase(),
+                logAnalyticsEvent: { _ in },
+                state: .init(
+                    nickname: "아니야나그런데기니야",
+                    loginProvider: "Kakao",
+                    appVersion: "1.0.1v"
+                )
+            ),
+            makeAccountInfoStore: { nickname in
+                AccountInfoStore(
+                    state: .init(nickname: nickname),
+                    memberUseCase: PreviewMemberUseCase(),
+                    logAnalyticsEvent: { _ in }
+                )
+            },
+            makeNotificationSettingStore: {
+                NotificationSettingStore(
+                    memberUseCase: PreviewMemberUseCase(),
+                    logAnalyticsEvent: { _ in }
+                )
+            }
+        )
     }
 }

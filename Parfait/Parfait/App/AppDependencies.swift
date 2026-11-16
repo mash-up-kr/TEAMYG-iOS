@@ -191,6 +191,13 @@ struct AppDependencies {
         )
     }
 
+    func makeNotificationSettingStore() -> NotificationSettingStore {
+        NotificationSettingStore(
+            memberUseCase: makeMemberUseCase(),
+            logAnalyticsEvent: Self.logAnalyticsEvent
+        )
+    }
+
     /// 기기(FCM) 토큰 등록/갱신 — 세션이 생기는 시점(자동로그인·로그인·재로그인)에 App 루트가 호출한다.
     /// 토큰은 호출 시점에 FCM 에서 직접 조회한다(APNs 토큰이 아직이면 여기서 대기).
     func registerDeviceToken() async {
