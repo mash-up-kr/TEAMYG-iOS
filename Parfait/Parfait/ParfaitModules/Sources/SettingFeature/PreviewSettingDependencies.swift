@@ -20,4 +20,18 @@ struct PreviewMemberUseCase: MemberUseCase {
     func withdraw() async throws {}
 
     func registerDeviceToken(_ token: String) async throws {}
+
+    func fetchNotificationSettings() async throws -> NotificationSettings {
+        NotificationSettings(isDailyReminderEnabled: true, isActivityDigestEnabled: false)
+    }
+
+    func updateNotificationSettings(
+        isDailyReminderEnabled: Bool?,
+        isActivityDigestEnabled: Bool?
+    ) async throws -> NotificationSettings {
+        NotificationSettings(
+            isDailyReminderEnabled: isDailyReminderEnabled ?? true,
+            isActivityDigestEnabled: isActivityDigestEnabled ?? false
+        )
+    }
 }

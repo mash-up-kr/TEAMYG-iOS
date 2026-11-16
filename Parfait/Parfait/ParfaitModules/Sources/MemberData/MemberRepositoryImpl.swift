@@ -9,7 +9,7 @@ import Core
 import Foundation
 import MemberDomain
 
-/// MemberRepository 구현체 — 내 계정 조회·닉네임 변경·탈퇴.
+/// MemberRepository 구현체 — 내 계정 조회·닉네임 변경·탈퇴·알림 설정.
 public struct MemberRepositoryImpl: MemberRepository {
     private let networkClient: any NetworkClient
     private let tokenManager: TokenManager
@@ -43,5 +43,34 @@ public struct MemberRepositoryImpl: MemberRepository {
 
     public func registerDeviceToken(_ token: String) async throws {
         let _: EmptyDTO = try await networkClient.request(RegisterDeviceTokenEndpoint(token: token))
+    }
+
+    public func fetchNotificationSettings() async throws -> NotificationSettings {
+        let response: NotificationSettingsResponseDTO = try await networkClient.request(
+            FetchNotificationSettingsEndpoint()
+        )
+        return NotificationSettings(response)
+    }
+
+    public func updateNotificationSettings(
+        isDailyReminderEnabled: Bool?,
+        isActivityDigestEnabled: Bool?
+    ) async throws -> NotificationSettings {
+        let response: NotificationSettingsResponseDTO = try await networkClient.request(
+            UpdateNotificationSettingsEndpoint(
+                dailyReminderEnabled: isDailyReminderEnabled,
+                activityDigestEnabled: isActivityDigestEnabled
+            )
+        )
+        return NotificationSettings(response)
+    }
+}
+
+private extension NotificationSettings {
+    init(_ response: NotificationSettingsResponseDTO) {
+        self.init(
+            isDailyReminderEnabled: response.dailyReminderEnabled,
+            isActivityDigestEnabled: response.activityDigestEnabled
+        )
     }
 }
