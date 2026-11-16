@@ -17,6 +17,8 @@ public struct YGButton: View {
         case mediumSecondary
         /// 136×48 고정 · 반투명 배경
         case mediumTransparency
+        /// 내용 크기 · 좌우 12 · 상하 10 (Figma `Button-SmallSquare`)
+        case smallSquare
     }
 
     private let title: String
@@ -24,7 +26,7 @@ public struct YGButton: View {
     private let fillsWidth: Bool
     private let action: () -> Void
 
-    /// - Parameter fillsWidth: `true` 면 medium 계열도 고정폭(136) 대신 가용 폭을 채운다.
+    /// - Parameter fillsWidth: `true` 면 medium 계열도 고정폭(136) 대신 가용 폭을 채운다. `smallSquare` 는 무시.
     public init(
         _ title: String,
         variant: Variant,
@@ -49,12 +51,7 @@ private struct YGButtonStyle: ButtonStyle {
     let fillsWidth: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .suit(.body01SemiBold)
-            .foregroundStyle(textColor)
-            .padding(.horizontal, .padding7)
-            .frame(maxWidth: fillsWidth ? .infinity : nil)
-            .frame(width: fillsWidth ? nil : 136, height: 48)
+        sized(configuration.label.foregroundStyle(textColor))
             .background(
                 backgroundColor(isPressed: configuration.isPressed),
                 in: .rect
@@ -69,10 +66,26 @@ private struct YGButtonStyle: ButtonStyle {
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
     }
 
+    @ViewBuilder
+    private func sized(_ label: some View) -> some View {
+        if variant == .smallSquare {
+            label
+                .suit(.body02SemiBold)
+                .padding(.horizontal, .padding5)
+                .padding(.vertical, .padding4)
+        } else {
+            label
+                .suit(.body01SemiBold)
+                .padding(.horizontal, .padding7)
+                .frame(maxWidth: fillsWidth ? .infinity : nil)
+                .frame(width: fillsWidth ? nil : 136, height: 48)
+        }
+    }
+
     private var textColor: Color {
-        guard isEnabled else { return .gray500 }
+        guard isEnabled else { return variant == .smallSquare ? .gray400 : .gray500 }
         switch variant {
-        case .large, .mediumPrimary: return .whiteFixed
+        case .large, .mediumPrimary, .smallSquare: return .whiteFixed
         case .mediumSecondary, .mediumTransparency: return .gray900
         }
     }
@@ -82,6 +95,9 @@ private struct YGButtonStyle: ButtonStyle {
         case .large, .mediumPrimary:
             guard isEnabled else { return .gray200 }
             return isPressed ? .gray950 : .gray900
+        case .smallSquare:
+            guard isEnabled else { return .gray200 }
+            return isPressed ? .blackFixed : .gray900
         case .mediumSecondary:
             guard isEnabled else { return .gray200 }
             return isPressed ? .gray200 : .gray100
@@ -105,6 +121,9 @@ private struct YGButtonStyle: ButtonStyle {
             .disabled(true)
         YGButton("Transparency", variant: .mediumTransparency) {}
         YGButton("Transparency Disabled", variant: .mediumTransparency) {}
+            .disabled(true)
+        YGButton("SmallSquare", variant: .smallSquare) {}
+        YGButton("SmallSquare Disabled", variant: .smallSquare) {}
             .disabled(true)
     }
     .padding()
