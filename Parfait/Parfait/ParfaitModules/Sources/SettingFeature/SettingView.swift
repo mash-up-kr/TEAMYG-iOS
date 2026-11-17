@@ -6,6 +6,7 @@
 //
 
 import AuthDomain
+import NoticeDomain
 import SwiftUI
 import UIComponent
 
@@ -21,7 +22,7 @@ public struct SettingView: View {
         store: SettingStore,
         makeAccountInfoStore: @escaping (String) -> AccountInfoStore,
         makeNoticeListStore: @escaping () -> NoticeListStore,
-        makeNoticeDetailStore: @escaping (Notice) -> NoticeDetailStore
+        makeNoticeDetailStore: @escaping (Notice) -> NoticeDetailStore,
         makeNotificationSettingStore: @escaping () -> NotificationSettingStore
     ) {
         _store = State(initialValue: store)
@@ -173,35 +174,5 @@ public struct SettingView: View {
             YGActionItem("로그아웃") { store.send(.logoutTapped) }
             YGActionItem("서비스 탈퇴하기") { store.send(.withdrawPopupVisibilityChanged(true)) }
         }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        SettingView(
-            store: SettingStore(
-                memberUseCase: PreviewMemberUseCase(),
-                authUseCase: PreviewAuthUseCase(),
-                logAnalyticsEvent: { _ in },
-                state: .init(
-                    nickname: "아니야나그런데기니야",
-                    loginProvider: "Kakao",
-                    appVersion: "1.0.1v"
-                )
-            ),
-            makeAccountInfoStore: { nickname in
-                AccountInfoStore(
-                    state: .init(nickname: nickname),
-                    memberUseCase: PreviewMemberUseCase(),
-                    logAnalyticsEvent: { _ in }
-                )
-            },
-            makeNotificationSettingStore: {
-                NotificationSettingStore(
-                    memberUseCase: PreviewMemberUseCase(),
-                    logAnalyticsEvent: { _ in }
-                )
-            }
-        )
     }
 }

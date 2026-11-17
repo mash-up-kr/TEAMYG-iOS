@@ -27,8 +27,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case appNoticeItemTapped(noticeID: Int, isNew: Bool)
     /// 설정에서 알림 설정 항목 탭
     case appSettingNotificationTapped
-    case appNotificationSettingChanged(type: NotificationSettingType, isEnabled: Bool)
     /// 알림 설정 스위치 변경이 저장까지 성공 — `isEnabled` 는 변경 후 값
+    case appNotificationSettingChanged(type: NotificationSettingType, isEnabled: Bool)
     /// 기기 알림 꺼짐 안내 카드의 설정으로 이동 탭
     case appNotificationDeviceSettingsTapped
 
@@ -112,6 +112,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case groupInvite = "group_invite"
     }
 
+    public enum NotificationSettingType: String, Sendable {
         /// 캔버스 알림 받기
         case canvas
         /// 활동 알림 모아 받기
