@@ -120,7 +120,9 @@ struct RootView: View {
         case .setting:
             SettingView(
                 store: diContainer.makeSettingStore(),
-                makeAccountInfoStore: diContainer.makeAccountInfoStore
+                makeAccountInfoStore: diContainer.makeAccountInfoStore,
+                makeNoticeListStore: diContainer.makeNoticeListStore,
+                makeNoticeDetailStore: diContainer.makeNoticeDetailStore
             )
         case .canvas(let groupID, let entry):
             // 서버 그룹 ID 는 Int, 라우트 페이로드는 String(`ParfaitGroup.id`·푸시 groupId) —

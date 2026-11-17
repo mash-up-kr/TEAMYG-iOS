@@ -15,6 +15,7 @@
 		AB4D0E772FECFD6700703DBC /* GroupFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E762FECFD6700703DBC /* GroupFeature */; };
 		AB4D0E792FECFD6700703DBC /* LoginFeature in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E782FECFD6700703DBC /* LoginFeature */; };
 		AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7A2FECFD6700703DBC /* MemberData */; };
+		AB4D0E7D2FECFD6700703DBC /* NoticeData in Frameworks */ = {isa = PBXBuildFile; productRef = AB4D0E7C2FECFD6700703DBC /* NoticeData */; };
 		AB832DE73045513400DDC625 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000002 /* FirebaseAnalytics */; };
 		AB832DE83045513400DDC625 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000003 /* FirebaseCrashlytics */; };
 		AB832DE93045513400DDC625 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FB0000000000000000000004 /* FirebaseMessaging */; };
@@ -67,6 +68,7 @@
 				AB832DE73045513400DDC625 /* FirebaseAnalytics in Frameworks */,
 				AB4D0E752FECFD6700703DBC /* GroupData in Frameworks */,
 				AB4D0E7B2FECFD6700703DBC /* MemberData in Frameworks */,
+				AB4D0E7D2FECFD6700703DBC /* NoticeData in Frameworks */,
 				AB4D0E732FECFD6700703DBC /* CanvasFeature in Frameworks */,
 				AB4D0E712FECFD6700703DBC /* CanvasData in Frameworks */,
 				AB03410A300F3F2800ACF3EF /* SettingFeature in Frameworks */,
@@ -140,6 +142,7 @@
 				AB4D0E722FECFD6700703DBC /* CanvasFeature */,
 				AB4D0E742FECFD6700703DBC /* GroupData */,
 				AB4D0E7A2FECFD6700703DBC /* MemberData */,
+				AB4D0E7C2FECFD6700703DBC /* NoticeData */,
 				AB4D0E762FECFD6700703DBC /* GroupFeature */,
 				AB4D0E782FECFD6700703DBC /* LoginFeature */,
 				AB034109300F3F2800ACF3EF /* SettingFeature */,
@@ -661,6 +664,10 @@
 		AB4D0E7A2FECFD6700703DBC /* MemberData */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MemberData;
+		};
+		AB4D0E7C2FECFD6700703DBC /* NoticeData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoticeData;
 		};
 		DEC0DE000000000000000002 /* UIComponent */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -5,8 +5,6 @@
 //  Created by 김남수 on 8/17/26.
 //
 
-import AuthDomain
-import Foundation
 import MemberDomain
 
 /// 프리뷰용 목 — 고정 계정을 돌려주고 나머지는 아무것도 하지 않는다.
@@ -22,34 +20,4 @@ struct PreviewMemberUseCase: MemberUseCase {
     func withdraw() async throws {}
 
     func registerDeviceToken(_ token: String) async throws {}
-}
-
-/// 프리뷰용 목 — 모든 인증 동작을 성공으로 흉내낸다.
-struct PreviewAuthUseCase: AuthUseCase {
-    func loginWithKakao() async throws -> SocialLoginResult { .signedIn }
-
-    func loginWithApple(_ credential: AppleLoginCredential) async throws -> SocialLoginResult {
-        .signedIn
-    }
-
-    func signup(registrationToken: String, agreements: [TermsAgreement]) async throws {}
-
-    func fetchPolicies() async throws -> [Policy] {
-        [
-            Policy(
-                id: 1,
-                title: "서비스 이용약관",
-                url: URL(string: "https://example.com")!,
-                isRequired: true
-            ),
-            Policy(
-                id: 2,
-                title: "개인정보 처리방침",
-                url: URL(string: "https://example.com")!,
-                isRequired: true
-            )
-        ]
-    }
-
-    func logout() async throws {}
 }
