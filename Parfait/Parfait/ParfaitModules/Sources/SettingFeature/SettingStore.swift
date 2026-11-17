@@ -45,6 +45,8 @@ public final class SettingStore: MVIStore {
             beginLoad()
         case .noticeTapped:
             logAnalyticsEvent(.appSettingNoticeTapped)
+        case .notificationSettingTapped:
+            logAnalyticsEvent(.appSettingNotificationTapped)
         case .logoutTapped:
             guard actionTask == nil else { return }
             actionTask = Task {
@@ -129,6 +131,7 @@ public final class SettingStore: MVIStore {
         /// 화면 진입 — 내 계정 정보를 조회한다.
         case appeared
         case noticeTapped
+        case notificationSettingTapped
         case logoutTapped
         case withdrawPopupVisibilityChanged(Bool)
         case withdrawConfirmed

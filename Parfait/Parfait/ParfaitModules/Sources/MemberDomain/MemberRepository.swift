@@ -14,4 +14,11 @@ public protocol MemberRepository: Sendable {
     func withdraw() async throws
     /// 기기(FCM) 토큰 등록/갱신.
     func registerDeviceToken(_ token: String) async throws
+    /// 알림 설정 조회.
+    func fetchNotificationSettings() async throws -> NotificationSettings
+    /// 알림 설정 변경 — nil 인 항목은 서버 값을 유지한다. 서버가 확정한 전체 설정을 돌려준다.
+    func updateNotificationSettings(
+        isDailyReminderEnabled: Bool?,
+        isActivityDigestEnabled: Bool?
+    ) async throws -> NotificationSettings
 }
