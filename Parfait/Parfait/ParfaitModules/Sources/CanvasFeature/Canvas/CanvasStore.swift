@@ -44,6 +44,7 @@ public final class CanvasStore: MVIStore {
     ) {
         var state = state
         state.entry = dependencies.entry
+        state.isSolo = dependencies.soloSpace != nil
         self.state = state
         self.dependencies = dependencies
     }
@@ -191,6 +192,12 @@ public final class CanvasStore: MVIStore {
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
             dismissOverlays()
+            // 혼자 공간엔 사이드메뉴가 없다 — 같은 버튼이 리셋 확인을 연다.
+            if state.isSolo { state.isResetPopupPresented = true }
+        case .resetPopupVisibilityChanged(let isPresented):
+            state.isResetPopupPresented = isPresented
+        case .resetConfirmed:
+            resetSoloSpace()
         }
     }
 
@@ -311,6 +318,21 @@ public final class CanvasStore: MVIStore {
 }
 
 private extension CanvasStore {
+    /// 혼자 공간 리셋 — 비운 뒤 오늘 캔버스를 다시 그린다.
+    func resetSoloSpace() {
+        guard let soloSpace = dependencies.soloSpace else { return }
+        state.isResetPopupPresented = false
+        Task { [weak self] in
+            do {
+                try await soloSpace.reset()
+                guard let self else { return }
+                loadCanvas(for: state.calendar.today)
+            } catch {
+                self?.eventChannel.send(.resetFailed)
+            }
+        }
+    }
+
     /// SY-001-New 는 마감 날짜당 한 번만 알린다 — 안내한 날짜를 기기에 남기고, 이미 남긴 날짜는 거른다.
     var seenClosedDateKey: String {
         "canvas.seenClosedDate.\(dependencies.groupID)"

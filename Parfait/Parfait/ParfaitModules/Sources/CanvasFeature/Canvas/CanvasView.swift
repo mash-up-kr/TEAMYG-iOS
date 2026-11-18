@@ -62,6 +62,8 @@ public struct CanvasView: View {
                     onLeadingTap: { dismiss() },
                     onTrailingTap: {
                         store.send(.moreMenuTapped)
+                        // 혼자 공간은 사이드메뉴 대신 리셋 확인 팝업 — Store 가 연다.
+                        guard !store.state.isSolo else { return }
                         router.push(
                             .groupSideMenu(
                                 groupID: String(store.groupID),
@@ -119,6 +121,10 @@ public struct CanvasView: View {
                 case .reviewRequested:
                     // 업로드 화면(fullScreenCover)이 닫히는 도중에 부르면 시스템이 무시한다 → 다 닫힌 뒤(onDismiss) 띄운다.
                     isReviewRequestPending = true
+                case .resetFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "캔버스를 비우지 못했어요, 잠시 후 다시 시도해 주세요")
+                    )
                 }
             }
         }
@@ -176,6 +182,14 @@ public struct CanvasView: View {
         }
         // C-001 과 C-105 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
+        .ygPopup(
+            isPresented: store.binding(\.isResetPopupPresented) { .resetPopupVisibilityChanged($0) },
+            title: "캔버스를 비울까요?",
+            description: "올린 사진·글·배경이 모두 지워지고\n되돌릴 수 없어요",
+            secondaryTitle: "비우기",
+            primaryTitle: "그만두기",
+            secondaryAction: { store.send(.resetConfirmed) }
+        )
     }
 
     /// 캔버스 조회부터 토핑 이미지 다운로드까지 화면 전체를 덮는다 (C-001-Loading / C-001-Error).
@@ -346,7 +360,9 @@ public struct CanvasView: View {
     }
 
     private var topBarMembers: [YGTopBar.Member] {
-        store.state.members.map {
+        // 혼자 공간은 나 혼자라 멤버 칩을 그리지 않는다.
+        guard !store.state.isSolo else { return [] }
+        return store.state.members.map {
             YGTopBar.Member(nickname: $0.nickname, nametagType: $0.nametagType)
         }
     }
