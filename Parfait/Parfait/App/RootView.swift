@@ -73,6 +73,7 @@ struct RootView: View {
             // 세션 종료(로그아웃·탈퇴·리프레시 토큰까지 거절) → 스택을 로그인으로 재시작한다.
             for await _ in await diContainer.sessionExpirations() {
                 diContainer.clearAnalyticsUserID()
+                diContainer.forgetMemberID()
                 router.replaceStack(with: .login)
             }
         }
@@ -139,6 +140,8 @@ struct RootView: View {
                     toppingRenderer: diContainer.makeCanvasToppingRenderer()
                 )
             }
+        case .soloCanvas:
+            soloCanvas
         case .groupSideMenu(let groupID, let groupName):
             GroupSideMenuView(
                 store: diContainer.makeGroupSideMenuStore(
@@ -148,6 +151,19 @@ struct RootView: View {
                 onExit: { handleSideMenuExit($0, groupName: groupName) }
             )
         }
+    }
+
+    /// 혼자 공간 캔버스 — 그룹 캔버스와 같은 화면에 로컬 저장소를 끼운다 (#163).
+    private var soloCanvas: some View {
+        CanvasView(
+            store: diContainer.makeSoloCanvasStore(),
+            router: router,
+            makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
+            toppingUseCase: diContainer.makeSoloToppingUseCase(),
+            imageUploadRepository: diContainer.makeSoloImageUploadRepository(),
+            recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
+            toppingRenderer: diContainer.makeCanvasToppingRenderer()
+        )
     }
 
     /// `https://parfait-app.store/link?inviteCode=ABC123` → `ABC123`. 다른 URL 은 nil.

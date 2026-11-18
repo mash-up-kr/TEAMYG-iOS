@@ -14,6 +14,10 @@ public enum AppRoute: Hashable {
     /// 그룹 목록(G-001)·푸시 탭 등에서 온다. 그룹명은 캔버스 API 응답(`groupName`)에서 받아 채운다 —
     /// 라우트는 그룹 ID 와 진입 맥락만 들고 간다.
     case canvas(groupID: String, entry: CanvasEntry = .regular)
+    /// 혼자 공간 캔버스 — 계정당 하나뿐인 로컬 전용 캔버스(#163). 그룹 목록(G-001) 체리 버튼·혼자 만들기에서 온다.
+    ///
+    /// 서버 그룹 ID 를 들고 가는 `.canvas` 와 섞지 않는다 — 로컬 캔버스가 서버 API 를 부르는 일을 라우트 단계에서 막는다.
+    case soloCanvas
     /// 그룹 사이드메뉴(S-101) — 캔버스(C-001) 상단 바 더보기(⋯)로 진입한다. `groupName` 은 상단 바 제목.
     case groupSideMenu(groupID: String, groupName: String)
 }
