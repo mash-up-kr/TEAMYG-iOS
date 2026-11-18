@@ -64,13 +64,27 @@ struct AppDependencies {
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
     private let reviewRequestPolicy = ReviewRequestPolicy()
+    /// 혼자 공간 저장소 — 그룹 목록(존재 여부·생성)과 캔버스(편집·리셋)가 같은 actor 를 써야 작업이 겹치지 않는다.
+    private let soloSpaceRepository: SoloSpaceRepositoryImpl
 
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
         self.tokenManager = tokenManager
-        self.networkClient = NetworkClientImpl(
+        let networkClient = NetworkClientImpl(
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
+        self.networkClient = networkClient
+        let memberRepository = MemberRepositoryImpl(
+            networkClient: networkClient,
+            tokenManager: tokenManager
+        )
+        // 오프라인에서도 계정을 알아야 혼자 공간을 연다 — 기기에 남긴 memberId 를 먼저 쓰고, 없을 때만 조회한다.
+        soloSpaceRepository = SoloSpaceRepositoryImpl(resolveMemberID: {
+            if let memberID = Self.cachedMemberID { return memberID }
+            guard let account = try? await memberRepository.fetchMyAccount() else { return nil }
+            Self.cachedMemberID = account.id
+            return account.id
+        })
         canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
         noticeUseCase = NoticeUseCaseImpl(
             noticeRepository: NoticeRepositoryImpl(networkClient: networkClient)
@@ -108,6 +122,7 @@ struct AppDependencies {
     func makeGroupStore() -> GroupStore {
         GroupStore(
             groupUseCase: makeGroupUseCase(),
+            soloSpaceRepository: soloSpaceRepository,
             logAnalyticsEvent: Self.logAnalyticsEvent
         )
     }
@@ -219,6 +234,7 @@ struct AppDependencies {
         do {
             let account = try await makeMemberUseCase().fetchMyAccount()
             Analytics.setUserID(String(account.id))
+            Self.cachedMemberID = account.id
         } catch {
             // 실패해도 다음 로그인·앱 실행 때 다시 맞춘다
             YGLogger.error("Analytics 사용자 ID 설정 실패: \(error)")
@@ -228,6 +244,18 @@ struct AppDependencies {
     /// 세션 종료(로그아웃·탈퇴·리프레시 만료) 시 사용자 ID 를 지운다 — 다음 사용자 이벤트가 이전 회원에 붙지 않게.
     func clearAnalyticsUserID() {
         Analytics.setUserID(nil)
+    }
+
+    /// 세션 종료 시 기억해 둔 계정을 잊는다 — 다음에 로그인한 다른 계정이 이전 계정의 혼자 공간을 보지 않게.
+    /// 혼자 공간 파일은 계정별로 남는다(같은 계정이 돌아오면 이어 쓴다).
+    func forgetMemberID() {
+        Self.cachedMemberID = nil
+    }
+
+    /// 마지막으로 확인한 내 memberId. 혼자 공간 디렉터리 키라 오프라인에서도 읽을 수 있게 기기에 남긴다.
+    private nonisolated static var cachedMemberID: Int? {
+        get { UserDefaults.standard.object(forKey: "soloSpace.memberID") as? Int }
+        set { UserDefaults.standard.set(newValue, forKey: "soloSpace.memberID") }
     }
 
     private func makeMemberUseCase() -> MemberUseCaseImpl {
@@ -267,6 +295,37 @@ struct AppDependencies {
     /// 리뷰 요청 조건의 "로그인 후 3일" 기준점 — 세션이 생기는 시점에 App 루트가 호출한다(최초 1회만 기록).
     func recordLoginForReviewRequest() {
         reviewRequestPolicy.recordLogin()
+	}
+
+    /// 혼자 공간 캔버스(#163) — 그룹 캔버스와 같은 화면을 로컬 저장소로 조립한다. 서버를 부르지 않는다.
+    func makeSoloCanvasStore() -> CanvasStore {
+        CanvasStore(
+            dependencies: .init(
+                groupID: SoloSpace.canvasID,
+                canvasUseCase: CanvasUseCaseImpl(canvasRepository: soloSpaceRepository),
+                canvasImageExporter: CanvasImageExporter(
+                    toppingRenderer: canvasToppingRenderer,
+                    imageProvider: imageProvider
+                ),
+                logAnalyticsEvent: Self.logAnalyticsEvent,
+                soloSpace: soloSpaceRepository
+            )
+        )
+    }
+
+    func makeSoloToppingUseCase() -> ToppingUseCaseImpl {
+        ToppingUseCaseImpl(
+            imageUploadRepository: soloSpaceRepository,
+            toppingRepository: soloSpaceRepository
+        )
+    }
+
+    func makeSoloImageUploadRepository() -> any ImageUploadRepository {
+        soloSpaceRepository
+    }
+
+    func makeSoloSpaceRepository() -> any SoloSpaceRepository {
+        soloSpaceRepository
     }
 
     func makeAlbumPickerStore(

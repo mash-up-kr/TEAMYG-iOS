@@ -5,6 +5,7 @@
 //  Created by 신상우 on 8/1/26.
 //
 
+import CanvasDomain
 import Common
 import GroupDomain
 import SwiftUI
@@ -15,6 +16,8 @@ public final class GroupStore: MVIStore {
     public private(set) var state = State()
 
     private let groupUseCase: any GroupUseCase
+    /// 혼자 공간(#163) — 서버 목록과 따로 기기에서 읽는다. 목록 조회가 실패해도 체리 버튼은 떠야 한다.
+    private let soloSpaceRepository: any SoloSpaceRepository
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
     @ObservationIgnored private var loadGeneration = 0
@@ -26,8 +29,13 @@ public final class GroupStore: MVIStore {
     ]
     private static let emptyGuideDuration = Duration.milliseconds(3000)
 
-    public init(groupUseCase: any GroupUseCase, logAnalyticsEvent: @escaping AnalyticsEventLogger) {
+    public init(
+        groupUseCase: any GroupUseCase,
+        soloSpaceRepository: any SoloSpaceRepository,
+        logAnalyticsEvent: @escaping AnalyticsEventLogger
+    ) {
         self.groupUseCase = groupUseCase
+        self.soloSpaceRepository = soloSpaceRepository
         self.logAnalyticsEvent = logAnalyticsEvent
     }
 
@@ -44,9 +52,13 @@ public final class GroupStore: MVIStore {
             // 0건 안내는 진입할 때마다 처음부터 다시 재생한다 — 이번 진입의 조회 결과가 0건으로 확정되면 시작.
             resetEmptyGuide()
             beginLoad(isRefresh: false)
+            checkSoloSpace()
         case .refreshRequested:
             logAnalyticsEvent(.groupListRefreshed)
             beginLoad(isRefresh: true)
+            checkSoloSpace()
+        case .soloSpaceChecked(let exists):
+            state.hasSoloSpace = exists
         case .groupsLoaded(let groups):
             state.phase = .loaded(groups)
             if !groups.isEmpty {
@@ -125,6 +137,25 @@ public final class GroupStore: MVIStore {
         await loadTask?.value
     }
 
+    /// 혼자 만들기 — 만들어지면 `true`. 화면 이동은 View 몫이라 결과만 돌려준다 (`refresh()` 와 같은 async 진입점).
+    public func createSoloSpace() async -> Bool {
+        send(.addGroupMenuDismissed)
+        do {
+            try await soloSpaceRepository.create()
+            send(.soloSpaceChecked(true))
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func checkSoloSpace() {
+        Task { [soloSpaceRepository] in
+            let exists = await soloSpaceRepository.exists()
+            send(.soloSpaceChecked(exists))
+        }
+    }
+
     /// 최초 로딩만 로딩 화면을 띄운다. 당겨서 새로고침은 시스템 인디케이터가 이미 보이므로
     /// 기존 목록을 그대로 두고 결과가 오면 갈아끼운다.
     ///
@@ -169,6 +200,8 @@ public final class GroupStore: MVIStore {
         public var phase = Phase.idle
         public var emptyGuide = EmptyGuide.idle
         public var isAddGroupMenuPresented = false
+        /// 혼자 공간이 있으면 체리 버튼을 띄우고, 드롭다운의 "혼자 만들기" 를 숨긴다 (계정당 1개).
+        public var hasSoloSpace = false
 
         public var groupCount: Int? {
             guard case .loaded(let groups) = phase else { return nil }
@@ -224,6 +257,8 @@ public final class GroupStore: MVIStore {
         /// `loadGroups()` 결과 — View 가 아니라 Store 내부에서만 보낸다.
         case groupsLoaded([ParfaitGroup])
         case loadFailed
+        /// 혼자 공간 존재 여부 — Store 내부에서만 보낸다.
+        case soloSpaceChecked(Bool)
         /// 화면(드롭다운 바깥) 탭.
         case backgroundTapped
         case addGroupTapped

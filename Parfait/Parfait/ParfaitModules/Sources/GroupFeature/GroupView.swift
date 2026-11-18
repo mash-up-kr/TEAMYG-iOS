@@ -19,6 +19,7 @@ public struct GroupView: View {
     private let makeJoinGroupNicknameStore: (JoinedGroup) -> JoinGroupNicknameStore
     private let makeCreateGroupStore: () -> CreateGroupStore
     @Environment(\.scenePhase) private var scenePhase
+    @State private var toasts: [YGToastItem] = []
 
     /// `YGTopBar` 높이 — 상단 바 아래에 붙는 오버레이(툴팁·드롭다운)의 기준선.
     private static let topBarHeight: CGFloat = 60
@@ -36,6 +37,9 @@ public struct GroupView: View {
     private static let loadFailureMessageY: CGFloat = 112
     private static let overlayAnimation = Animation.snappy(duration: 0.24)
     private static let tooltipRevealAnimation = Animation.interpolatingSpring(mass: 1, stiffness: 80, damping: 20)
+    /// 혼자 공간 체리 버튼 지름·화면 끝 여백.
+    private static let soloSpaceButtonSize: CGFloat = 64
+    private static let soloSpaceButtonInset: CGFloat = 20
 
     public init(
         store: GroupStore,
@@ -58,6 +62,7 @@ public struct GroupView: View {
         // 툴팁·드롭다운도 화면 내내 살아 있는 이 컨테이너에 둬야 나타나고 사라질 때 애니메이션이 걸린다.
         ZStack(alignment: .topTrailing) {
             content
+            soloSpaceButton
             topBar
             tooltip
             addGroupMenu
@@ -94,6 +99,43 @@ public struct GroupView: View {
             }
         }
         .onDisappear { store.send(.screenDisappeared) }
+        .ygToastOverlay($toasts)
+    }
+
+    // MARK: - 혼자 공간 (#163)
+
+    /// 우하단 체리 버튼 — 서버 목록과 무관하게 띄운다(조회 실패·오프라인에서도 들어갈 수 있게).
+    /// 드롭다운 딤보다 아래 레이어라 메뉴가 열리면 함께 어두워진다.
+    @ViewBuilder
+    private var soloSpaceButton: some View {
+        if store.state.hasSoloSpace {
+            Button {
+                router.push(.soloCanvas)
+            } label: {
+                Image.parfaitCherry
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: Self.soloSpaceButtonSize * 0.6)
+                    .frame(width: Self.soloSpaceButtonSize, height: Self.soloSpaceButtonSize)
+                    .background(.whiteFixed, in: .circle)
+                    .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("내 공간")
+            .padding(Self.soloSpaceButtonInset)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    private func createSoloSpace() {
+        Task {
+            if await store.createSoloSpace() {
+                router.push(.soloCanvas)
+            } else {
+                toasts.append(YGToastItem(kind: .error, message: "내 공간을 만들지 못했어요, 잠시 후 다시 시도해 주세요"))
+            }
+        }
     }
 
     private func replaceTopWithCanvas(groupID: String, entry: CanvasEntry) {
@@ -212,6 +254,12 @@ public struct GroupView: View {
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .contentMargins(.top, Self.topBarHeight, for: .scrollContent)
+            // 체리 버튼이 마지막 토핑·접시를 가리지 않게 그만큼 더 스크롤된다.
+            .contentMargins(
+                .bottom,
+                store.state.hasSoloSpace ? Self.soloSpaceButtonSize + Self.soloSpaceButtonInset : 0,
+                for: .scrollContent
+            )
             .refreshable { await store.refresh() }
         }
     }
@@ -240,7 +288,7 @@ public struct GroupView: View {
             .transition(.opacity)
             .zIndex(4)
 
-            AddGroupMenu()
+            AddGroupMenu(onSoloCreateTap: store.state.hasSoloSpace ? nil : { createSoloSpace() })
                 .padding(.top, Self.addGroupMenuTopInset)
                 .padding(.trailing, Self.horizontalInset)
                 // 누른 칩에서 아래로 펼쳐지도록 위쪽을 붙잡는다.
