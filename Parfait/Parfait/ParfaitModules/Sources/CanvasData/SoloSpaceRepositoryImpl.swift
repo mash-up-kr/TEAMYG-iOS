@@ -1,5 +1,5 @@
 //
-//  SoloSpaceStore.swift
+//  SoloSpaceRepositoryImpl.swift
 //  CanvasData
 //
 //  Created by 김남수 on 11/18/26.
@@ -14,8 +14,8 @@ import Foundation
 /// 로그아웃해도 지우지 않는다 — 같은 계정으로 돌아오면 그대로 이어 쓴다.
 ///
 /// 캔버스 화면은 그룹 캔버스와 같은 Repository 계약으로 이 저장소를 쓴다. `groupID`·`parfaitID` 인자는 보지 않는다.
-/// ponytail: 매 작업마다 JSON 전체를 읽고 쓴다. 토핑 수백 개 규모에서 느려지면 메모리 캐시를 둔다.
-public actor SoloSpaceStore {
+/// 매 작업마다 JSON 전체를 읽고 쓴다 — 토핑 수백 개 규모에서 느려지면 메모리 캐시를 둔다.
+public actor SoloSpaceRepositoryImpl {
     private let resolveMemberID: @Sendable () async -> Int?
     private let now: @Sendable () -> Date
 
@@ -52,24 +52,26 @@ public actor SoloSpaceStore {
     }
 
     /// 읽고 → 바꾸고 → 쓴다. actor 라 작업끼리 겹치지 않는다.
+    /// `change` 가 `discardedFileNames` 에 담은 이미지는 기록을 저장한 **뒤에** 지운다 —
+    /// 저장이 실패했는데 파일만 먼저 지워져 기록이 없는 파일을 가리키는 일을 막는다.
     private func update<Result>(
-        _ change: (inout SoloSpaceRecord, SoloSpaceDirectory) throws -> Result
+        _ change: (inout SoloSpaceRecord, SoloSpaceDirectory, inout [String]) throws -> Result
     ) async throws -> Result {
         let space = try await requireSpace()
         var record = try load(space)
-        let result = try change(&record, space)
+        var discardedFileNames: [String] = []
+        let result = try change(&record, space, &discardedFileNames)
         try save(record, in: space)
+        for fileName in discardedFileNames {
+            try? FileManager.default.removeItem(at: space.imageURL(fileName))
+        }
         return result
-    }
-
-    private func removeImage(_ fileName: String, in space: SoloSpaceDirectory) {
-        try? FileManager.default.removeItem(at: space.imageURL(fileName))
     }
 }
 
 // MARK: - SoloSpaceRepository
 
-extension SoloSpaceStore: SoloSpaceRepository {
+extension SoloSpaceRepositoryImpl: SoloSpaceRepository {
     public func exists() async -> Bool {
         guard let space = await currentSpace() else { return false }
         return FileManager.default.fileExists(atPath: space.recordURL.path(percentEncoded: false))
@@ -94,7 +96,7 @@ extension SoloSpaceStore: SoloSpaceRepository {
 
 // MARK: - CanvasRepository
 
-extension SoloSpaceStore: CanvasRepository {
+extension SoloSpaceRepositoryImpl: CanvasRepository {
     /// 날짜별 캔버스가 없다 — 오늘자든 과거든 같은 캔버스 하나를 돌려준다.
     public func fetchToday(groupID: Int) async throws -> Parfait {
         let space = try await requireSpace()
@@ -123,7 +125,7 @@ extension SoloSpaceStore: CanvasRepository {
         parfaitID: Int,
         to background: ParfaitBackgroundChange
     ) async throws -> ParfaitBackground {
-        try await update { record, space in
+        try await update { record, space, discardedFileNames in
             let newBackground: SoloSpaceRecord.Background
             switch background {
             case .color(let hex):
@@ -135,7 +137,7 @@ extension SoloSpaceStore: CanvasRepository {
                 newBackground = .image(fileName: fileName)
             }
             if case .image(let oldFileName) = record.background {
-                removeImage(oldFileName, in: space)
+                discardedFileNames.append(oldFileName)
             }
             record.background = newBackground
             return newBackground.entity(in: space)
@@ -145,10 +147,10 @@ extension SoloSpaceStore: CanvasRepository {
 
 // MARK: - ImageUploadRepository
 
-extension SoloSpaceStore: ImageUploadRepository {
+extension SoloSpaceRepositoryImpl: ImageUploadRepository {
     /// 서버 대신 이미지 폴더에 저장하고, 배치·배경 변경이 쓸 수 있게 id 를 발급한다.
     public func upload(_ image: ImageUpload) async throws -> UploadedImage {
-        try await update { record, space in
+        try await update { record, space, _ in
             let fileName = "\(UUID().uuidString).\(image.kind == .topping ? "png" : "jpg")"
             let fileURL = space.imageURL(fileName)
             try image.imageData.write(to: fileURL, options: .atomic)
@@ -161,7 +163,7 @@ extension SoloSpaceStore: ImageUploadRepository {
 
 // MARK: - ToppingRepository
 
-extension SoloSpaceStore: ToppingRepository {
+extension SoloSpaceRepositoryImpl: ToppingRepository {
     public func place(
         imageID: Int,
         placement: ToppingPlacementValues,
@@ -170,7 +172,7 @@ extension SoloSpaceStore: ToppingRepository {
         parfaitID: Int
     ) async throws -> PlacedTopping {
         let createdAt = now()
-        return try await update { record, space in
+        return try await update { record, space, _ in
             guard let fileName = record.uploads.removeValue(forKey: imageID) else {
                 throw SoloSpaceError.imageNotFound
             }
@@ -192,7 +194,7 @@ extension SoloSpaceStore: ToppingRepository {
         groupID: Int,
         parfaitID: Int
     ) async throws {
-        try await update { record, _ in
+        try await update { record, _, _ in
             for index in record.toppings.indices {
                 if let placementUpdate = updates[record.toppings[index].id] {
                     record.toppings[index].placement.apply(placementUpdate)
@@ -212,7 +214,7 @@ extension SoloSpaceStore: ToppingRepository {
         groupID: Int,
         parfaitID: Int
     ) async throws -> ToppingBorderStyle {
-        try await update { record, _ in
+        try await update { record, _, _ in
             guard let index = record.toppings.firstIndex(where: { $0.id == toppingID }) else {
                 throw SoloSpaceError.toppingNotFound
             }
@@ -222,15 +224,15 @@ extension SoloSpaceStore: ToppingRepository {
     }
 
     public func delete(toppingID: Int, groupID: Int, parfaitID: Int) async throws {
-        try await update { record, space in
+        try await update { record, _, discardedFileNames in
             guard let index = record.toppings.firstIndex(where: { $0.id == toppingID }) else { return }
-            removeImage(record.toppings.remove(at: index).fileName, in: space)
+            discardedFileNames.append(record.toppings.remove(at: index).fileName)
         }
     }
 
     public func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText {
         let createdAt = now()
-        return try await update { record, space in
+        return try await update { record, space, _ in
             let text = SoloSpaceRecord.Text(
                 id: record.issueID(),
                 text: draft.text,
@@ -247,7 +249,7 @@ extension SoloSpaceStore: ToppingRepository {
     }
 
     public func deleteText(textID: Int, groupID: Int, parfaitID: Int) async throws {
-        try await update { record, _ in
+        try await update { record, _, _ in
             record.texts.removeAll { $0.id == textID }
         }
     }
@@ -255,13 +257,19 @@ extension SoloSpaceStore: ToppingRepository {
 
 // MARK: - 엔티티 조립
 
-private extension SoloSpaceStore {
+extension SoloSpaceRepositoryImpl {
+    /// 혼자 공간의 유일한 작성자 — 내 토핑이라 편집할 수 있다.
     static func owner(memberID: Int) -> ParfaitMember {
         ParfaitMember(id: memberID, nickname: "나", nametagChip: .type1)
     }
+}
 
+private extension SoloSpaceRepositoryImpl {
     func parfait(from record: SoloSpaceRecord, in space: SoloSpaceDirectory) -> Parfait {
-        let today = Calendar.current.dateComponents([.year, .month, .day], from: now())
+        // 캔버스의 하루는 새벽 3시에 바뀐다 — CanvasFeature `CalendarDate(canvasDayContaining:)` 와 같은 규칙.
+        // 다르면 0~3시에 화면이 "날짜가 바뀐 응답" 으로 보고 주기 갱신을 버린다.
+        let canvasDay = now().addingTimeInterval(-3 * 60 * 60)
+        let today = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: canvasDay)
         let owner = Self.owner(memberID: space.memberID)
         return Parfait(
             id: SoloSpace.canvasID,
@@ -282,167 +290,4 @@ enum SoloSpaceError: Error {
     case notCreated
     case imageNotFound
     case toppingNotFound
-}
-
-// MARK: - 저장 형식
-
-/// 한 계정의 혼자 공간 디렉터리.
-private struct SoloSpaceDirectory {
-    let memberID: Int
-    let directoryURL: URL
-
-    var recordURL: URL { directoryURL.appending(path: "canvas.json") }
-    var imagesURL: URL { directoryURL.appending(path: "Images", directoryHint: .isDirectory) }
-
-    func imageURL(_ fileName: String) -> URL { imagesURL.appending(path: fileName) }
-}
-
-/// `canvas.json` 의 형식. 이미지는 파일명만 적는다 — 앱 컨테이너 경로는 업데이트마다 바뀔 수 있어 읽을 때 붙인다.
-private struct SoloSpaceRecord: Codable {
-    var nextID = 1
-    /// 업로드했지만 아직 배치·배경에 쓰이지 않은 이미지. 쓰이는 순간 빠진다.
-    var uploads: [Int: String] = [:]
-    var background: Background?
-    var toppings: [Topping] = []
-    var texts: [Text] = []
-
-    mutating func issueID() -> Int {
-        defer { nextID += 1 }
-        return nextID
-    }
-
-    enum Background: Codable {
-        case color(hex: String)
-        case image(fileName: String)
-    }
-
-    struct Placement: Codable {
-        var positionX: Double
-        var positionY: Double
-        var positionZ: Int
-        var scale: Double
-        var rotation: Double
-    }
-
-    struct Border: Codable {
-        let colorHex: String
-        let width: Double
-    }
-
-    struct Topping: Codable {
-        let id: Int
-        let fileName: String
-        var placement: Placement
-        /// `nil` 이면 테두리 없음.
-        var border: Border?
-        let createdAt: Date
-    }
-
-    enum Alignment: String, Codable {
-        case left, center, right
-    }
-
-    struct Text: Codable {
-        let id: Int
-        let text: String
-        var placement: Placement
-        let colorHex: String
-        let isFill: Bool
-        let isStroke: Bool
-        let alignment: Alignment
-        let createdAt: Date
-    }
-}
-
-private extension SoloSpaceRecord.Background {
-    func entity(in space: SoloSpaceDirectory) -> ParfaitBackground {
-        switch self {
-        case .color(let hex): .color(hex: hex)
-        case .image(let fileName): .image(url: space.imageURL(fileName))
-        }
-    }
-}
-
-private extension SoloSpaceRecord.Topping {
-    func entity(in space: SoloSpaceDirectory) -> PlacedTopping {
-        PlacedTopping(
-            id: id,
-            imageURL: space.imageURL(fileName),
-            positionX: placement.positionX,
-            positionY: placement.positionY,
-            positionZ: placement.positionZ,
-            scale: placement.scale,
-            rotation: placement.rotation,
-            border: border.map { .solid(colorHex: $0.colorHex, width: $0.width) } ?? ToppingBorderStyle.none,
-            placedBy: SoloSpaceStore.owner(memberID: space.memberID),
-            ownerType: .currentUser,
-            createdAt: createdAt
-        )
-    }
-}
-
-private extension SoloSpaceRecord.Text {
-    func entity(owner: ParfaitMember) -> PlacedText {
-        PlacedText(
-            id: id,
-            text: text,
-            positionX: placement.positionX,
-            positionY: placement.positionY,
-            positionZ: placement.positionZ,
-            scale: placement.scale,
-            rotation: placement.rotation,
-            colorHex: colorHex,
-            isFill: isFill,
-            isStroke: isStroke,
-            alignment: alignment.entity,
-            placedBy: owner,
-            ownerType: .currentUser,
-            createdAt: createdAt
-        )
-    }
-}
-
-private extension SoloSpaceRecord.Placement {
-    init(_ values: ToppingPlacementValues) {
-        self.init(
-            positionX: values.positionX,
-            positionY: values.positionY,
-            positionZ: values.positionZ,
-            scale: values.scale,
-            rotation: values.rotation
-        )
-    }
-
-    mutating func apply(_ update: ToppingPlacementUpdate) {
-        positionX = update.positionX ?? positionX
-        positionY = update.positionY ?? positionY
-        positionZ = update.positionZ ?? positionZ
-        scale = update.scale ?? scale
-        rotation = update.rotation ?? rotation
-    }
-}
-
-private extension SoloSpaceRecord.Border {
-    init?(_ style: ToppingBorderStyle) {
-        guard case .solid(let colorHex, let width) = style else { return nil }
-        self.init(colorHex: colorHex, width: width)
-    }
-}
-
-private extension SoloSpaceRecord.Alignment {
-    init(_ alignment: PlacedTextAlignment) {
-        switch alignment {
-        case .left: self = .left
-        case .center: self = .center
-        case .right: self = .right
-        }
-    }
-
-    var entity: PlacedTextAlignment {
-        switch self {
-        case .left: .left
-        case .center: .center
-        case .right: .right
-        }
-    }
 }
