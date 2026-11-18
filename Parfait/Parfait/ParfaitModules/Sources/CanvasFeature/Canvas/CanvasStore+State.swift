@@ -37,6 +37,8 @@ public extension CanvasStore {
         public let canvasImageExporter: CanvasImageExporter
         public let now: @Sendable () -> Date
         public let logAnalyticsEvent: AnalyticsEventLogger
+        /// 있으면 혼자 공간 캔버스(#163) — 캘린더·멤버·사이드메뉴 대신 리셋을 쓴다.
+        public let soloSpace: (any SoloSpaceRepository)?
 
         public init(
             groupID: Int,
@@ -44,7 +46,8 @@ public extension CanvasStore {
             canvasUseCase: any CanvasUseCase,
             canvasImageExporter: CanvasImageExporter,
             now: @escaping @Sendable () -> Date = { .now },
-            logAnalyticsEvent: @escaping AnalyticsEventLogger
+            logAnalyticsEvent: @escaping AnalyticsEventLogger,
+            soloSpace: (any SoloSpaceRepository)? = nil
         ) {
             self.groupID = groupID
             self.entry = entry
@@ -52,6 +55,7 @@ public extension CanvasStore {
             self.canvasImageExporter = canvasImageExporter
             self.now = now
             self.logAnalyticsEvent = logAnalyticsEvent
+            self.soloSpace = soloSpace
         }
     }
 
@@ -59,6 +63,10 @@ public extension CanvasStore {
         /// 캔버스 응답(`Parfait.groupName`)이 채운다. 로딩 전엔 빈 제목.
         public var groupName: String = ""
         var entry = CanvasEntry.regular
+        /// 혼자 공간 캔버스 — `Dependencies.soloSpace` 로 정해진다.
+        var isSolo = false
+        /// 혼자 공간 리셋 확인 팝업.
+        var isResetPopupPresented = false
         public var members: [Member]
         public var contentState: ContentState
         public var canvasContent: CanvasContent?
@@ -370,6 +378,8 @@ public extension CanvasStore {
         case todayParfaitTapped
         case pastParfaitNudgeTapped
         case moreMenuTapped
+        case resetPopupVisibilityChanged(Bool)
+        case resetConfirmed
     }
 
     enum Event: Equatable, Sendable {
@@ -382,5 +392,6 @@ public extension CanvasStore {
         case canvasEmpty
         case canvasLoadFailed
         case toppingSpotlighted(SpotlightToast)
+        case resetFailed
     }
 }
