@@ -18,6 +18,9 @@ public protocol SoloSpaceRepository: Sendable {
 
     /// 캔버스 내용(배경·토핑·텍스트)을 전부 비운다. 혼자 공간 자체는 남는다.
     func reset() async throws
+
+    /// 혼자 공간을 통째로 지운다. 지운 뒤엔 다시 만들 수 있다.
+    func delete() async throws
 }
 
 public enum SoloSpace {

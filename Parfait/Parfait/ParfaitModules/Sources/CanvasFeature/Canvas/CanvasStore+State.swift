@@ -69,8 +69,8 @@ public extension CanvasStore {
         var entry = CanvasEntry.regular
         /// 혼자 공간 캔버스 — `Dependencies.soloSpace` 로 정해진다.
         var isSolo = false
-        /// 혼자 공간 리셋 확인 팝업.
-        var isResetPopupPresented = false
+        /// 혼자 공간 메뉴(비우기·삭제하기)와 확인 팝업.
+        var soloDialog: SoloDialog?
         public var members: [Member]
         public var contentState: ContentState
         public var canvasContent: CanvasContent?
@@ -382,8 +382,9 @@ public extension CanvasStore {
         case todayParfaitTapped
         case pastParfaitNudgeTapped
         case moreMenuTapped
-        case resetPopupVisibilityChanged(Bool)
-        case resetConfirmed
+        case soloDialogChanged(SoloDialog?)
+        /// 떠 있는 혼자 공간 확인 팝업(비우기·삭제하기)을 실행한다.
+        case soloDialogConfirmed
     }
 
     enum Event: Equatable, Sendable {
@@ -398,5 +399,7 @@ public extension CanvasStore {
         case toppingSpotlighted(SpotlightToast)
         case reviewRequested
         case resetFailed
+        case deleteFailed
+        case soloSpaceDeleted
     }
 }
