@@ -296,7 +296,8 @@ struct AppDependencies {
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
                 ),
-                logAnalyticsEvent: Self.logAnalyticsEvent,
+                // 혼자 공간은 이벤트를 보내지 않는다 — 하위 화면(토핑·텍스트·편집·저장)도 이 로거를 물려받는다.
+                logAnalyticsEvent: { _ in },
                 soloSpace: soloSpaceRepository
             )
         )
