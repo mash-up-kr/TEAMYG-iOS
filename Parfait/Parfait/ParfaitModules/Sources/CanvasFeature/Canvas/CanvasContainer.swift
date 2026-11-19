@@ -308,6 +308,8 @@ struct CanvasDateHeader: View {
             }
             .buttonStyle(.plain)
             .allowsHitTesting(onCalendarTap != nil)
+            // 캘린더가 없으면 날짜는 글자일 뿐이다 — VoiceOver 가 버튼으로 읽지 않게.
+            .accessibilityRemoveTraits(onCalendarTap == nil ? .isButton : [])
 
             Spacer()
 

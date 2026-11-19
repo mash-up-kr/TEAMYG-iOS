@@ -87,10 +87,11 @@ extension SoloSpaceRepositoryImpl: SoloSpaceRepository {
     public func reset() async throws {
         let space = try await requireSpace()
         let record = try load(space)
+        // 발급한 id 는 이어서 쓴다 — 화면이 들고 있던 옛 id 와 새 토핑이 겹치지 않게.
+        // 빈 기록을 먼저 저장하고 이미지를 지운다 — 저장이 실패하면 기존 캔버스가 그대로 남는다.
+        try save(SoloSpaceRecord(nextID: record.nextID), in: space)
         try? FileManager.default.removeItem(at: space.imagesURL)
         try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
-        // 발급한 id 는 이어서 쓴다 — 화면이 들고 있던 옛 id 와 새 토핑이 겹치지 않게.
-        try save(SoloSpaceRecord(nextID: record.nextID), in: space)
     }
 }
 
