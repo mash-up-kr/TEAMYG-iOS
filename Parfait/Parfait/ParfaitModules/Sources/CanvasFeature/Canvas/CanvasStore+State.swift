@@ -383,8 +383,8 @@ public extension CanvasStore {
         case pastParfaitNudgeTapped
         case moreMenuTapped
         case soloDialogChanged(SoloDialog?)
-        /// 떠 있는 혼자 공간 확인 팝업(비우기·삭제하기)을 실행한다.
-        case soloDialogConfirmed
+        /// 확인 팝업(비우기·삭제하기)의 실행 버튼. 팝업이 먼저 닫히므로 어떤 창이었는지 함께 받는다.
+        case soloDialogConfirmed(SoloDialog)
     }
 
     enum Event: Equatable, Sendable {

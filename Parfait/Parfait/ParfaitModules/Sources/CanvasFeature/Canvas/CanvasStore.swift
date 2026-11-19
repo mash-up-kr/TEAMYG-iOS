@@ -196,8 +196,8 @@ public final class CanvasStore: MVIStore {
             if state.isSolo { state.soloDialog = .menu }
         case .soloDialogChanged(let dialog):
             state.soloDialog = dialog
-        case .soloDialogConfirmed:
-            confirmSoloDialog()
+        case .soloDialogConfirmed(let dialog):
+            confirmSoloDialog(dialog)
         }
     }
 
@@ -327,11 +327,11 @@ extension CanvasStore {
 }
 
 private extension CanvasStore {
-    func confirmSoloDialog() {
-        switch state.soloDialog {
+    func confirmSoloDialog(_ dialog: SoloDialog) {
+        switch dialog {
         case .resetConfirm: resetSoloSpace()
         case .deleteConfirm: deleteSoloSpace()
-        case .menu, nil: break
+        case .menu: break
         }
     }
 
