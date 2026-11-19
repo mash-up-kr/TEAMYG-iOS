@@ -188,12 +188,12 @@ public final class CanvasStore: MVIStore {
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
             dismissOverlays()
-            // 혼자 공간엔 사이드메뉴가 없다 — 같은 버튼이 리셋 확인을 연다.
-            if state.isSolo { state.isResetPopupPresented = true }
-        case .resetPopupVisibilityChanged(let isPresented):
-            state.isResetPopupPresented = isPresented
-        case .resetConfirmed:
-            resetSoloSpace()
+            // 혼자 공간엔 사이드메뉴가 없다 — 같은 버튼이 비우기·삭제하기 메뉴를 연다.
+            if state.isSolo { state.soloDialog = .menu }
+        case .soloDialogChanged(let dialog):
+            state.soloDialog = dialog
+        case .soloDialogConfirmed:
+            confirmSoloDialog()
         }
     }
 
@@ -313,11 +313,28 @@ public final class CanvasStore: MVIStore {
     }
 }
 
+extension CanvasStore {
+    /// 혼자 공간 상단 메뉴 버튼이 여는 창. 한 번에 하나만 뜬다.
+    public enum SoloDialog: Equatable, Sendable {
+        case menu
+        case resetConfirm
+        case deleteConfirm
+    }
+}
+
 private extension CanvasStore {
+    func confirmSoloDialog() {
+        switch state.soloDialog {
+        case .resetConfirm: resetSoloSpace()
+        case .deleteConfirm: deleteSoloSpace()
+        case .menu, nil: break
+        }
+    }
+
     /// 혼자 공간 리셋 — 비운 뒤 오늘 캔버스를 다시 그린다.
     func resetSoloSpace() {
         guard let soloSpace = dependencies.soloSpace else { return }
-        state.isResetPopupPresented = false
+        state.soloDialog = nil
         Task { [weak self] in
             do {
                 try await soloSpace.reset()
@@ -325,6 +342,20 @@ private extension CanvasStore {
                 loadCanvas(for: state.calendar.today)
             } catch {
                 self?.eventChannel.send(.resetFailed)
+            }
+        }
+    }
+
+    /// 혼자 공간 삭제 — 지우고 나면 화면을 닫는다. 그룹 목록이 다시 나타나며 존재 여부를 새로 확인한다.
+    func deleteSoloSpace() {
+        guard let soloSpace = dependencies.soloSpace else { return }
+        state.soloDialog = nil
+        Task { [weak self] in
+            do {
+                try await soloSpace.delete()
+                self?.eventChannel.send(.soloSpaceDeleted)
+            } catch {
+                self?.eventChannel.send(.deleteFailed)
             }
         }
     }

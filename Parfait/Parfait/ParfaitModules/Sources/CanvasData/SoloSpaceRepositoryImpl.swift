@@ -93,6 +93,11 @@ extension SoloSpaceRepositoryImpl: SoloSpaceRepository {
         try? FileManager.default.removeItem(at: space.imagesURL)
         try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
     }
+
+    public func delete() async throws {
+        let space = try await requireSpace()
+        try FileManager.default.removeItem(at: space.directoryURL)
+    }
 }
 
 // MARK: - CanvasRepository
