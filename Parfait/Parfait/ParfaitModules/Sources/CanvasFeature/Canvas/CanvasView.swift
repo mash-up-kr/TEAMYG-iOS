@@ -193,17 +193,18 @@ public struct CanvasView: View {
             isPresented: soloDialogBinding(.resetConfirm),
             title: "캔버스를 비울까요?",
             description: "올린 사진·글·배경이 모두 지워지고\n되돌릴 수 없어요",
-            secondaryTitle: "비우기",
-            primaryTitle: "그만두기",
-            secondaryAction: { store.send(.soloDialogConfirmed) }
+            // 취소는 왼쪽, 실행은 오른쪽.
+            secondaryTitle: "그만두기",
+            primaryTitle: "비우기",
+            primaryAction: { store.send(.soloDialogConfirmed(.resetConfirm)) }
         )
         .ygPopup(
             isPresented: soloDialogBinding(.deleteConfirm),
             title: "내 공간을 삭제할까요?",
             description: "캔버스와 올린 사진이 모두 사라지고\n되돌릴 수 없어요",
-            secondaryTitle: "삭제하기",
-            primaryTitle: "그만두기",
-            secondaryAction: { store.send(.soloDialogConfirmed) }
+            secondaryTitle: "그만두기",
+            primaryTitle: "삭제하기",
+            primaryAction: { store.send(.soloDialogConfirmed(.deleteConfirm)) }
         )
     }
 
