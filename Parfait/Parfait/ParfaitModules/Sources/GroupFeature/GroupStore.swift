@@ -22,6 +22,8 @@ public final class GroupStore: MVIStore {
     /// 로드 세대 번호. 새 로드가 시작되면 올라가고, 이전 로드는 자기 세대가 아니면 아무것도 하지 않는다.
     @ObservationIgnored private var loadGeneration = 0
     @ObservationIgnored private var emptyGuideTask: Task<Void, Never>?
+    /// 혼자 공간 존재 확인. 새 확인·생성이 시작되면 취소해 늦게 온 옛 결과가 덮어쓰지 않게 한다.
+    @ObservationIgnored private var soloSpaceCheckTask: Task<Void, Never>?
     private let logAnalyticsEvent: AnalyticsEventLogger
 
     private static let emptyGuideStepOffsets: [Duration] = [
@@ -91,6 +93,8 @@ public final class GroupStore: MVIStore {
         case .screenDisappeared:
             loadTask?.cancel()
             loadTask = nil
+            soloSpaceCheckTask?.cancel()
+            soloSpaceCheckTask = nil
             emptyGuideTask?.cancel()
             emptyGuideTask = nil
         }
@@ -140,6 +144,7 @@ public final class GroupStore: MVIStore {
     /// 혼자 만들기 — 만들어지면 `true`. 화면 이동은 View 몫이라 결과만 돌려준다 (`refresh()` 와 같은 async 진입점).
     public func createSoloSpace() async -> Bool {
         send(.addGroupMenuDismissed)
+        soloSpaceCheckTask?.cancel()
         do {
             try await soloSpaceRepository.create()
             send(.soloSpaceChecked(true))
@@ -150,8 +155,10 @@ public final class GroupStore: MVIStore {
     }
 
     private func checkSoloSpace() {
-        Task { [soloSpaceRepository] in
+        soloSpaceCheckTask?.cancel()
+        soloSpaceCheckTask = Task { [soloSpaceRepository] in
             let exists = await soloSpaceRepository.exists()
+            guard !Task.isCancelled else { return }
             send(.soloSpaceChecked(exists))
         }
     }
