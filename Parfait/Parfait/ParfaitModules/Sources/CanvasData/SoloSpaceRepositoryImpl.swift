@@ -28,14 +28,18 @@ public actor SoloSpaceRepositoryImpl {
     // MARK: - 파일
 
     /// 아직 없으면 빈 캔버스로 만들어 돌려준다.
+    /// "파일 없음" 일 때만 새로 만든다 — 그 밖의 읽기 실패(기기 잠금 중 파일 보호, I/O 오류)는 던져서
+    /// 기존 캔버스를 빈 기록으로 덮어쓰지 않게 한다.
     private func load() throws -> SoloSpaceRecord {
-        guard let data = try? Data(contentsOf: space.recordURL) else {
+        do {
+            let data = try Data(contentsOf: space.recordURL)
+            return try JSONDecoder().decode(SoloSpaceRecord.self, from: data)
+        } catch CocoaError.fileReadNoSuchFile {
             try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
             let record = SoloSpaceRecord()
             try save(record)
             return record
         }
-        return try JSONDecoder().decode(SoloSpaceRecord.self, from: data)
     }
 
     private func save(_ record: SoloSpaceRecord) throws {
