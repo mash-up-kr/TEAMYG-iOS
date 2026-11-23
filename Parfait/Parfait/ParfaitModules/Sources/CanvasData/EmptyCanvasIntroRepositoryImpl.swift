@@ -11,11 +11,15 @@ import Foundation
 public actor EmptyCanvasIntroRepositoryImpl: EmptyCanvasIntroRepository {
     public init() {}
 
-    public func markPlayedIfNeeded(groupID: Int, on date: ParfaitDate) -> Bool {
-        let playedDateKey = "canvas.emptyIntroPlayedDate.\(groupID)"
-        let dateText = "\(date.year)-\(date.month)-\(date.day)"
-        guard UserDefaults.standard.string(forKey: playedDateKey) != dateText else { return false }
-        UserDefaults.standard.set(dateText, forKey: playedDateKey)
-        return true
+    public func hasPlayed(groupID: Int, on date: ParfaitDate) -> Bool {
+        UserDefaults.standard.string(forKey: playedDateKey(groupID: groupID)) == date.isoText
+    }
+
+    public func markPlayed(groupID: Int, on date: ParfaitDate) {
+        UserDefaults.standard.set(date.isoText, forKey: playedDateKey(groupID: groupID))
+    }
+
+    private func playedDateKey(groupID: Int) -> String {
+        "canvas.emptyIntroPlayedDate.\(groupID)"
     }
 }

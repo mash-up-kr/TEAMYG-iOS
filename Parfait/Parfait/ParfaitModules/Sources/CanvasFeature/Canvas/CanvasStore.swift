@@ -530,14 +530,20 @@ private extension CanvasStore {
         guard state.emptyCanvasIntroPhase == .hidden, emptyCanvasIntroStartTask == nil else { return }
 
         emptyCanvasIntroStartTask = Task { [weak self, dependencies] in
-            let shouldPlay = await dependencies.emptyCanvasIntroRepository.markPlayedIfNeeded(
+            let hasPlayed = await dependencies.emptyCanvasIntroRepository.hasPlayed(
                 groupID: dependencies.groupID,
                 on: date
             )
             guard !Task.isCancelled, let self else { return }
+            if !hasPlayed, state.contentState == .empty, !state.isClosedCanvas {
+                state.emptyCanvasIntroPhase = .playing
+                await dependencies.emptyCanvasIntroRepository.markPlayed(
+                    groupID: dependencies.groupID,
+                    on: date
+                )
+            }
+            guard !Task.isCancelled else { return }
             emptyCanvasIntroStartTask = nil
-            guard shouldPlay, state.contentState == .empty, !state.isClosedCanvas else { return }
-            state.emptyCanvasIntroPhase = .playing
         }
     }
 

@@ -6,5 +6,6 @@
 //
 
 public protocol EmptyCanvasIntroRepository: Sendable {
-    func markPlayedIfNeeded(groupID: Int, on date: ParfaitDate) async -> Bool
+    func hasPlayed(groupID: Int, on date: ParfaitDate) async -> Bool
+    func markPlayed(groupID: Int, on date: ParfaitDate) async
 }
