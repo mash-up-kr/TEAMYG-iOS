@@ -7,6 +7,7 @@
 
 import CanvasDomain
 import Routing
+import StoreKit
 import SwiftUI
 import UIComponent
 
@@ -20,6 +21,9 @@ public struct CanvasView: View {
     @State private var presentedEditDestination: CanvasStore.CanvasEditDestination?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
+    /// 업로드 화면이 완전히 닫히면 띄울 리뷰 요청.
+    @State private var isReviewRequestPending = false
 
     /// 사이드메뉴(S-101)로 나가는 통로. 피처 밖 화면이라 `AppRoute` 로 간다.
     private let router: any Router
@@ -112,6 +116,9 @@ public struct CanvasView: View {
                 case .toppingSpotlighted(let spotlightToast):
                     // Spotlight 를 옮길 때마다 앞선 작성자 Toast 는 즉시 걷어낸다.
                     toasts = [spotlightToast.toastItem]
+                case .reviewRequested:
+                    // 업로드 화면(fullScreenCover)이 닫히는 도중에 부르면 시스템이 무시한다 → 다 닫힌 뒤(onDismiss) 띄운다.
+                    isReviewRequestPending = true
                 }
             }
         }
@@ -126,7 +133,7 @@ public struct CanvasView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
-        .fullScreenCover(item: toppingAddSourceBinding) { source in
+        .fullScreenCover(item: toppingAddSourceBinding, onDismiss: requestPendingReview) { source in
             switch source {
             case .camera(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
@@ -143,7 +150,7 @@ public struct CanvasView: View {
             transaction.disablesAnimations = true
             withTransaction(transaction) { presentedEditDestination = destination }
         }
-        .fullScreenCover(item: canvasEditDestinationBinding) { destination in
+        .fullScreenCover(item: canvasEditDestinationBinding, onDismiss: requestPendingReview) { destination in
             // 내부에서 배경 이미지 피커를 push 하므로(CanvasBackgroundEditView) 스택이 필요하다.
             NavigationStack {
                 // 페이드는 스택 안에서 건다 — 밖에서 걸면 캔버스 이동 신호(환경값)가 스택을 거쳐 늦게 닿아
@@ -217,6 +224,12 @@ public struct CanvasView: View {
                 )
             )
         )
+    }
+
+    private func requestPendingReview() {
+        guard isReviewRequestPending else { return }
+        isReviewRequestPending = false
+        requestReview()
     }
 
     private var savePreviewBinding: Binding<CanvasStore.SavePreview?> {

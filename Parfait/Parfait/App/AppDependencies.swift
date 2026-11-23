@@ -63,6 +63,7 @@ struct AppDependencies {
     }
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
+    private let reviewRequestPolicy = ReviewRequestPolicy()
 
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
@@ -257,9 +258,15 @@ struct AppDependencies {
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
                 ),
-                logAnalyticsEvent: Self.logAnalyticsEvent
+                logAnalyticsEvent: Self.logAnalyticsEvent,
+                recordContentUpload: { [reviewRequestPolicy] in reviewRequestPolicy.recordUpload() }
             )
         )
+    }
+
+    /// 리뷰 요청 조건의 "로그인 후 3일" 기준점 — 세션이 생기는 시점에 App 루트가 호출한다(최초 1회만 기록).
+    func recordLoginForReviewRequest() {
+        reviewRequestPolicy.recordLogin()
     }
 
     func makeAlbumPickerStore(

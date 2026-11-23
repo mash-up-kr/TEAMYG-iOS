@@ -37,6 +37,8 @@ public extension CanvasStore {
         public let canvasImageExporter: CanvasImageExporter
         public let now: @Sendable () -> Date
         public let logAnalyticsEvent: AnalyticsEventLogger
+        /// 업로드(배경·텍스트·사진) 성공을 알린다. `true` 면 지금 앱 리뷰를 요청할 차례다 — 조건은 App 이 판단한다.
+        public let recordContentUpload: @MainActor @Sendable () -> Bool
 
         public init(
             groupID: Int,
@@ -44,7 +46,8 @@ public extension CanvasStore {
             canvasUseCase: any CanvasUseCase,
             canvasImageExporter: CanvasImageExporter,
             now: @escaping @Sendable () -> Date = { .now },
-            logAnalyticsEvent: @escaping AnalyticsEventLogger
+            logAnalyticsEvent: @escaping AnalyticsEventLogger,
+            recordContentUpload: @escaping @MainActor @Sendable () -> Bool = { false }
         ) {
             self.groupID = groupID
             self.entry = entry
@@ -52,6 +55,7 @@ public extension CanvasStore {
             self.canvasImageExporter = canvasImageExporter
             self.now = now
             self.logAnalyticsEvent = logAnalyticsEvent
+            self.recordContentUpload = recordContentUpload
         }
     }
 
@@ -382,5 +386,6 @@ public extension CanvasStore {
         case canvasEmpty
         case canvasLoadFailed
         case toppingSpotlighted(SpotlightToast)
+        case reviewRequested
     }
 }
