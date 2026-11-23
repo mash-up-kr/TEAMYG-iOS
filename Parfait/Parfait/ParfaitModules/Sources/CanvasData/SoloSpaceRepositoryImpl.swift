@@ -10,44 +10,35 @@ import Foundation
 
 /// 혼자 공간의 로컬 저장소 (#163). 서버 대신 기기 파일에 캔버스 하나를 보관한다.
 ///
-/// 계정별 디렉터리(`Application Support/SoloSpace/<memberID>/`)에 `canvas.json` 과 이미지 파일을 둔다.
-/// 로그아웃해도 지우지 않는다 — 같은 계정으로 돌아오면 그대로 이어 쓴다.
+/// 로그인과 무관하게 기기당 하나 — `Application Support/SoloSpace/` 에 `canvas.json` 과 이미지 파일을 둔다.
+/// 처음 읽을 때 빈 캔버스로 만들어지고, 지우면 다음에 읽을 때 다시 만들어진다.
 ///
 /// 캔버스 화면은 그룹 캔버스와 같은 Repository 계약으로 이 저장소를 쓴다. `groupID`·`parfaitID` 인자는 보지 않는다.
 /// 매 작업마다 JSON 전체를 읽고 쓴다 — 토핑 수백 개 규모에서 느려지면 메모리 캐시를 둔다.
 public actor SoloSpaceRepositoryImpl {
-    private let resolveMemberID: @Sendable () async -> Int?
+    private let space = SoloSpaceDirectory(
+        directoryURL: URL.applicationSupportDirectory.appending(path: "SoloSpace", directoryHint: .isDirectory)
+    )
     private let now: @Sendable () -> Date
 
-    /// - Parameter resolveMemberID: 지금 로그인한 계정 ID. 오프라인에서도 답할 수 있도록 App 이 기기에 남긴 값을 먼저 준다.
-    public init(
-        resolveMemberID: @escaping @Sendable () async -> Int?,
-        now: @escaping @Sendable () -> Date = { .now }
-    ) {
-        self.resolveMemberID = resolveMemberID
+    public init(now: @escaping @Sendable () -> Date = { .now }) {
         self.now = now
     }
 
     // MARK: - 파일
 
-    private func currentSpace() async -> SoloSpaceDirectory? {
-        guard let memberID = await resolveMemberID() else { return nil }
-        let directoryURL = URL.applicationSupportDirectory
-            .appending(path: "SoloSpace/\(memberID)", directoryHint: .isDirectory)
-        return SoloSpaceDirectory(memberID: memberID, directoryURL: directoryURL)
-    }
-
-    private func requireSpace() async throws -> SoloSpaceDirectory {
-        guard let space = await currentSpace() else { throw SoloSpaceError.accountUnavailable }
-        return space
-    }
-
-    private func load(_ space: SoloSpaceDirectory) throws -> SoloSpaceRecord {
-        guard let data = try? Data(contentsOf: space.recordURL) else { throw SoloSpaceError.notCreated }
+    /// 아직 없으면 빈 캔버스로 만들어 돌려준다.
+    private func load() throws -> SoloSpaceRecord {
+        guard let data = try? Data(contentsOf: space.recordURL) else {
+            try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
+            let record = SoloSpaceRecord()
+            try save(record)
+            return record
+        }
         return try JSONDecoder().decode(SoloSpaceRecord.self, from: data)
     }
 
-    private func save(_ record: SoloSpaceRecord, in space: SoloSpaceDirectory) throws {
+    private func save(_ record: SoloSpaceRecord) throws {
         try JSONEncoder().encode(record).write(to: space.recordURL, options: .atomic)
     }
 
@@ -57,11 +48,10 @@ public actor SoloSpaceRepositoryImpl {
     private func update<Result>(
         _ change: (inout SoloSpaceRecord, SoloSpaceDirectory, inout [String]) throws -> Result
     ) async throws -> Result {
-        let space = try await requireSpace()
-        var record = try load(space)
+        var record = try load()
         var discardedFileNames: [String] = []
         let result = try change(&record, space, &discardedFileNames)
-        try save(record, in: space)
+        try save(record)
         for fileName in discardedFileNames {
             try? FileManager.default.removeItem(at: space.imageURL(fileName))
         }
@@ -72,30 +62,16 @@ public actor SoloSpaceRepositoryImpl {
 // MARK: - SoloSpaceRepository
 
 extension SoloSpaceRepositoryImpl: SoloSpaceRepository {
-    public func exists() async -> Bool {
-        guard let space = await currentSpace() else { return false }
-        return FileManager.default.fileExists(atPath: space.recordURL.path(percentEncoded: false))
-    }
-
-    public func create() async throws {
-        guard !(await exists()) else { return }
-        let space = try await requireSpace()
-        try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
-        try save(SoloSpaceRecord(), in: space)
-    }
-
     public func reset() async throws {
-        let space = try await requireSpace()
-        let record = try load(space)
+        let record = try load()
         // 발급한 id 는 이어서 쓴다 — 화면이 들고 있던 옛 id 와 새 토핑이 겹치지 않게.
         // 빈 기록을 먼저 저장하고 이미지를 지운다 — 저장이 실패하면 기존 캔버스가 그대로 남는다.
-        try save(SoloSpaceRecord(nextID: record.nextID), in: space)
+        try save(SoloSpaceRecord(nextID: record.nextID))
         try? FileManager.default.removeItem(at: space.imagesURL)
         try FileManager.default.createDirectory(at: space.imagesURL, withIntermediateDirectories: true)
     }
 
     public func delete() async throws {
-        let space = try await requireSpace()
         try FileManager.default.removeItem(at: space.directoryURL)
     }
 }
@@ -105,8 +81,7 @@ extension SoloSpaceRepositoryImpl: SoloSpaceRepository {
 extension SoloSpaceRepositoryImpl: CanvasRepository {
     /// 날짜별 캔버스가 없다 — 오늘자든 과거든 같은 캔버스 하나를 돌려준다.
     public func fetchToday(groupID: Int) async throws -> Parfait {
-        let space = try await requireSpace()
-        return parfait(from: try load(space), in: space)
+        parfait(from: try load(), in: space)
     }
 
     public func fetchParfait(groupID: Int, parfaitID: Int) async throws -> Parfait {
@@ -238,7 +213,7 @@ extension SoloSpaceRepositoryImpl: ToppingRepository {
 
     public func placeText(_ draft: TextDraft, groupID: Int, parfaitID: Int) async throws -> PlacedText {
         let createdAt = now()
-        return try await update { record, space, _ in
+        return try await update { record, _, _ in
             let text = SoloSpaceRecord.Text(
                 id: record.issueID(),
                 text: draft.text,
@@ -250,7 +225,7 @@ extension SoloSpaceRepositoryImpl: ToppingRepository {
                 createdAt: createdAt
             )
             record.texts.append(text)
-            return text.entity(owner: Self.owner(memberID: space.memberID))
+            return text.entity(owner: Self.owner)
         }
     }
 
@@ -265,9 +240,8 @@ extension SoloSpaceRepositoryImpl: ToppingRepository {
 
 extension SoloSpaceRepositoryImpl {
     /// 혼자 공간의 유일한 작성자 — 내 토핑이라 편집할 수 있다.
-    static func owner(memberID: Int) -> ParfaitMember {
-        ParfaitMember(id: memberID, nickname: "나", nametagChip: .type1)
-    }
+    /// 로그인과 무관해 계정 id 가 없다 — 편집 가능 여부는 `ownerType` 이 정한다.
+    static let owner = ParfaitMember(id: SoloSpace.canvasID, nickname: "나", nametagChip: .type1)
 }
 
 private extension SoloSpaceRepositoryImpl {
@@ -276,7 +250,7 @@ private extension SoloSpaceRepositoryImpl {
         // 다르면 0~3시에 화면이 "날짜가 바뀐 응답" 으로 보고 주기 갱신을 버린다.
         let canvasDay = now().addingTimeInterval(-3 * 60 * 60)
         let today = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: canvasDay)
-        let owner = Self.owner(memberID: space.memberID)
+        let owner = Self.owner
         return Parfait(
             id: SoloSpace.canvasID,
             groupName: SoloSpace.name,
@@ -291,9 +265,6 @@ private extension SoloSpaceRepositoryImpl {
 }
 
 enum SoloSpaceError: Error {
-    /// 로그인한 계정 ID 를 모른다 — 한 번도 계정 조회에 성공하지 못했다.
-    case accountUnavailable
-    case notCreated
     case imageNotFound
     case toppingNotFound
 }

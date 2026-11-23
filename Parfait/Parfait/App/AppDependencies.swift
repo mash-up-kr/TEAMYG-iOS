@@ -70,22 +70,10 @@ struct AppDependencies {
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
         self.tokenManager = tokenManager
-        let networkClient = NetworkClientImpl(
+        self.networkClient = NetworkClientImpl(
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
-        self.networkClient = networkClient
-        let memberRepository = MemberRepositoryImpl(
-            networkClient: networkClient,
-            tokenManager: tokenManager
-        )
-        // 오프라인에서도 계정을 알아야 혼자 공간을 연다 — 기기에 남긴 memberId 를 먼저 쓰고, 없을 때만 조회한다.
-        soloSpaceRepository = SoloSpaceRepositoryImpl(resolveMemberID: {
-            if let memberID = Self.cachedMemberID { return memberID }
-            let sessionToken = await tokenManager.accessToken
-            guard let account = try? await memberRepository.fetchMyAccount() else { return nil }
-            await Self.cacheMemberID(account.id, ifSessionUnchangedSince: sessionToken, tokenManager: tokenManager)
-            return account.id
-        })
+        soloSpaceRepository = SoloSpaceRepositoryImpl()
         canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
         noticeUseCase = NoticeUseCaseImpl(
             noticeRepository: NoticeRepositoryImpl(networkClient: networkClient)
@@ -123,7 +111,6 @@ struct AppDependencies {
     func makeGroupStore() -> GroupStore {
         GroupStore(
             groupUseCase: makeGroupUseCase(),
-            soloSpaceRepository: soloSpaceRepository,
             logAnalyticsEvent: Self.logAnalyticsEvent
         )
     }
@@ -233,10 +220,8 @@ struct AppDependencies {
     /// 로그인·가입 응답엔 memberId 가 없어 내 계정 조회로 받는다.
     func setAnalyticsUserID() async {
         do {
-            let sessionToken = await tokenManager.accessToken
             let account = try await makeMemberUseCase().fetchMyAccount()
             Analytics.setUserID(String(account.id))
-            await Self.cacheMemberID(account.id, ifSessionUnchangedSince: sessionToken, tokenManager: tokenManager)
         } catch {
             // 실패해도 다음 로그인·앱 실행 때 다시 맞춘다
             YGLogger.error("Analytics 사용자 ID 설정 실패: \(error)")
@@ -246,12 +231,6 @@ struct AppDependencies {
     /// 세션 종료(로그아웃·탈퇴·리프레시 만료) 시 사용자 ID 를 지운다 — 다음 사용자 이벤트가 이전 회원에 붙지 않게.
     func clearAnalyticsUserID() {
         Analytics.setUserID(nil)
-    }
-
-    /// 세션 종료 시 기억해 둔 계정을 잊는다 — 다음에 로그인한 다른 계정이 이전 계정의 혼자 공간을 보지 않게.
-    /// 혼자 공간 파일은 계정별로 남는다(같은 계정이 돌아오면 이어 쓴다).
-    func forgetMemberID() {
-        Self.cachedMemberID = nil
     }
 
     private func makeMemberUseCase() -> MemberUseCaseImpl {
@@ -340,26 +319,5 @@ struct AppDependencies {
 
     func makeCanvasToppingRenderer() -> CanvasToppingRenderer {
         canvasToppingRenderer
-    }
-}
-
-// MARK: - 혼자 공간 계정 키 (#163)
-
-extension AppDependencies {
-    /// 조회하는 사이 세션이 바뀌었으면(로그아웃·다른 계정 로그인) 남기지 않는다 —
-    /// 늦게 도착한 이전 계정 id 가 다음 계정의 혼자 공간 키가 되지 않게. 토큰 갱신으로 어긋나면 다음 조회 때 다시 남긴다.
-    private nonisolated static func cacheMemberID(
-        _ memberID: Int,
-        ifSessionUnchangedSince sessionToken: String?,
-        tokenManager: TokenManager
-    ) async {
-        guard let sessionToken, await tokenManager.accessToken == sessionToken else { return }
-        cachedMemberID = memberID
-    }
-
-    /// 마지막으로 확인한 내 memberId. 혼자 공간 디렉터리 키라 오프라인에서도 읽을 수 있게 기기에 남긴다.
-    private nonisolated static var cachedMemberID: Int? {
-        get { UserDefaults.standard.object(forKey: "soloSpace.memberID") as? Int }
-        set { UserDefaults.standard.set(newValue, forKey: "soloSpace.memberID") }
     }
 }

@@ -73,7 +73,6 @@ struct RootView: View {
             // 세션 종료(로그아웃·탈퇴·리프레시 토큰까지 거절) → 스택을 로그인으로 재시작한다.
             for await _ in await diContainer.sessionExpirations() {
                 diContainer.clearAnalyticsUserID()
-                diContainer.forgetMemberID()
                 router.replaceStack(with: .login)
             }
         }
@@ -122,6 +121,7 @@ struct RootView: View {
         case .setting:
             SettingView(
                 store: diContainer.makeSettingStore(),
+                router: router,
                 makeAccountInfoStore: diContainer.makeAccountInfoStore,
                 makeNoticeListStore: diContainer.makeNoticeListStore,
                 makeNoticeDetailStore: diContainer.makeNoticeDetailStore,

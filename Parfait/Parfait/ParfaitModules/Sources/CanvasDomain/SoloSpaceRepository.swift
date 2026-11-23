@@ -5,21 +5,15 @@
 //  Created by 김남수 on 11/18/26.
 //
 
-/// 혼자 공간 — 계정당 하나뿐인 로컬 전용 캔버스. 서버를 거치지 않는다 (#163).
+/// 혼자 공간 — 기기당 하나뿐인 로컬 전용 캔버스. 로그인과 무관하고 서버를 거치지 않는다 (#163).
 ///
 /// 날짜별 캔버스가 아니라 캔버스 하나를 계속 쓴다. 캔버스 조회·편집은 같은 구현체가
 /// `CanvasRepository`·`ToppingRepository`·`ImageUploadRepository` 로도 제공한다.
 public protocol SoloSpaceRepository: Sendable {
-    /// 지금 계정의 혼자 공간이 있는지. 계정을 알 수 없으면 `false`.
-    func exists() async -> Bool
-
-    /// 혼자 공간을 만든다. 이미 있으면 그대로 둔다.
-    func create() async throws
-
     /// 캔버스 내용(배경·토핑·텍스트)을 전부 비운다. 혼자 공간 자체는 남는다.
     func reset() async throws
 
-    /// 혼자 공간을 통째로 지운다. 지운 뒤엔 다시 만들 수 있다.
+    /// 혼자 공간을 통째로 지운다. 다음에 열면 빈 캔버스로 다시 만들어진다.
     func delete() async throws
 }
 

@@ -10,6 +10,9 @@ public struct LoginView: View {
     @Environment(\.authorizationController) private var authorizationController
 
     private let pageCount = 3
+    /// 마지막 온보딩 이미지의 체리 탭 횟수 — 5번이면 로그인 없이 혼자 공간으로 들어간다 (#163).
+    @State private var cherryTapCount = 0
+    private static let cherryTapsToEnterSoloSpace = 5
 
     public init(router: Router, store: LoginStore) {
         self.router = router
@@ -74,7 +77,8 @@ public struct LoginView: View {
             .tag(1)
             onboardingPage(
                 image: .imageOnboarding3,
-                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요"
+                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요",
+                onCherryTap: countCherryTap
             )
             .tag(2)
         }
@@ -83,15 +87,42 @@ public struct LoginView: View {
         .padding(.horizontal, 35)
     }
 
-    private func onboardingPage(image: Image, title: String) -> some View {
+    private func onboardingPage(
+        image: Image,
+        title: String,
+        onCherryTap: (() -> Void)? = nil
+    ) -> some View {
         VStack(spacing: 30) {
             image
                 .resizable()
                 .scaledToFit()
+                .overlay {
+                    if let onCherryTap {
+                        cherryHitArea(action: onCherryTap)
+                    }
+                }
             Text(title)
                 .suit(.caption01Regular)
                 .foregroundStyle(.gray300)
         }
+    }
+
+    /// 온보딩 3 이미지 속 체리(꼭지 포함) 자리 — 이미지 크기 대비 비율이라 확대돼도 따라간다.
+    private func cherryHitArea(action: @escaping () -> Void) -> some View {
+        GeometryReader { geometry in
+            Color.clear
+                .contentShape(.rect)
+                .frame(width: geometry.size.width * 0.24, height: geometry.size.height * 0.28)
+                .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.19)
+                .onTapGesture(perform: action)
+        }
+    }
+
+    private func countCherryTap() {
+        cherryTapCount += 1
+        guard cherryTapCount >= Self.cherryTapsToEnterSoloSpace else { return }
+        cherryTapCount = 0
+        router.push(.soloCanvas)
     }
 
     // MARK: - 소셜 로그인

@@ -10,9 +10,8 @@ import Foundation
 
 // MARK: - 저장 형식
 
-/// 한 계정의 혼자 공간 디렉터리.
+/// 혼자 공간 디렉터리.
 struct SoloSpaceDirectory {
-    let memberID: Int
     let directoryURL: URL
 
     var recordURL: URL { directoryURL.appending(path: "canvas.json") }
@@ -98,7 +97,7 @@ extension SoloSpaceRecord.Topping {
             scale: placement.scale,
             rotation: placement.rotation,
             border: border.map { .solid(colorHex: $0.colorHex, width: $0.width) } ?? ToppingBorderStyle.none,
-            placedBy: SoloSpaceRepositoryImpl.owner(memberID: space.memberID),
+            placedBy: SoloSpaceRepositoryImpl.owner,
             ownerType: .currentUser,
             createdAt: createdAt
         )
