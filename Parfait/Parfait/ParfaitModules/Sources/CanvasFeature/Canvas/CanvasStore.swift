@@ -28,6 +28,7 @@ public final class CanvasStore: MVIStore {
     private var recordedDatesLoadTask: Task<Void, Never>?
     private var recordedYearsLoadTask: Task<Void, Never>?
     private var pastParfaitNudgeLoadTask: Task<Void, Never>?
+    private var emptyCanvasIntroStartTask: Task<Void, Never>?
     private var didLoadInitialData = false
     /// 과거 캔버스는 `parfaitID` 로만 조회할 수 있다. 목록 응답에서 받은 매핑을 들고 있는다.
     private var parfaitIDsByDate: [CalendarDate: Int] = [:]
@@ -78,9 +79,11 @@ public final class CanvasStore: MVIStore {
             startCanvasRefreshTicker()
         case .sceneEnteredBackground:
             canvasRefreshTicker.stop()
+            completeEmptyCanvasIntroPlayback()
         case .screenDisappeared:
             canvasRefreshTicker.stop()
             cancelTasks()
+            completeEmptyCanvasIntroPlayback()
         case .screenChanged:
             logScreenViewIfChanged()
         case .canvasRefreshTicked:
@@ -93,6 +96,7 @@ public final class CanvasStore: MVIStore {
             // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다.
             state.canvasContent = (state.canvasContent ?? .empty).adding(text)
             if state.contentState == .empty { state.contentState = .filled }
+            state.emptyCanvasIntroPhase = .hidden
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
         case .toppingImageLoadFailed(let toppingID):
@@ -114,6 +118,7 @@ public final class CanvasStore: MVIStore {
             guard !state.isClosedCanvas else { return }
             state.calendar.close()
             guard ensureCanvasReady() else { return }
+            if state.menuState == .collapsed { advanceEmptyCanvasIntro() }
             state.menuState = state.menuState == .sourceOptions ? .collapsed : .sourceOptions
         case .cameraOptionTapped:
             openToppingAddFlow(.camera) { .camera(canvasDate: $0) }
@@ -187,6 +192,12 @@ public final class CanvasStore: MVIStore {
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
             dismissOverlays()
+        case .emptyCanvasIntroPlaybackFinished:
+            completeEmptyCanvasIntroPlayback()
+        case .emptyCanvasIntroControlTapped:
+            advanceEmptyCanvasIntro()
+        case .emptyCanvasIntroDismissed:
+            state.emptyCanvasIntroPhase = .hidden
         }
     }
 
@@ -257,19 +268,8 @@ public final class CanvasStore: MVIStore {
         loadCanvas(for: state.calendar.today)
     }
 
-    private func reloadIfDayChanged() {
-        let today = CalendarDate(canvasDayContaining: dependencies.now())
-        guard today != state.calendar.today else { return }
-
-        let didFollowToday = state.calendar.updateToday(today)
-        guard didFollowToday else {
-            loadRecordedDates(for: today.year)
-            return
-        }
-        reload(today)
-    }
-
     private func loadCanvas(for date: CalendarDate) {
+        completeEmptyCanvasIntroPlayback()
         canvasLoadTask?.cancel()
         silentRefreshTask?.cancel()
         silentRefreshTask = nil
@@ -491,12 +491,54 @@ private extension CanvasStore {
             state.canvasContent = nil
             toppingAuthorsByID = [:]
             textAuthorsByID = [:]
+            startEmptyCanvasIntroIfNeeded(on: parfait.date)
             return
         }
+        state.emptyCanvasIntroPhase = .hidden
         state.contentState = .filled
         state.canvasContent = CanvasContent(parfait)
         toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
         textAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.texts.map { ($0.id, ToppingAuthor($0)) })
+    }
+
+    func reloadIfDayChanged() {
+        let today = CalendarDate(canvasDayContaining: dependencies.now())
+        guard today != state.calendar.today else { return }
+
+        let didFollowToday = state.calendar.updateToday(today)
+        guard didFollowToday else {
+            loadRecordedDates(for: today.year)
+            return
+        }
+        state.emptyCanvasIntroPhase = .hidden
+        reload(today)
+    }
+
+    func completeEmptyCanvasIntroPlayback() {
+        state.emptyCanvasIntroPhase = state.emptyCanvasIntroPhase.completingPlayback
+    }
+
+    func advanceEmptyCanvasIntro() {
+        state.emptyCanvasIntroPhase = state.emptyCanvasIntroPhase.afterControlTap
+    }
+
+    func startEmptyCanvasIntroIfNeeded(on date: ParfaitDate) {
+        guard !state.isClosedCanvas else {
+            state.emptyCanvasIntroPhase = .hidden
+            return
+        }
+        guard state.emptyCanvasIntroPhase == .hidden, emptyCanvasIntroStartTask == nil else { return }
+
+        emptyCanvasIntroStartTask = Task { [weak self, dependencies] in
+            let shouldPlay = await dependencies.emptyCanvasIntroRepository.markPlayedIfNeeded(
+                groupID: dependencies.groupID,
+                on: date
+            )
+            guard !Task.isCancelled, let self else { return }
+            emptyCanvasIntroStartTask = nil
+            guard shouldPlay, state.contentState == .empty, !state.isClosedCanvas else { return }
+            state.emptyCanvasIntroPhase = .playing
+        }
     }
 
     func cancelTasks() {
@@ -508,10 +550,12 @@ private extension CanvasStore {
         recordedDatesLoadTask?.cancel()
         recordedYearsLoadTask?.cancel()
         pastParfaitNudgeLoadTask?.cancel()
+        emptyCanvasIntroStartTask?.cancel()
         canvasLoadTask = nil
         silentRefreshTask = nil
         recordedDatesLoadTask = nil
         recordedYearsLoadTask = nil
         pastParfaitNudgeLoadTask = nil
+        emptyCanvasIntroStartTask = nil
     }
 }

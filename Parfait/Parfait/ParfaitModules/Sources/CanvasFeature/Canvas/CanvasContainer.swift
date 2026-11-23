@@ -31,6 +31,7 @@ struct CanvasContainer: View {
                             dateText: state.dateText,
                             weekdayText: state.weekdayText,
                             contentState: state.contentState,
+                            emptyCanvasIntroPhase: state.emptyCanvasIntroPhase,
                             canvasContent: state.canvasContent,
                             spotlightedLayerID: state.spotlightedLayerID,
                             isDimmed: state.menuState != .collapsed,
@@ -43,7 +44,8 @@ struct CanvasContainer: View {
                             onSpotlightDismiss: { perform(.spotlightDismissed) },
                             onDimTap: { perform(.menuDimTapped) },
                             onToppingImageLoaded: { send(.toppingImageLoaded($0)) },
-                            onToppingImageLoadFailed: { send(.toppingImageLoadFailed($0)) }
+                            onToppingImageLoadFailed: { send(.toppingImageLoadFailed($0)) },
+                            onEmptyCanvasIntroFinished: { send(.emptyCanvasIntroPlaybackFinished) }
                         )
                         .aspectRatio(CanvasArea.aspectRatio, contentMode: .fit)
                         .onGeometryChange(for: CGRect.self) { proxy in
@@ -176,6 +178,7 @@ private struct CanvasBoard: View {
     let dateText: String
     let weekdayText: String
     let contentState: CanvasStore.ContentState
+    let emptyCanvasIntroPhase: EmptyCanvasIntroPhase
     let canvasContent: CanvasStore.CanvasContent?
     let spotlightedLayerID: CanvasLayer.LayerID?
     let isDimmed: Bool
@@ -189,6 +192,7 @@ private struct CanvasBoard: View {
     let onDimTap: () -> Void
     let onToppingImageLoaded: (Int) -> Void
     let onToppingImageLoadFailed: (Int) -> Void
+    let onEmptyCanvasIntroFinished: () -> Void
 
     var body: some View {
         ZStack {
@@ -198,7 +202,10 @@ private struct CanvasBoard: View {
             Group {
                 switch contentState {
                 case .empty:
-                    message("아직 캔버스가 비어 있어요", "첫번째 사진을 올려 캔버스를 채워보세요")
+                    EmptyCanvasIntroView(
+                        phase: emptyCanvasIntroPhase,
+                        onPlaybackFinished: onEmptyCanvasIntroFinished
+                    )
 
                 case .failed:
                     message("캔버스를 불러오지 못했어요", "아래로 당겨 새로고침해 주세요")

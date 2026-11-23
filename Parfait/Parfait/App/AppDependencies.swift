@@ -35,6 +35,7 @@ struct AppDependencies {
     private let networkClient: any NetworkClient
     /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
+    private let emptyCanvasIntroRepository = EmptyCanvasIntroRepositoryImpl()
     /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
     private let imageProvider = ImageProvider()
     private let noticeUseCase: NoticeUseCaseImpl
@@ -257,6 +258,7 @@ struct AppDependencies {
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
                 ),
+                emptyCanvasIntroRepository: emptyCanvasIntroRepository,
                 logAnalyticsEvent: Self.logAnalyticsEvent
             )
         )
