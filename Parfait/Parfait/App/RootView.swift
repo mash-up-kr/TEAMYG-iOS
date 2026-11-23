@@ -90,6 +90,7 @@ struct RootView: View {
             // 토큰은 그때그때 FCM 에서 조회한다 — 1회용 AsyncStream 을 .task 재시작이 죽이는 문제를 피한다.
             // Analytics 사용자 ID 도 같은 시점에 맞춘다.
             guard router.rootRoute == .group else { return }
+            diContainer.recordLoginForReviewRequest()
             await diContainer.setAnalyticsUserID()
             await diContainer.registerDeviceToken()
         }

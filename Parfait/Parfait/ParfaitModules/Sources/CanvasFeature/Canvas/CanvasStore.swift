@@ -93,6 +93,7 @@ public final class CanvasStore: MVIStore {
             // 재조회(C-106 이 닫힐 때) 전에 바로 반영한다.
             state.canvasContent = (state.canvasContent ?? .empty).adding(text)
             if state.contentState == .empty { state.contentState = .filled }
+            recordContentUpload()
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
         case .toppingImageLoadFailed(let toppingID):
@@ -108,6 +109,8 @@ public final class CanvasStore: MVIStore {
             state.canvasEditDestination = nil
             refreshCanvasSilently()
         case .canvasEditSaved:
+            // 토핑 위치·테두리 편집 저장은 업로드가 아니다 — 배경 변경만 센다.
+            if state.canvasEditDestination == .background { recordContentUpload() }
             state.canvasEditDestination = nil
             loadCanvas(for: state.calendar.selectedDate)
         case .toppingAddTapped:
@@ -129,6 +132,7 @@ public final class CanvasStore: MVIStore {
             refreshCanvasSilently()
         case .toppingSaved:
             state.toppingAddSource = nil
+            recordContentUpload()
             loadCanvas(for: state.calendar.selectedDate)
         case .calendarTapped:
             state.menuState = .collapsed
@@ -497,6 +501,12 @@ private extension CanvasStore {
         state.canvasContent = CanvasContent(parfait)
         toppingAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.toppings.map { ($0.id, ToppingAuthor($0)) })
         textAuthorsByID = Dictionary(uniqueKeysWithValues: parfait.texts.map { ($0.id, ToppingAuthor($0)) })
+    }
+
+    /// 업로드 성공을 App 에 알리고, 리뷰 요청 차례면 화면에 띄우게 한다.
+    private func recordContentUpload() {
+        guard dependencies.recordContentUpload() else { return }
+        eventChannel.send(.reviewRequested)
     }
 
     func cancelTasks() {
