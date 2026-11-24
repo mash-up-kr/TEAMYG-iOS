@@ -66,6 +66,9 @@ struct AppDependencies {
     }
     /// 캔버스를 나갔다 들어와도 테두리 실루엣 캐시가 살아 있도록 인스턴스 하나를 유지한다.
     private let canvasToppingRenderer: CanvasToppingRenderer
+    private let reviewRequestPolicy = ReviewRequestPolicy()
+    /// 혼자 공간 저장소 — 캔버스를 다시 열어도 같은 actor 를 써야 작업이 겹치지 않는다.
+    private let soloSpaceRepository: SoloSpaceRepositoryImpl
 
     init() {
         let tokenManager = TokenManager(networkClient: NetworkClientImpl())
@@ -73,6 +76,7 @@ struct AppDependencies {
         self.networkClient = NetworkClientImpl(
             interceptor: TokenInterceptor(tokenManager: tokenManager)
         )
+        soloSpaceRepository = SoloSpaceRepositoryImpl()
         canvasToppingRenderer = CanvasToppingRenderer(imageProvider: imageProvider)
         noticeUseCase = NoticeUseCaseImpl(
             noticeRepository: NoticeRepositoryImpl(networkClient: networkClient)
@@ -283,9 +287,44 @@ struct AppDependencies {
                     imageProvider: imageProvider
                 ),
                 emptyCanvasIntroRepository: emptyCanvasIntroRepository,
-                logAnalyticsEvent: Self.logAnalyticsEvent
+                logAnalyticsEvent: Self.logAnalyticsEvent,
+                recordContentUpload: { [reviewRequestPolicy] in reviewRequestPolicy.recordUpload() }
             )
         )
+    }
+
+    /// 리뷰 요청 조건의 "로그인 후 3일" 기준점 — 세션이 생기는 시점에 App 루트가 호출한다(최초 1회만 기록).
+    func recordLoginForReviewRequest() {
+        reviewRequestPolicy.recordLogin()
+    }
+
+    /// 혼자 공간 캔버스(#163) — 그룹 캔버스와 같은 화면을 로컬 저장소로 조립한다. 서버를 부르지 않는다.
+    func makeSoloCanvasStore() -> CanvasStore {
+        CanvasStore(
+            dependencies: .init(
+                groupID: SoloSpace.canvasID,
+                canvasUseCase: CanvasUseCaseImpl(canvasRepository: soloSpaceRepository),
+                canvasImageExporter: CanvasImageExporter(
+                    toppingRenderer: canvasToppingRenderer,
+                    imageProvider: imageProvider
+                ),
+                emptyCanvasIntroRepository: emptyCanvasIntroRepository,
+                // 혼자 공간은 이벤트를 보내지 않는다 — 하위 화면(토핑·텍스트·편집·저장)도 이 로거를 물려받는다.
+                logAnalyticsEvent: { _ in },
+                soloSpace: soloSpaceRepository
+            )
+        )
+    }
+
+    func makeSoloToppingUseCase() -> ToppingUseCaseImpl {
+        ToppingUseCaseImpl(
+            imageUploadRepository: soloSpaceRepository,
+            toppingRepository: soloSpaceRepository
+        )
+    }
+
+    func makeSoloImageUploadRepository() -> any ImageUploadRepository {
+        soloSpaceRepository
     }
 
     func makeAlbumPickerStore(

@@ -45,6 +45,7 @@ public final class CanvasStore: MVIStore {
     ) {
         var state = state
         state.entry = dependencies.entry
+        state.isSolo = dependencies.soloSpace != nil
         self.state = state
         self.dependencies = dependencies
     }
@@ -97,6 +98,7 @@ public final class CanvasStore: MVIStore {
             state.canvasContent = (state.canvasContent ?? .empty).adding(text)
             if state.contentState == .empty { state.contentState = .filled }
             state.emptyCanvasIntroPhase = .hidden
+            recordContentUpload()
         case .toppingImageLoaded(let toppingID):
             state.loadedToppingImageIDs.insert(toppingID)
         case .toppingImageLoadFailed(let toppingID):
@@ -112,6 +114,8 @@ public final class CanvasStore: MVIStore {
             state.canvasEditDestination = nil
             refreshCanvasSilently()
         case .canvasEditSaved:
+            // 토핑 위치·테두리 편집 저장은 업로드가 아니다 — 배경 변경만 센다.
+            if state.canvasEditDestination == .background { recordContentUpload() }
             state.canvasEditDestination = nil
             loadCanvas(for: state.calendar.selectedDate)
         case .toppingAddTapped:
@@ -134,6 +138,7 @@ public final class CanvasStore: MVIStore {
             refreshCanvasSilently()
         case .toppingSaved:
             state.toppingAddSource = nil
+            recordContentUpload()
             loadCanvas(for: state.calendar.selectedDate)
         case .calendarTapped:
             state.menuState = .collapsed
@@ -192,6 +197,12 @@ public final class CanvasStore: MVIStore {
             openPastParfaitNudgeTarget()
         case .moreMenuTapped: // 사이드메뉴(S-101) 이동은 View 가 라우터로 — 여긴 오버레이만 걷는다.
             dismissOverlays()
+            // 혼자 공간엔 사이드메뉴가 없다 — 같은 버튼이 비우기·삭제하기 메뉴를 연다.
+            if state.isSolo { state.soloDialog = .menu }
+        case .soloDialogChanged(let dialog):
+            state.soloDialog = dialog
+        case .soloDialogConfirmed(let dialog):
+            confirmSoloDialog(dialog)
         case .emptyCanvasIntroPlaybackFinished:
             completeEmptyCanvasIntroPlayback()
         case .emptyCanvasIntroControlTapped:
@@ -306,7 +317,53 @@ public final class CanvasStore: MVIStore {
     }
 }
 
+extension CanvasStore {
+    /// 혼자 공간 상단 메뉴 버튼이 여는 창. 한 번에 하나만 뜬다.
+    public enum SoloDialog: Equatable, Sendable {
+        case menu
+        case resetConfirm
+        case deleteConfirm
+    }
+}
+
 private extension CanvasStore {
+    func confirmSoloDialog(_ dialog: SoloDialog) {
+        switch dialog {
+        case .resetConfirm: resetSoloSpace()
+        case .deleteConfirm: deleteSoloSpace()
+        case .menu: break
+        }
+    }
+
+    /// 혼자 공간 리셋 — 비운 뒤 오늘 캔버스를 다시 그린다.
+    func resetSoloSpace() {
+        guard let soloSpace = dependencies.soloSpace else { return }
+        state.soloDialog = nil
+        Task { [weak self] in
+            do {
+                try await soloSpace.reset()
+                guard let self else { return }
+                loadCanvas(for: state.calendar.today)
+            } catch {
+                self?.eventChannel.send(.resetFailed)
+            }
+        }
+    }
+
+    /// 혼자 공간 삭제 — 지우고 나면 화면을 닫는다. 그룹 목록이 다시 나타나며 존재 여부를 새로 확인한다.
+    func deleteSoloSpace() {
+        guard let soloSpace = dependencies.soloSpace else { return }
+        state.soloDialog = nil
+        Task { [weak self] in
+            do {
+                try await soloSpace.delete()
+                self?.eventChannel.send(.soloSpaceDeleted)
+            } catch {
+                self?.eventChannel.send(.deleteFailed)
+            }
+        }
+    }
+
     /// SY-001-New 는 마감 날짜당 한 번만 알린다 — 안내한 날짜를 기기에 남기고, 이미 남긴 날짜는 거른다.
     var seenClosedDateKey: String {
         "canvas.seenClosedDate.\(dependencies.groupID)"
@@ -545,6 +602,12 @@ private extension CanvasStore {
             guard !Task.isCancelled else { return }
             emptyCanvasIntroStartTask = nil
         }
+    }
+
+    /// 업로드 성공을 App 에 알리고, 리뷰 요청 차례면 화면에 띄우게 한다.
+    private func recordContentUpload() {
+        guard dependencies.recordContentUpload() else { return }
+        eventChannel.send(.reviewRequested)
     }
 
     func cancelTasks() {

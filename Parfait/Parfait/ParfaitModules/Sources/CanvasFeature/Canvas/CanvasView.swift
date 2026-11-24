@@ -7,6 +7,7 @@
 
 import CanvasDomain
 import Routing
+import StoreKit
 import SwiftUI
 import UIComponent
 
@@ -20,6 +21,9 @@ public struct CanvasView: View {
     @State private var presentedEditDestination: CanvasStore.CanvasEditDestination?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
+    /// 업로드 화면이 완전히 닫히면 띄울 리뷰 요청.
+    @State private var isReviewRequestPending = false
 
     /// 사이드메뉴(S-101)로 나가는 통로. 피처 밖 화면이라 `AppRoute` 로 간다.
     private let router: any Router
@@ -58,6 +62,8 @@ public struct CanvasView: View {
                     onLeadingTap: { dismiss() },
                     onTrailingTap: {
                         store.send(.moreMenuTapped)
+                        // 혼자 공간은 사이드메뉴 대신 비우기·삭제하기 메뉴 — Store 가 연다.
+                        guard !store.state.isSolo else { return }
                         router.push(
                             .groupSideMenu(
                                 groupID: String(store.groupID),
@@ -121,6 +127,19 @@ public struct CanvasView: View {
                 case .toppingSpotlighted(let spotlightToast):
                     // Spotlight 를 옮길 때마다 앞선 작성자 Toast 는 즉시 걷어낸다.
                     toasts = [spotlightToast.toastItem]
+                case .reviewRequested:
+                    // 업로드 화면(fullScreenCover)이 닫히는 도중에 부르면 시스템이 무시한다 → 다 닫힌 뒤(onDismiss) 띄운다.
+                    isReviewRequestPending = true
+                case .resetFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "캔버스를 비우지 못했어요, 잠시 후 다시 시도해 주세요")
+                    )
+                case .deleteFailed:
+                    toasts.append(
+                        YGToastItem(kind: .error, message: "내 공간을 삭제하지 못했어요, 잠시 후 다시 시도해 주세요")
+                    )
+                case .soloSpaceDeleted:
+                    dismiss()
                 }
             }
         }
@@ -135,7 +154,7 @@ public struct CanvasView: View {
         .onDisappear {
             store.send(.screenDisappeared)
         }
-        .fullScreenCover(item: toppingAddSourceBinding) { source in
+        .fullScreenCover(item: toppingAddSourceBinding, onDismiss: requestPendingReview) { source in
             switch source {
             case .camera(let canvasDate):
                 toppingAddFlow(canvasDate: canvasDate, photoSource: .camera)
@@ -152,7 +171,7 @@ public struct CanvasView: View {
             transaction.disablesAnimations = true
             withTransaction(transaction) { presentedEditDestination = destination }
         }
-        .fullScreenCover(item: canvasEditDestinationBinding) { destination in
+        .fullScreenCover(item: canvasEditDestinationBinding, onDismiss: requestPendingReview) { destination in
             // 내부에서 배경 이미지 피커를 push 하므로(CanvasBackgroundEditView) 스택이 필요하다.
             NavigationStack {
                 // 페이드는 스택 안에서 건다 — 밖에서 걸면 캔버스 이동 신호(환경값)가 스택을 거쳐 늦게 닿아
@@ -178,6 +197,45 @@ public struct CanvasView: View {
         }
         // C-001 과 C-105 미리보기가 토핑 디코딩·실루엣 캐시를 공유한다.
         .environment(\.canvasToppingRenderer, toppingRenderer)
+        .confirmationDialog(
+            SoloSpace.name,
+            isPresented: soloDialogBinding(.menu),
+            titleVisibility: .hidden
+        ) {
+            Button("비우기") { store.send(.soloDialogChanged(.resetConfirm)) }
+            Button("삭제하기", role: .destructive) { store.send(.soloDialogChanged(.deleteConfirm)) }
+        }
+        .ygPopup(
+            isPresented: soloDialogBinding(.resetConfirm),
+            title: "캔버스를 비울까요?",
+            description: "올린 사진·글·배경이 모두 지워지고\n되돌릴 수 없어요",
+            // 취소는 왼쪽, 실행은 오른쪽.
+            secondaryTitle: "그만두기",
+            primaryTitle: "비우기",
+            primaryAction: { store.send(.soloDialogConfirmed(.resetConfirm)) }
+        )
+        .ygPopup(
+            isPresented: soloDialogBinding(.deleteConfirm),
+            title: "내 공간을 삭제할까요?",
+            description: "캔버스와 올린 사진이 모두 사라지고\n되돌릴 수 없어요",
+            secondaryTitle: "그만두기",
+            primaryTitle: "삭제하기",
+            primaryAction: { store.send(.soloDialogConfirmed(.deleteConfirm)) }
+        )
+    }
+
+    /// 혼자 공간 창 하나를 켜고 끄는 바인딩. 다른 창으로 넘어간 뒤 늦게 오는 `false` 는 무시한다.
+    private func soloDialogBinding(_ dialog: CanvasStore.SoloDialog) -> Binding<Bool> {
+        Binding(
+            get: { store.state.soloDialog == dialog },
+            set: { isPresented in
+                if isPresented {
+                    store.send(.soloDialogChanged(dialog))
+                } else if store.state.soloDialog == dialog {
+                    store.send(.soloDialogChanged(nil))
+                }
+            }
+        )
     }
 
     private var emptyCanvasIntroGestureMask: GestureMask {
@@ -230,6 +288,12 @@ public struct CanvasView: View {
                 )
             )
         )
+    }
+
+    private func requestPendingReview() {
+        guard isReviewRequestPending else { return }
+        isReviewRequestPending = false
+        requestReview()
     }
 
     private var savePreviewBinding: Binding<CanvasStore.SavePreview?> {
@@ -346,7 +410,9 @@ public struct CanvasView: View {
     }
 
     private var topBarMembers: [YGTopBar.Member] {
-        store.state.members.map {
+        // 혼자 공간은 나 혼자라 멤버 칩을 그리지 않는다.
+        guard !store.state.isSolo else { return [] }
+        return store.state.members.map {
             YGTopBar.Member(nickname: $0.nickname, nametagType: $0.nametagType)
         }
     }

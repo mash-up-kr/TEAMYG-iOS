@@ -111,6 +111,7 @@ struct RootView: View {
             // 토큰은 그때그때 FCM 에서 조회한다 — 1회용 AsyncStream 을 .task 재시작이 죽이는 문제를 피한다.
             // Analytics 사용자 ID 도 같은 시점에 맞춘다.
             guard router.rootRoute == .group else { return }
+            diContainer.recordLoginForReviewRequest()
             await diContainer.setAnalyticsUserID()
             await diContainer.registerDeviceToken()
         }
@@ -141,6 +142,7 @@ struct RootView: View {
         case .setting:
             SettingView(
                 store: diContainer.makeSettingStore(),
+                router: router,
                 makeAccountInfoStore: diContainer.makeAccountInfoStore,
                 makeNoticeListStore: diContainer.makeNoticeListStore,
                 makeNoticeDetailStore: diContainer.makeNoticeDetailStore,
@@ -160,6 +162,8 @@ struct RootView: View {
                     toppingRenderer: diContainer.makeCanvasToppingRenderer()
                 )
             }
+        case .soloCanvas:
+            soloCanvas
         case .groupSideMenu(let groupID, let groupName):
             GroupSideMenuView(
                 store: diContainer.makeGroupSideMenuStore(
@@ -203,6 +207,19 @@ struct RootView: View {
     private func skipOptionalUpdate() {
         requiredUpdate = nil
         finishSplashIfReady()
+    }
+
+    /// 혼자 공간 캔버스 — 그룹 캔버스와 같은 화면에 로컬 저장소를 끼운다 (#163).
+    private var soloCanvas: some View {
+        CanvasView(
+            store: diContainer.makeSoloCanvasStore(),
+            router: router,
+            makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
+            toppingUseCase: diContainer.makeSoloToppingUseCase(),
+            imageUploadRepository: diContainer.makeSoloImageUploadRepository(),
+            recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
+            toppingRenderer: diContainer.makeCanvasToppingRenderer()
+        )
     }
 
     /// `https://parfait-app.store/link?inviteCode=ABC123` → `ABC123`. 다른 URL 은 nil.
