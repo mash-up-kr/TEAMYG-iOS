@@ -5,6 +5,8 @@
 //  Created by Enes on 6/25/26.
 //
 
+import AppVersionData
+import AppVersionDomain
 import AuthData
 import AuthDomain
 import CanvasData
@@ -167,10 +169,32 @@ struct AppDependencies {
     }
 
     private func installedAppVersion() -> String {
-        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+        guard let version = bundleShortVersion() else {
             return ""
         }
         return "\(version)v"
+    }
+
+    private func bundleShortVersion() -> String? {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    }
+
+    func checkAppVersion() async -> AppVersionCheck? {
+        guard let version = bundleShortVersion() else { return nil }
+        let useCase = AppVersionUseCaseImpl(
+            appVersionRepository: AppVersionRepositoryImpl(networkClient: networkClient)
+        )
+        do {
+            let versionCheck = try await useCase.checkVersion(currentVersion: version)
+            YGLogger.log(
+                "앱 버전 확인: \(versionCheck.updateType) 현재 \(version) "
+                + "최소 \(versionCheck.minimumVersion) 최신 \(versionCheck.latestVersion)"
+            )
+            return versionCheck
+        } catch {
+            YGLogger.error("앱 버전 확인 실패: \(error)")
+            return nil
+        }
     }
 
     func makeNoticeListStore() -> NoticeListStore {

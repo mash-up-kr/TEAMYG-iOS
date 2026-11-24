@@ -3,6 +3,7 @@
 //  ※ App 만은 모듈로 빼지 않고 앱 타깃에 직접 둔다 — 앱 타깃이 이미 최외곽 레이어.
 import SwiftUI
 import Routing
+import AppVersionDomain
 import AuthData
 import Common
 import LoginFeature
@@ -24,6 +25,10 @@ struct RootView: View {
     @State private var toasts: [YGToastItem] = []
     /// 스플래시(로고 애니메이션) 재생 중 — 끝나면 실제 시작 화면으로 교체한다.
     @State private var isPlayingSplash = true
+    @State private var isSplashAnimationFinished = false
+    @State private var isAppVersionChecked = false
+    @State private var requiredUpdate: AppVersionCheck?
+    @Environment(\.openURL) private var openURL
     /// 초대 링크로 받은 코드 — 그룹 화면이 루트가 될 때(로그인 후 포함)까지 들고 있다가 연다.
     @State private var pendingInviteCode: String?
 
@@ -42,13 +47,29 @@ struct RootView: View {
     @ViewBuilder
     private var startFlow: some View {
         if isPlayingSplash {
-            SplashView { isPlayingSplash = false }
-                .task {
-                    // 자동로그인: 스플래시 재생 동안 저장된 토큰을 확인해 루트를 미리 결정한다.
-                    if await diContainer.hasStoredAccessToken() {
-                        router.replaceStack(with: .group)
-                    }
+            SplashView {
+                isSplashAnimationFinished = true
+                finishSplashIfReady()
+            }
+            .overlay {
+                if isSplashAnimationFinished, let requiredUpdate {
+                    updatePopup(for: requiredUpdate)
                 }
+            }
+            .task {
+                // 자동로그인: 스플래시 재생 동안 저장된 토큰을 확인해 루트를 미리 결정한다.
+                if await diContainer.hasStoredAccessToken() {
+                    router.replaceStack(with: .group)
+                }
+            }
+            .task {
+                if let versionCheck = await diContainer.checkAppVersion(),
+                   versionCheck.updateType != .upToDate {
+                    requiredUpdate = versionCheck
+                }
+                isAppVersionChecked = true
+                finishSplashIfReady()
+            }
         } else {
             mainFlow
         }
@@ -148,6 +169,40 @@ struct RootView: View {
                 onExit: { handleSideMenuExit($0, groupName: groupName) }
             )
         }
+    }
+
+    private func finishSplashIfReady() {
+        guard isSplashAnimationFinished, isAppVersionChecked, requiredUpdate == nil else { return }
+        isPlayingSplash = false
+    }
+
+    private func updatePopup(for versionCheck: AppVersionCheck) -> some View {
+        let isForced = versionCheck.updateType == .force
+        return YGPopup(
+            icon: .icWarningRound,
+            title: "업데이트가 필요해요",
+            description: "서비스를 계속 이용하려면\n최신 버전으로 업데이트해 주세요",
+            secondaryTitle: isForced ? "종료" : "나중에",
+            primaryTitle: "업데이트",
+            secondaryAction: {
+                if isForced {
+                    exit(0)
+                } else {
+                    skipOptionalUpdate()
+                }
+            },
+            primaryAction: {
+                openURL(versionCheck.storeURL)
+                if !isForced {
+                    skipOptionalUpdate()
+                }
+            }
+        )
+    }
+
+    private func skipOptionalUpdate() {
+        requiredUpdate = nil
+        finishSplashIfReady()
     }
 
     /// `https://parfait-app.store/link?inviteCode=ABC123` → `ABC123`. 다른 URL 은 nil.
