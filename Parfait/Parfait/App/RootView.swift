@@ -121,6 +121,7 @@ struct RootView: View {
         case .setting:
             SettingView(
                 store: diContainer.makeSettingStore(),
+                router: router,
                 makeAccountInfoStore: diContainer.makeAccountInfoStore,
                 makeNoticeListStore: diContainer.makeNoticeListStore,
                 makeNoticeDetailStore: diContainer.makeNoticeDetailStore,
@@ -140,6 +141,8 @@ struct RootView: View {
                     toppingRenderer: diContainer.makeCanvasToppingRenderer()
                 )
             }
+        case .soloCanvas:
+            soloCanvas
         case .groupSideMenu(let groupID, let groupName):
             GroupSideMenuView(
                 store: diContainer.makeGroupSideMenuStore(
@@ -149,6 +152,19 @@ struct RootView: View {
                 onExit: { handleSideMenuExit($0, groupName: groupName) }
             )
         }
+    }
+
+    /// 혼자 공간 캔버스 — 그룹 캔버스와 같은 화면에 로컬 저장소를 끼운다 (#163).
+    private var soloCanvas: some View {
+        CanvasView(
+            store: diContainer.makeSoloCanvasStore(),
+            router: router,
+            makeAlbumPickerStore: diContainer.makeAlbumPickerStore,
+            toppingUseCase: diContainer.makeSoloToppingUseCase(),
+            imageUploadRepository: diContainer.makeSoloImageUploadRepository(),
+            recentUploadsRepository: diContainer.makeRecentUploadsRepository(),
+            toppingRenderer: diContainer.makeCanvasToppingRenderer()
+        )
     }
 
     /// `https://parfait-app.store/link?inviteCode=ABC123` → `ABC123`. 다른 URL 은 nil.

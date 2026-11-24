@@ -7,11 +7,16 @@
 
 import AuthDomain
 import NoticeDomain
+import Routing
 import SwiftUI
 import UIComponent
 
 public struct SettingView: View {
     @State private var store: SettingStore
+    private let router: Router
+    /// 내 프로필 카드 탭 횟수 — 5번이면 혼자 공간으로 들어간다 (#163).
+    @State private var profileCardTapCount = 0
+    private static let profileCardTapsToEnterSoloSpace = 5
     /// 계정 정보 화면 store 팩토리 — UseCase 주입은 App(Composition Root)이 담당한다.
     private let makeAccountInfoStore: (String) -> AccountInfoStore
     private let makeNoticeListStore: () -> NoticeListStore
@@ -20,12 +25,14 @@ public struct SettingView: View {
 
     public init(
         store: SettingStore,
+        router: Router,
         makeAccountInfoStore: @escaping (String) -> AccountInfoStore,
         makeNoticeListStore: @escaping () -> NoticeListStore,
         makeNoticeDetailStore: @escaping (Notice) -> NoticeDetailStore,
         makeNotificationSettingStore: @escaping () -> NotificationSettingStore
     ) {
         _store = State(initialValue: store)
+        self.router = router
         self.makeAccountInfoStore = makeAccountInfoStore
         self.makeNoticeListStore = makeNoticeListStore
         self.makeNoticeDetailStore = makeNoticeDetailStore
@@ -96,6 +103,15 @@ public struct SettingView: View {
         .padding(.padding6)
         .background(.white75)
         .border(.cherry100, width: 1)
+        .contentShape(.rect)
+        .onTapGesture(perform: countProfileCardTap)
+    }
+
+    private func countProfileCardTap() {
+        profileCardTapCount += 1
+        guard profileCardTapCount >= Self.profileCardTapsToEnterSoloSpace else { return }
+        profileCardTapCount = 0
+        router.push(.soloCanvas)
     }
 
     // MARK: - 설정 목록

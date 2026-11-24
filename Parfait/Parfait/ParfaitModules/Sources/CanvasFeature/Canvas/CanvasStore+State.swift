@@ -39,6 +39,8 @@ public extension CanvasStore {
         public let logAnalyticsEvent: AnalyticsEventLogger
         /// 업로드(배경·텍스트·사진) 성공을 알린다. `true` 면 지금 앱 리뷰를 요청할 차례다 — 조건은 App 이 판단한다.
         public let recordContentUpload: @MainActor @Sendable () -> Bool
+        /// 있으면 혼자 공간 캔버스(#163) — 캘린더·멤버·사이드메뉴 대신 리셋을 쓴다.
+        public let soloSpace: (any SoloSpaceRepository)?
 
         public init(
             groupID: Int,
@@ -47,7 +49,8 @@ public extension CanvasStore {
             canvasImageExporter: CanvasImageExporter,
             now: @escaping @Sendable () -> Date = { .now },
             logAnalyticsEvent: @escaping AnalyticsEventLogger,
-            recordContentUpload: @escaping @MainActor @Sendable () -> Bool = { false }
+            recordContentUpload: @escaping @MainActor @Sendable () -> Bool = { false },
+            soloSpace: (any SoloSpaceRepository)? = nil
         ) {
             self.groupID = groupID
             self.entry = entry
@@ -56,6 +59,7 @@ public extension CanvasStore {
             self.now = now
             self.logAnalyticsEvent = logAnalyticsEvent
             self.recordContentUpload = recordContentUpload
+            self.soloSpace = soloSpace
         }
     }
 
@@ -63,6 +67,10 @@ public extension CanvasStore {
         /// 캔버스 응답(`Parfait.groupName`)이 채운다. 로딩 전엔 빈 제목.
         public var groupName: String = ""
         var entry = CanvasEntry.regular
+        /// 혼자 공간 캔버스 — `Dependencies.soloSpace` 로 정해진다.
+        var isSolo = false
+        /// 혼자 공간 메뉴(비우기·삭제하기)와 확인 팝업.
+        var soloDialog: SoloDialog?
         public var members: [Member]
         public var contentState: ContentState
         public var canvasContent: CanvasContent?
@@ -374,6 +382,9 @@ public extension CanvasStore {
         case todayParfaitTapped
         case pastParfaitNudgeTapped
         case moreMenuTapped
+        case soloDialogChanged(SoloDialog?)
+        /// 확인 팝업(비우기·삭제하기)의 실행 버튼. 팝업이 먼저 닫히므로 어떤 창이었는지 함께 받는다.
+        case soloDialogConfirmed(SoloDialog)
     }
 
     enum Event: Equatable, Sendable {
@@ -387,5 +398,8 @@ public extension CanvasStore {
         case canvasLoadFailed
         case toppingSpotlighted(SpotlightToast)
         case reviewRequested
+        case resetFailed
+        case deleteFailed
+        case soloSpaceDeleted
     }
 }

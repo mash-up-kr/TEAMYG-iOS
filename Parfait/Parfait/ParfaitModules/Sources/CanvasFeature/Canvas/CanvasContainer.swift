@@ -35,7 +35,7 @@ struct CanvasContainer: View {
                             spotlightedLayerID: state.spotlightedLayerID,
                             isDimmed: state.menuState != .collapsed,
                             isSaveOptionsPresented: state.menuState == .saveOptions,
-                            onCalendarTap: { perform(.calendarTapped) },
+                            onCalendarTap: state.isSolo ? nil : { perform(.calendarTapped) },
                             onSaveTap: { perform(.saveOptionsTapped) },
                             onSaveFormatTap: { perform(.savePreviewRequested($0)) },
                             onToppingTap: { perform(.toppingTapped($0)) },
@@ -180,7 +180,8 @@ private struct CanvasBoard: View {
     let spotlightedLayerID: CanvasLayer.LayerID?
     let isDimmed: Bool
     let isSaveOptionsPresented: Bool
-    let onCalendarTap: () -> Void
+    /// `nil` 이면 캘린더가 없는 캔버스(혼자 공간) — 날짜만 보여 주고 누를 수 없다.
+    let onCalendarTap: (() -> Void)?
     let onSaveTap: () -> Void
     let onSaveFormatTap: (CanvasStore.SaveFormat) -> Void
     let onToppingTap: (Int) -> Void
@@ -281,19 +282,22 @@ struct CanvasDateHeader: View {
 
     let dateText: String
     let weekdayText: String
-    let onCalendarTap: () -> Void
+    /// `nil` 이면 캘린더가 없는 캔버스(혼자 공간) — 날짜만 보여 주고 누를 수 없다.
+    let onCalendarTap: (() -> Void)?
     let onSaveTap: () -> Void
 
     var body: some View {
         HStack(spacing: .gap1) {
-            Button(action: onCalendarTap) {
+            Button(action: onCalendarTap ?? {}) {
                 HStack(spacing: .gap2) {
-                    Image.icCalendar
-                        .resizable()
-                        .frame(width: 16, height: 16)
-                        .frame(width: 24, height: 24)
-                        .contentShape(.rect)
-                        .foregroundStyle(.gray500)
+                    if onCalendarTap != nil {
+                        Image.icCalendar
+                            .resizable()
+                            .frame(width: 16, height: 16)
+                            .frame(width: 24, height: 24)
+                            .contentShape(.rect)
+                            .foregroundStyle(.gray500)
+                    }
                     HStack(spacing: .gap1) {
                         Text(dateText)
                             .foregroundStyle(.gray800)
@@ -303,6 +307,9 @@ struct CanvasDateHeader: View {
                 }
             }
             .buttonStyle(.plain)
+            .allowsHitTesting(onCalendarTap != nil)
+            // 캘린더가 없으면 날짜는 글자일 뿐이다 — VoiceOver 가 버튼으로 읽지 않게.
+            .accessibilityRemoveTraits(onCalendarTap == nil ? .isButton : [])
 
             Spacer()
 
