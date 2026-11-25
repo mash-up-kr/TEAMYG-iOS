@@ -5,6 +5,8 @@
 //  Created by Enes on 6/25/26.
 //
 
+import AppVersionData
+import AppVersionDomain
 import AuthData
 import AuthDomain
 import CanvasData
@@ -35,6 +37,7 @@ struct AppDependencies {
     private let networkClient: any NetworkClient
     /// 최근 업로드는 기기 파일 저장소 하나를 공유한다 — 저장(토핑 확정)과 조회(C-102)가 같은 곳을 봐야 한다.
     private let recentUploadsRepository = RecentUploadsRepositoryImpl()
+    private let emptyCanvasIntroRepository = EmptyCanvasIntroRepositoryImpl()
     /// 이미지 다운로드·다운샘플링·메모리 캐시 공용 인스턴스 — 캔버스 화면과 갤러리 저장이 캐시를 공유한다.
     private let imageProvider = ImageProvider()
     private let noticeUseCase: NoticeUseCaseImpl
@@ -170,10 +173,32 @@ struct AppDependencies {
     }
 
     private func installedAppVersion() -> String {
-        guard let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else {
+        guard let version = bundleShortVersion() else {
             return ""
         }
         return "\(version)v"
+    }
+
+    private func bundleShortVersion() -> String? {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    }
+
+    func checkAppVersion() async -> AppVersionCheck? {
+        guard let version = bundleShortVersion() else { return nil }
+        let useCase = AppVersionUseCaseImpl(
+            appVersionRepository: AppVersionRepositoryImpl(networkClient: networkClient)
+        )
+        do {
+            let versionCheck = try await useCase.checkVersion(currentVersion: version)
+            YGLogger.log(
+                "앱 버전 확인: \(versionCheck.updateType) 현재 \(version) "
+                + "최소 \(versionCheck.minimumVersion) 최신 \(versionCheck.latestVersion)"
+            )
+            return versionCheck
+        } catch {
+            YGLogger.error("앱 버전 확인 실패: \(error)")
+            return nil
+        }
     }
 
     func makeNoticeListStore() -> NoticeListStore {
@@ -261,6 +286,7 @@ struct AppDependencies {
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
                 ),
+                emptyCanvasIntroRepository: emptyCanvasIntroRepository,
                 logAnalyticsEvent: Self.logAnalyticsEvent,
                 recordContentUpload: { [reviewRequestPolicy] in reviewRequestPolicy.recordUpload() }
             )
@@ -282,6 +308,7 @@ struct AppDependencies {
                     toppingRenderer: canvasToppingRenderer,
                     imageProvider: imageProvider
                 ),
+                emptyCanvasIntroRepository: emptyCanvasIntroRepository,
                 // 혼자 공간은 이벤트를 보내지 않는다 — 하위 화면(토핑·텍스트·편집·저장)도 이 로거를 물려받는다.
                 logAnalyticsEvent: { _ in },
                 soloSpace: soloSpaceRepository

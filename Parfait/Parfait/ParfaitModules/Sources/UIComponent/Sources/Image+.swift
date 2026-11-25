@@ -38,6 +38,8 @@ public extension Image {
     static let icSocialKakao = Image("Ic_Social_Kakao", bundle: .module)
     static let icTextType = Image("ic_Text_Type", bundle: .module)
     static let icWarningRound = Image("Ic_Warning_Round", bundle: .module)
+    static let imageEmptyCanvas1 = Image("Image-emptyCanvas-1", bundle: .module)
+    static let imageEmptyCanvas2 = Image("Image-emptyCanvas-2", bundle: .module)
     static let imageGalleryEmpty = Image("Image-Gallery-Empty", bundle: .module)
     static let imageGroupList1 = Image("Image-GroupList-1", bundle: .module)
     static let imageGroupList2 = Image("Image-GroupList-2", bundle: .module)
@@ -96,6 +98,8 @@ public extension UIImage {
     static var icSocialKakao: UIImage { UIImage(resource: ImageResource(name: "Ic_Social_Kakao", bundle: .module)) }
     static var icTextType: UIImage { UIImage(resource: ImageResource(name: "ic_Text_Type", bundle: .module)) }
     static var icWarningRound: UIImage { UIImage(resource: ImageResource(name: "Ic_Warning_Round", bundle: .module)) }
+    static var imageEmptyCanvas1: UIImage { UIImage(resource: ImageResource(name: "Image-emptyCanvas-1", bundle: .module)) }
+    static var imageEmptyCanvas2: UIImage { UIImage(resource: ImageResource(name: "Image-emptyCanvas-2", bundle: .module)) }
     static var imageGalleryEmpty: UIImage { UIImage(resource: ImageResource(name: "Image-Gallery-Empty", bundle: .module)) }
     static var imageGroupList1: UIImage { UIImage(resource: ImageResource(name: "Image-GroupList-1", bundle: .module)) }
     static var imageGroupList2: UIImage { UIImage(resource: ImageResource(name: "Image-GroupList-2", bundle: .module)) }

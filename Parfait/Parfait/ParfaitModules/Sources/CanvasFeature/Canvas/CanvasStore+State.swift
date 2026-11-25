@@ -35,6 +35,7 @@ public extension CanvasStore {
         public let canvasUseCase: any CanvasUseCase
         /// 과거 캔버스를 사진 앨범에 저장할 때 쓰는 합성기. 토핑 캐시를 화면과 공유한다.
         public let canvasImageExporter: CanvasImageExporter
+        public let emptyCanvasIntroRepository: any EmptyCanvasIntroRepository
         public let now: @Sendable () -> Date
         public let logAnalyticsEvent: AnalyticsEventLogger
         /// 업로드(배경·텍스트·사진) 성공을 알린다. `true` 면 지금 앱 리뷰를 요청할 차례다 — 조건은 App 이 판단한다.
@@ -47,6 +48,7 @@ public extension CanvasStore {
             entry: CanvasEntry = .regular,
             canvasUseCase: any CanvasUseCase,
             canvasImageExporter: CanvasImageExporter,
+            emptyCanvasIntroRepository: any EmptyCanvasIntroRepository,
             now: @escaping @Sendable () -> Date = { .now },
             logAnalyticsEvent: @escaping AnalyticsEventLogger,
             recordContentUpload: @escaping @MainActor @Sendable () -> Bool = { false },
@@ -56,6 +58,7 @@ public extension CanvasStore {
             self.entry = entry
             self.canvasUseCase = canvasUseCase
             self.canvasImageExporter = canvasImageExporter
+            self.emptyCanvasIntroRepository = emptyCanvasIntroRepository
             self.now = now
             self.logAnalyticsEvent = logAnalyticsEvent
             self.recordContentUpload = recordContentUpload
@@ -95,6 +98,7 @@ public extension CanvasStore {
         /// 로딩 딤이 기다리는 토핑 — 명시적 조회가 가져온 것만 담는다. 10초 주기 갱신으로 들어온
         /// 남의 토핑까지 기다리면 화면이 멀쩡한데도 딤이 다시 덮인다.
         var awaitedToppingImageIDs: Set<Int> = []
+        var emptyCanvasIntroPhase = EmptyCanvasIntroPhase.hidden
 
         public init(
             members: [Member] = [],
@@ -385,6 +389,9 @@ public extension CanvasStore {
         case soloDialogChanged(SoloDialog?)
         /// 확인 팝업(비우기·삭제하기)의 실행 버튼. 팝업이 먼저 닫히므로 어떤 창이었는지 함께 받는다.
         case soloDialogConfirmed(SoloDialog)
+        case emptyCanvasIntroPlaybackFinished
+        case emptyCanvasIntroControlTapped
+        case emptyCanvasIntroDismissed
     }
 
     enum Event: Equatable, Sendable {

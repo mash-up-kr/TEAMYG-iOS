@@ -72,6 +72,10 @@ public struct CanvasView: View {
                         )
                     }
                 )
+                .simultaneousGesture(
+                    TapGesture().onEnded { store.send(.emptyCanvasIntroControlTapped) },
+                    including: emptyCanvasIntroGestureMask
+                )
 
                 CanvasContainer(
                     state: store.state,
@@ -85,6 +89,11 @@ public struct CanvasView: View {
 
             loadingOverlay
         }
+        .contentShape(.rect)
+        .gesture(
+            TapGesture().onEnded { store.send(.emptyCanvasIntroDismissed) },
+            including: emptyCanvasIntroGestureMask
+        )
         .task {
             store.send(.screenAppeared)
         }
@@ -227,6 +236,10 @@ public struct CanvasView: View {
                 }
             }
         )
+    }
+
+    private var emptyCanvasIntroGestureMask: GestureMask {
+        store.state.contentState == .empty && store.state.emptyCanvasIntroPhase != .hidden ? .all : .subviews
     }
 
     /// 캔버스 조회부터 토핑 이미지 다운로드까지 화면 전체를 덮는다 (C-001-Loading / C-001-Error).
