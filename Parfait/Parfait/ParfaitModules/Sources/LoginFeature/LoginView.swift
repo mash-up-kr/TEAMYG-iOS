@@ -10,9 +10,9 @@ public struct LoginView: View {
     @Environment(\.authorizationController) private var authorizationController
 
     private let pageCount = 3
-    /// 마지막 온보딩 이미지의 체리 탭 횟수 — 5번이면 로그인 없이 혼자 공간으로 들어간다 (#163).
-    @State private var cherryTapCount = 0
-    private static let cherryTapsToEnterSoloSpace = 5
+    /// 첫 온보딩 이미지의 안경 탭 횟수 — 5번이면 로그인 없이 혼자 공간으로 들어간다 (#163).
+    @State private var glassesTapCount = 0
+    private static let glassesTapsToEnterSoloSpace = 5
 
     public init(router: Router, store: LoginStore) {
         self.router = router
@@ -67,7 +67,8 @@ public struct LoginView: View {
         TabView(selection: store.binding(\.currentPageIndex, LoginStore.Intent.pageChanged)) {
             onboardingPage(
                 image: .imageOnboarding1,
-                title: "매일 새로운 캔버스에 하루하루 다르게 기록해요"
+                title: "매일 새로운 캔버스에 하루하루 다르게 기록해요",
+                onGlassesTap: countGlassesTap
             )
             .tag(0)
             onboardingPage(
@@ -77,8 +78,7 @@ public struct LoginView: View {
             .tag(1)
             onboardingPage(
                 image: .imageOnboarding3,
-                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요",
-                onCherryTap: countCherryTap
+                title: "서로의 하루가 겹겹이 쌓여, 하나의 캔버스로 완성돼요"
             )
             .tag(2)
         }
@@ -90,15 +90,15 @@ public struct LoginView: View {
     private func onboardingPage(
         image: Image,
         title: String,
-        onCherryTap: (() -> Void)? = nil
+        onGlassesTap: (() -> Void)? = nil
     ) -> some View {
         VStack(spacing: 30) {
             image
                 .resizable()
                 .scaledToFit()
                 .overlay {
-                    if let onCherryTap {
-                        cherryHitArea(action: onCherryTap)
+                    if let onGlassesTap {
+                        glassesHitArea(action: onGlassesTap)
                     }
                 }
             Text(title)
@@ -107,21 +107,21 @@ public struct LoginView: View {
         }
     }
 
-    /// 온보딩 3 이미지 속 체리(꼭지 포함) 자리 — 이미지 크기 대비 비율이라 확대돼도 따라간다.
-    private func cherryHitArea(action: @escaping () -> Void) -> some View {
+    /// 온보딩 1 이미지 속 안경 자리 — 이미지 크기 대비 비율이라 확대돼도 따라간다.
+    private func glassesHitArea(action: @escaping () -> Void) -> some View {
         GeometryReader { geometry in
             Color.clear
                 .contentShape(.rect)
-                .frame(width: geometry.size.width * 0.24, height: geometry.size.height * 0.28)
-                .position(x: geometry.size.width * 0.5, y: geometry.size.height * 0.19)
+                .frame(width: geometry.size.width * 0.3, height: geometry.size.height * 0.13)
+                .position(x: geometry.size.width * 0.79, y: geometry.size.height * 0.155)
                 .onTapGesture(perform: action)
         }
     }
 
-    private func countCherryTap() {
-        cherryTapCount += 1
-        guard cherryTapCount >= Self.cherryTapsToEnterSoloSpace else { return }
-        cherryTapCount = 0
+    private func countGlassesTap() {
+        glassesTapCount += 1
+        guard glassesTapCount >= Self.glassesTapsToEnterSoloSpace else { return }
+        glassesTapCount = 0
         router.push(.soloCanvas)
     }
 
