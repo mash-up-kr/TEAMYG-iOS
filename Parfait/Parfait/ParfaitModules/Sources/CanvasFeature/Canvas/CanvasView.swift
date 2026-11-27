@@ -202,8 +202,8 @@ public struct CanvasView: View {
             isPresented: soloDialogBinding(.menu),
             titleVisibility: .hidden
         ) {
-            Button("비우기") { store.send(.soloDialogChanged(.resetConfirm)) }
-            Button("삭제하기", role: .destructive) { store.send(.soloDialogChanged(.deleteConfirm)) }
+            Button("캔버스 비우기") { store.send(.soloDialogChanged(.resetConfirm)) }
+            Button("내 공간 삭제하기", role: .destructive) { store.send(.soloDialogChanged(.deleteConfirm)) }
         }
         .ygPopup(
             isPresented: soloDialogBinding(.resetConfirm),

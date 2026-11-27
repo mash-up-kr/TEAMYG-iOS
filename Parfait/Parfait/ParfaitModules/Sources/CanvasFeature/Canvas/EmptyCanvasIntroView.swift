@@ -15,6 +15,7 @@ struct EmptyCanvasIntroView: View {
     }
 
     let phase: EmptyCanvasIntroPhase
+    let message: EmptyCanvasMessage
     let onPlaybackFinished: () -> Void
 
     var body: some View {
@@ -25,7 +26,7 @@ struct EmptyCanvasIntroView: View {
             )
 
             ZStack {
-                EmptyCanvasMessageText(message: EmptyCanvasMessage.plain)
+                EmptyCanvasMessageText(message: message.plain)
                     .foregroundStyle(.gray500)
                     .position(messageCenter)
 
@@ -34,6 +35,7 @@ struct EmptyCanvasIntroView: View {
                         isPlaying: phase == .playing,
                         canvasSize: proxy.size,
                         messageCenter: messageCenter,
+                        message: message,
                         onPlaybackFinished: onPlaybackFinished
                     )
                     .transition(.asymmetric(insertion: .identity, removal: .opacity))
@@ -50,6 +52,7 @@ private struct EmptyCanvasIntroPlayback: View {
     let isPlaying: Bool
     let canvasSize: CGSize
     let messageCenter: CGPoint
+    let message: EmptyCanvasMessage
     let onPlaybackFinished: () -> Void
 
     @State private var startDate = Date.now
@@ -66,7 +69,7 @@ private struct EmptyCanvasIntroPlayback: View {
                     dummyImageView(dummyImage, elapsed: elapsed)
                 }
 
-                EmptyCanvasMessageText(message: EmptyCanvasMessage.highlighted(elapsed: elapsed))
+                EmptyCanvasMessageText(message: message.highlighted(elapsed: elapsed))
                     .position(messageCenter)
             }
         }
@@ -138,16 +141,27 @@ private struct EmptyCanvasDummyImage: Identifiable {
     }
 }
 
-private enum EmptyCanvasMessage {
-    private static let leadingText = "아직 캔버스가 비어 있어요\n친구들과 "
-    private static let highlightedText = "함께 남기고 싶은 순간"
-    private static let trailingText = "을 캔버스에 쌓아 주세요"
+/// 빈 캔버스 안내 문구. 가운데 구절만 글자 단위로 강조 애니메이션이 걸린다.
+struct EmptyCanvasMessage {
+    static let group = EmptyCanvasMessage(
+        leadingText: "아직 캔버스가 비어 있어요\n친구들과 ",
+        highlightedText: "함께 남기고 싶은 순간"
+    )
+    /// 내 공간(혼자 공간) 전용.
+    static let solo = EmptyCanvasMessage(
+        leadingText: "아직 캔버스가 비어 있어요\n마음속에 ",
+        highlightedText: "간직하고 싶은 순간"
+    )
 
-    static var plain: AttributedString {
+    private let leadingText: String
+    private let highlightedText: String
+    private let trailingText = "을 캔버스에 쌓아 주세요"
+
+    var plain: AttributedString {
         AttributedString(leadingText + highlightedText + trailingText)
     }
 
-    static func highlighted(elapsed: TimeInterval) -> AttributedString {
+    func highlighted(elapsed: TimeInterval) -> AttributedString {
         var message = transparent(leadingText)
         var letterIndex = 0
 
@@ -167,7 +181,7 @@ private enum EmptyCanvasMessage {
         return message
     }
 
-    private static func transparent(_ text: String) -> AttributedString {
+    private func transparent(_ text: String) -> AttributedString {
         var run = AttributedString(text)
         run.swiftUI.foregroundColor = Color.clear
         return run

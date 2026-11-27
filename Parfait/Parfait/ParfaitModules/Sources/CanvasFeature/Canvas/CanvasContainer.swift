@@ -32,6 +32,7 @@ struct CanvasContainer: View {
                             weekdayText: state.weekdayText,
                             contentState: state.contentState,
                             emptyCanvasIntroPhase: state.emptyCanvasIntroPhase,
+                            isSolo: state.isSolo,
                             canvasContent: state.canvasContent,
                             spotlightedLayerID: state.spotlightedLayerID,
                             isDimmed: state.menuState != .collapsed,
@@ -179,6 +180,7 @@ private struct CanvasBoard: View {
     let weekdayText: String
     let contentState: CanvasStore.ContentState
     let emptyCanvasIntroPhase: EmptyCanvasIntroPhase
+    let isSolo: Bool
     let canvasContent: CanvasStore.CanvasContent?
     let spotlightedLayerID: CanvasLayer.LayerID?
     let isDimmed: Bool
@@ -205,6 +207,7 @@ private struct CanvasBoard: View {
                 case .empty:
                     EmptyCanvasIntroView(
                         phase: emptyCanvasIntroPhase,
+                        message: isSolo ? .solo : .group,
                         onPlaybackFinished: onEmptyCanvasIntroFinished
                     )
 
